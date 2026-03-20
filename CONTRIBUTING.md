@@ -4,16 +4,13 @@ Please fork the repo and start a new branch to work on.
 
 
 ## Building locally
-This project is using [Gradle](https://gradle.org/) for its build tool.
-A Gradle Wrapper is included in the code though so you do not have to manage your own installation.
+This project is using [Cargo](hhttps://doc.rust-lang.org/cargo//) for its build tool.
 
 To run a build simply exucute the following:
 
 ```shell script
-./gradlew installDist
+cargo build
 ```
-
-This will run all the steps defined in the `build.gradle.kts` file.
 
 
 ## Testing

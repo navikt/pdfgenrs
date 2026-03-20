@@ -121,7 +121,7 @@ If you need to contact anyone directly, please see [CODEOWNERS](CODEOWNERS)
 
 ## ✏️ Contributing
 
-To get started, please fork the repo and checkout a new branch. You can then build the library with the Gradle wrapper
+To get started, please fork the repo and checkout a new branch. You can then build the library
 
 ```shell script
 cargo build
