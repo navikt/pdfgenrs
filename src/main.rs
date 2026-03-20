@@ -100,9 +100,9 @@ fn build_router(state: AppState, cfg: &config::Config) -> Router {
     };
 
     let pdf_router = Router::new()
-        .route("/html/:app_name", post(routes::pdf::post_html_to_pdf))
-        .route("/image/:app_name", post(routes::pdf::post_image_to_pdf))
-        .route("/:app_name/:template", pdf_template_route);
+        .route("/html/{app_name}", post(routes::pdf::post_html_to_pdf))
+        .route("/image/{app_name}", post(routes::pdf::post_image_to_pdf))
+        .route("/{app_name}/{template}", pdf_template_route);
 
     let mut html_router = Router::new();
     if cfg.enable_html_endpoint {
@@ -111,7 +111,7 @@ fn build_router(state: AppState, cfg: &config::Config) -> Router {
         } else {
             axum::routing::post(routes::html::post_html)
         };
-        html_router = html_router.route("/:app_name/:template", html_template_route);
+        html_router = html_router.route("/{app_name}/{template}", html_template_route);
     }
 
     Router::new()
