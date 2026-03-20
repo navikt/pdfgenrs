@@ -1,11 +1,11 @@
-# pdfgen-rs
+# pdfgenrs
 
-[![Build main](https://github.com/navikt/pdfgen-rs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgen-rs/actions/workflows/build.yml)
+[![Build main](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml)
 
-![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgen-rs)
+![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
 
-Repository for `pdfgen-rs`, an application written in Rust used to create PDFs and HTMLs
+Repository for `pdfgenrs`, an application written in Rust used to create PDFs and HTMLs
 
 ## Technologies & Tools
 
@@ -19,20 +19,20 @@ Repository for `pdfgen-rs`, an application written in Rust used to create PDFs a
 
 ## Getting started
 
-Most commonly, pdfgen-rs is used as a base image alongside templates, fonts, additional resources, and potential test data to verify that valid PDFs get produced by the aforementioned templates.
+Most commonly, pdfgenrs is used as a base image alongside templates, fonts, additional resources, and potential test data to verify that valid PDFs get produced by the aforementioned templates.
 
 In your own repository, create a Dockerfile with the following contents
 
 ```dockerfile
 # Dockerfile
-FROM ghcr.io/navikt/pdfgen-rs:<release>
+FROM ghcr.io/navikt/pdfgenrs:<release>
 
 COPY templates /app/templates # handlebars templates
 COPY fonts /app/fonts         # fonts to be embedded
 COPY resources /app/resources # additional resources
 ```
 
-Check [GitHub releases](https://github.com/navikt/pdfgen-rs/releases) to find the latest `release` version
+Check [GitHub releases](https://github.com/navikt/pdfgenrs/releases) to find the latest `release` version
 
 Set up the basic folder structure
 ```bash
@@ -48,7 +48,7 @@ mkdir {templates,data}/your_teamname # your_teamname can be anything, but it'll 
 * `data/your_teamname/` should be populated with json files with names corresponding to a target .hbs-template, this can be used to test your PDFs during development of templates.
 
 
-## Developing pdfgen-rs
+## Developing pdfgenrs
 
 ### Prerequisites
 Make sure you have the rust installed using this command:
@@ -82,7 +82,7 @@ The template and data directory structure both follow the `<application>/<templa
 To enable HTML document support, use the environment variable `ENABLE_HTML_ENDPOINT=true`. This will enable the 
 HTML endpoints on `/api/v1/genhtml/<application>/<template>`. 
 
-By default, pdfgen-rs will load all assets (`templates`, `resources`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
+By default, pdfgenrs will load all assets (`templates`, `resources`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 
 ### Release
 We use default GitHub release. 

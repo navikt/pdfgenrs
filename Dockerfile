@@ -8,7 +8,7 @@ RUN cargo build --release
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
-COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/pdfgen-rs /app/pdfgen-rs
+COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/pdfgenrs /app/pdfgenrs
 
 EXPOSE 8080
-CMD ["/app/pdfgen-rs"]
+CMD ["/app/pdfgenrs"]

@@ -1,10 +1,10 @@
 [package]
-name = "pdfgen-rs"
+name = "pdfgenrs"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "pdfgen-rs"
+name = "pdfgenrs"
 path = "src/main.rs"
 
 [dependencies]

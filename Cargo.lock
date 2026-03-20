@@ -1782,7 +1782,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfgen-rs"
+name = "pdfgenrs"
 version = "0.1.0"
 dependencies = [
  "anyhow",

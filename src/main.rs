@@ -36,7 +36,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "pdfgen-rs=info,tower_http=info".into()),
+                .unwrap_or_else(|_| "pdfgenrs=info,tower_http=info".into()),
         )
         .init();
 
@@ -77,7 +77,7 @@ async fn main() {
     let app = build_router(state, &cfg);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
-    info!("Starting pdfgen-rs server on {addr}");
+    info!("Starting pdfgenrs server on {addr}");
 
     aliveness_clone.set_alive(true);
     aliveness_clone.set_ready(true);

@@ -13,7 +13,7 @@ use crate::typst_world;
 pub fn html_to_pdf(html: &str, fonts_dir: &str, root: &Path) -> Result<Vec<u8>> {
     // Build a Typst document that displays the HTML content as a raw block
     // This allows PDF generation without an external browser.
-    let typst_source = r#"#set document(title: "pdfgen-rs")
+    let typst_source = r#"#set document(title: "pdfgenrs")
 #set page(margin: (top: 1cm, bottom: 1cm, left: 1cm, right: 1cm))
 #let content = read("/html-content", encoding: none)
 #raw(str(content), lang: "html")
