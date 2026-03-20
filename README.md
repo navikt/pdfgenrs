@@ -25,18 +25,14 @@ In your own repository, create a Dockerfile with the following contents
 
 ```dockerfile
 # Dockerfile
-FROM ghcr.io/navikt/pdfgen:<release>
+FROM ghcr.io/navikt/pdfgen-rs:<release>
 
 COPY templates /app/templates # handlebars templates
 COPY fonts /app/fonts         # fonts to be embedded
 COPY resources /app/resources # additional resources
 ```
-If you need to specify your own worker group size, connection group size or call group size you may add these as environment variables in the 
-Dockerfile. The variable names are WORKER_GROUP_SIZE, CONNECTION_GROUP_SIZE and CALL_GROUP_SIZE.
 
-
-Check GitHub releases to find the latest `release` version 
-Check [GitHub releases](https://github.com/navikt/pdfgen/releases) to find the latest `release` version
+Check [GitHub releases](https://github.com/navikt/pdfgen-rs/releases) to find the latest `release` version
 
 Set up the basic folder structure
 ```bash
@@ -88,19 +84,6 @@ HTML endpoints on `/api/v1/genhtml/<application>/<template>`.
 
 By default, pdfgen-rs will load all assets (`templates`, `resources`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 
-### Environment variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SERVER_PORT` | `8080` | HTTP server port |
-| `DISABLE_PDF_GET` | `false` (binary), `true` (Docker image) | Disable GET endpoint for PDF generation |
-| `ENABLE_HTML_ENDPOINT` | `false` | Enable HTML generation endpoints |
-| `DEV_MODE` | `false` | Reload templates on each request (development only) |
-| `TEMPLATES_DIR` | `templates` | Directory containing Handlebars templates |
-| `RESOURCES_DIR` | `resources` | Directory containing resource files (images) |
-| `FONTS_DIR` | `fonts` | Directory containing fonts (used by Typst PDF renderer) |
-| `DATA_DIR` | `data` | Directory containing test data JSON files |
-
 ### Release
 We use default GitHub release. 
 This project uses [semantic versioning](https://semver.org/) and does NOT prefix tags or release titles with `v` i.e. use `1.2.3` instead of `v1.2.3` 
@@ -121,7 +104,7 @@ If you need to contact anyone directly, please see [CODEOWNERS](CODEOWNERS)
 
 ## ✏️ Contributing
 
-To get started, please fork the repo and checkout a new branch. You can then build the library with the Gradle wrapper
+To get started, please fork the repo and checkout a new branch. You can then build the library
 
 ```shell script
 cargo build
