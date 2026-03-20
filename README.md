@@ -5,6 +5,7 @@
 ![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
 ⚠️WIP!⚠️
+
 Repository for `pdfgenrs`, an application written in Rust used to create PDFs and HTMLs
 
 ## Technologies & Tools
