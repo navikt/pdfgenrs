@@ -3,6 +3,8 @@ FROM clux/muslrust:stable as builder
 WORKDIR /build
 COPY . .
 ENV RUSTFLAGS='-C target-feature=+crt-static'
+ENV DISABLE_PDF_GET="true"
+ENV ENABLE_HTML_ENDPOINT="false"
 
 RUN cargo build --release
 
