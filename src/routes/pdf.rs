@@ -25,11 +25,7 @@ pub async fn get_pdf(
     };
 
     match data {
-        None => (
-            StatusCode::NOT_FOUND,
-            format!("Template or application not found: {}/{}", app_name, template_name),
-        )
-            .into_response(),
+        None => (StatusCode::NOT_FOUND, "Template or application not found").into_response(),
         Some(json_data) => {
             let html = {
                 let hbs = state.hbs.read().await;
@@ -78,8 +74,7 @@ pub async fn post_pdf(
         hbs.has_template(&tmpl_name)
     };
     if !template_exists {
-        return not_found_response(&state, &format!("/api/v1/genpdf/{}/{}", app_name, template_name))
-            .await;
+        return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
     }
 
     let html = {
@@ -181,20 +176,4 @@ fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
         Bytes::from(pdf_bytes),
     )
         .into_response()
-}
-
-pub async fn not_found_response(state: &AppState, path: &str) -> Response {
-    let hbs = state.hbs.read().await;
-    let template_names: Vec<String> = hbs
-        .get_templates()
-        .keys()
-        .filter(|name| !name.contains("partials"))
-        .map(|name| format!("/api/v1/genpdf/{}", name))
-        .collect();
-    let msg = format!(
-        "Unknown path '{}'. Known templates:\n{}",
-        path,
-        template_names.join("\n")
-    );
-    (StatusCode::NOT_FOUND, msg).into_response()
 }
