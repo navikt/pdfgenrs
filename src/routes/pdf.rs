@@ -1,7 +1,7 @@
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     extract::{Path, State},
-    http::{HeaderValue, StatusCode},
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -176,12 +176,11 @@ pub async fn post_image_to_pdf(
 }
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
-    let mut response = Response::new(Body::from(pdf_bytes));
-    response.headers_mut().insert(
-        "Content-Type",
-        HeaderValue::from_static("application/pdf"),
-    );
-    response
+    (
+        [(header::CONTENT_TYPE, "application/pdf")],
+        Bytes::from(pdf_bytes),
+    )
+        .into_response()
 }
 
 pub async fn not_found_response(state: &AppState, path: &str) -> Response {
