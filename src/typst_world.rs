@@ -195,7 +195,13 @@ pub fn compile_to_pdf(
         tracing::warn!("Typst warnings: {}", warns.join("; "));
     }
 
-    let pdf_bytes = typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default())
+    let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
+        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {}", e))?;
+    let options = typst_pdf::PdfOptions {
+        standards,
+        ..typst_pdf::PdfOptions::default()
+    };
+    let pdf_bytes = typst_pdf::pdf(&document, &options)
         .map_err(|errors| {
             let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
             anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
