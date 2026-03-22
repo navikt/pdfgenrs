@@ -1,29 +1,86 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use typst::foundations::Bytes;
 
 use crate::typst_world;
 
-/// Convert HTML string to PDF bytes using Typst.
+static PDF_REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// Convert HTML string to PDF bytes using headless Chromium.
 ///
-/// The HTML content is passed to a minimal Typst document as a raw virtual
-/// file and rendered. For best results, templates should use native Typst
-/// (`.typ`) format and `typst_to_pdf` directly.
-pub fn html_to_pdf(html: &str, fonts_dir: &str, root: &Path) -> Result<Vec<u8>> {
-    // Build a Typst document that displays the HTML content as a raw block
-    // This allows PDF generation without an external browser.
-    let typst_source = r#"#set document(title: "pdfgenrs")
-#set page(margin: (top: 1cm, bottom: 1cm, left: 1cm, right: 1cm))
-#let content = read("/html-content", encoding: none)
-#raw(str(content), lang: "html")
-"#
-    .to_string();
+/// Renders the HTML document with a headless Chromium browser and exports
+/// the result as PDF, producing visually rendered output equivalent to the
+/// Kotlin pdfgen implementation (OpenHTMLtoPDF).
+///
+/// `_fonts_dir` and `_root` are accepted for interface consistency with
+/// `typst_to_pdf` / `image_to_pdf`; font discovery is handled via fontconfig.
+pub fn html_to_pdf(html: &str, _fonts_dir: &str, _root: &Path) -> Result<Vec<u8>> {
+    let id = PDF_REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let pid = std::process::id();
+    let tmp = std::env::temp_dir();
 
-    let mut vfiles = HashMap::new();
-    vfiles.insert("/html-content".to_string(), Bytes::new(html.as_bytes().to_vec()));
+    let html_file = tmp.join(format!("pdfgen-{pid}-{id}.html"));
+    let pdf_file = tmp.join(format!("pdfgen-{pid}-{id}.pdf"));
 
-    typst_world::compile_to_pdf(fonts_dir, root, "/main.typ", typst_source, vfiles)
+    std::fs::write(&html_file, html).context("Failed to write HTML to temp file")?;
+
+    let chromium = find_chromium_binary()?;
+    // --no-sandbox is required when running as non-root inside a container
+    // where user namespaces are not available.
+    let result = std::process::Command::new(chromium)
+        .args([
+            "--headless",
+            "--no-sandbox",
+            "--disable-gpu",
+            "--disable-dev-shm-usage",
+            "--run-all-compositor-stages-before-draw",
+            &format!("--print-to-pdf={}", pdf_file.display()),
+            &format!("file://{}", html_file.display()),
+        ])
+        .output();
+
+    let _ = std::fs::remove_file(&html_file);
+
+    match result {
+        Err(e) => Err(anyhow::anyhow!("Failed to launch {chromium}: {e}")),
+        Ok(output) if !output.status.success() => {
+            let _ = std::fs::remove_file(&pdf_file);
+            Err(anyhow::anyhow!(
+                "{chromium} exited with status {}: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            ))
+        }
+        Ok(_) => {
+            let pdf = std::fs::read(&pdf_file).context("Failed to read PDF output")?;
+            let _ = std::fs::remove_file(&pdf_file);
+            Ok(pdf)
+        }
+    }
+}
+
+/// Return the path of the first Chromium/Chrome binary found in common locations,
+/// or an error if none is available.
+fn find_chromium_binary() -> Result<&'static str> {
+    const CANDIDATES: &[&str] = &[
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "google-chrome-stable",
+    ];
+    const SEARCH_DIRS: &[&str] = &["/usr/bin", "/usr/local/bin"];
+    for &name in CANDIDATES {
+        for &dir in SEARCH_DIRS {
+            if std::path::Path::new(dir).join(name).exists() {
+                return Ok(name);
+            }
+        }
+    }
+    Err(anyhow::anyhow!(
+        "No Chromium/Chrome binary found. Install chromium or google-chrome."
+    ))
 }
 
 /// Render a Typst template to PDF bytes with JSON data injected as data.json.
