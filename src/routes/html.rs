@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use serde_json::Value;
-use tracing::{error, info};
+use ::log::{error, info};
 
 use crate::{template, AppState};
 

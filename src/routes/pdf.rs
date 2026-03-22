@@ -7,7 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use std::path::PathBuf;
-use tracing::{error, info};
+use ::log::{error, info};
 
 use crate::{pdf as gen_pdf, template, AppState};
 
