@@ -7,6 +7,9 @@ mod state;
 mod template;
 mod typst_world;
 
+#[cfg(test)]
+mod performance_test;
+
 use axum::{
     middleware,
     routing::{get, post},
