@@ -197,8 +197,11 @@ pub fn compile_to_pdf(
 
     let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
         .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {}", e))?;
+
+    let timestamp = build_timestamp();
     let options = typst_pdf::PdfOptions {
         standards,
+        timestamp,
         ..typst_pdf::PdfOptions::default()
     };
     let pdf_bytes = typst_pdf::pdf(&document, &options)
@@ -211,3 +214,17 @@ pub fn compile_to_pdf(
 }
 
 use chrono::Datelike;
+use chrono::Timelike;
+
+fn build_timestamp() -> Option<typst_pdf::Timestamp> {
+    let now = chrono::Utc::now();
+    let datetime = typst_library::foundations::Datetime::from_ymd_hms(
+        now.year(),
+        now.month() as u8,
+        now.day() as u8,
+        now.hour() as u8,
+        now.minute() as u8,
+        now.second() as u8,
+    )?;
+    Some(typst_pdf::Timestamp::new_utc(datetime))
+}
