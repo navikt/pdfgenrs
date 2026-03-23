@@ -29,12 +29,15 @@ pub fn html_to_pdf(html: &str, _fonts_dir: &str, _root: &Path) -> Result<Vec<u8>
     let chromium = find_chromium_binary()?;
     // --no-sandbox is required when running as non-root inside a container
     // where user namespaces are not available.
+    // --disable-crash-reporter prevents chrome_crashpad_handler from starting
+    // and requiring a --database path, which causes errors in containers.
     let result = std::process::Command::new(chromium)
         .args([
             "--headless",
             "--no-sandbox",
             "--disable-gpu",
             "--disable-dev-shm-usage",
+            "--disable-crash-reporter",
             "--run-all-compositor-stages-before-draw",
             &format!("--print-to-pdf={}", pdf_file.display()),
             &format!("file://{}", html_file.display()),
