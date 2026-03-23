@@ -12,7 +12,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use handlebars::Handlebars;
 use serde_json::Value;
 use state::AppAliveness;
 use std::{
@@ -25,8 +24,7 @@ use ::log::info;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub hbs: Arc<RwLock<Handlebars<'static>>>,
-    pub images: Arc<HashMap<String, String>>,
+    pub templates: Arc<HashMap<String, String>>,
     pub data: Arc<RwLock<HashMap<(String, String), Value>>>,
     pub aliveness: AppAliveness,
     pub config: config::Config,
@@ -39,23 +37,16 @@ async fn main() {
     let cfg = config::Config::default();
 
     info!("Loading templates from '{}'", cfg.templates_dir);
-    let templates = template::load_templates_from_dir(&cfg.templates_dir)
+    let templates = Arc::new(template::load_templates_from_dir(&cfg.templates_dir)
         .unwrap_or_else(|e| {
             ::log::warn!("Failed to load templates: {e}");
             HashMap::new()
-        });
+        }));
     info!("Loaded {} templates", templates.len());
-
-    info!("Loading images from '{}'", cfg.resources_dir);
-    let images = Arc::new(template::load_images(&cfg.resources_dir));
-    info!("Loaded {} images", images.len());
 
     info!("Loading test data from '{}'", cfg.data_dir);
     let data = template::load_test_data(&cfg.data_dir);
     info!("Loaded {} test data entries", data.len());
-
-    let hbs = template::build_registry(&templates, images.clone())
-        .expect("Failed to build Handlebars registry");
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
@@ -63,8 +54,7 @@ async fn main() {
     metrics::register_metrics(prometheus::default_registry());
 
     let state = AppState {
-        hbs: Arc::new(RwLock::new(hbs)),
-        images,
+        templates,
         data: Arc::new(RwLock::new(data)),
         aliveness: aliveness.clone(),
         config: cfg.clone(),
@@ -100,19 +90,8 @@ fn build_router(state: AppState, cfg: &config::Config) -> Router {
         .route("/image/{app_name}", post(routes::pdf::post_image_to_pdf))
         .route("/{app_name}/{template}", pdf_template_route);
 
-    let mut html_router = Router::new();
-    if cfg.enable_html_endpoint {
-        let html_template_route = if !cfg.disable_pdf_get {
-            axum::routing::get(routes::html::get_html).post(routes::html::post_html)
-        } else {
-            axum::routing::post(routes::html::post_html)
-        };
-        html_router = html_router.route("/{app_name}/{template}", html_template_route);
-    }
-
     Router::new()
         .nest("/api/v1/genpdf", pdf_router)
-        .nest("/api/v1/genhtml", html_router)
         .route("/internal/is_alive", get(routes::nais::is_alive))
         .route("/internal/is_ready", get(routes::nais::is_ready))
         .route("/internal/prometheus", get(routes::nais::prometheus_metrics))

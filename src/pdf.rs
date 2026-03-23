@@ -23,7 +23,6 @@ pub fn html_to_pdf(html: &str, fonts_dir: &str, root: &Path) -> Result<Vec<u8>> 
 }
 
 
-#[allow(dead_code)]
 pub fn typst_to_pdf(
     template_source: &str,
     json_data: &serde_json::Value,

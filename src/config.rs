@@ -4,7 +4,6 @@ use std::env;
 pub struct Config {
     pub port: u16,
     pub disable_pdf_get: bool,
-    pub enable_html_endpoint: bool,
     pub templates_dir: String,
     pub resources_dir: String,
     pub fonts_dir: String,
@@ -19,9 +18,6 @@ impl Default for Config {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(8080),
             disable_pdf_get: env::var("DISABLE_PDF_GET")
-                .map(|v| v == "true")
-                .unwrap_or(false),
-            enable_html_endpoint: env::var("ENABLE_HTML_ENDPOINT")
                 .map(|v| v == "true")
                 .unwrap_or(false),
             templates_dir: env::var("TEMPLATES_DIR").unwrap_or_else(|_| "templates".to_string()),

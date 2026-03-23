@@ -11,9 +11,7 @@ path = "src/main.rs"
 tokio = { version = "1", features = ["full"] }
 axum = "0.8"
 serde_json = "1"
-handlebars = "6"
 chrono = { version = "0.4", features = ["serde"] }
-base64 = "0.22"
 prometheus = { version = "0.14", features = ["process"] }
 walkdir = "2"
 anyhow = "1"

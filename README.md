@@ -6,14 +6,13 @@
 
 ⚠️WIP!⚠️
 
-Repository for `pdfgenrs`, an application written in Rust used to create PDFs and HTMLs
+Repository for `pdfgenrs`, an application written in Rust used to create PDFs
 
 ## Technologies & Tools
 
 * Rust
 * Cargo
 * Axum
-* Handlebars
 * Typst
 * Prometheus
 * Docker
@@ -28,7 +27,7 @@ In your own repository, create a Dockerfile with the following contents
 # Dockerfile
 FROM ghcr.io/navikt/pdfgenrs:<release>
 
-COPY templates /app/templates # handlebars templates
+COPY templates /app/templates # typst templates
 COPY fonts /app/fonts         # fonts to be embedded
 COPY resources /app/resources # additional resources
 ```
@@ -45,8 +44,8 @@ Create subfolders in `templates` and `data`
 mkdir {templates,data}/your_teamname # your_teamname can be anything, but it'll be a necessary part of the API later
 ```
 
-* `templates/your_teamname/` should then be populated with your .hbs-templates. the names of these templates will also decide parts of the API paths
-* `data/your_teamname/` should be populated with json files with names corresponding to a target .hbs-template, this can be used to test your PDFs during development of templates.
+* `templates/your_teamname/` should then be populated with your `.typ` Typst templates. the names of these templates will also decide parts of the API paths. Templates receive JSON data via `#let data = json("/data.json")`.
+* `data/your_teamname/` should be populated with json files with names corresponding to a target `.typ` template, this can be used to test your PDFs during development of templates.
 
 
 ## Developing pdfgenrs
@@ -80,10 +79,7 @@ Running the application locally enables a GET endpoint at `/api/v1/genpdf/<appli
 which looks for test data at `data/<application>/<template>.json` and outputs a PDF to your browser.
 The template and data directory structure both follow the `<application>/<template>` structure.
 
-To enable HTML document support, use the environment variable `ENABLE_HTML_ENDPOINT=true`. This will enable the 
-HTML endpoints on `/api/v1/genhtml/<application>/<template>`. 
-
-By default, pdfgenrs will load all assets (`templates`, `resources`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
+By default, pdfgenrs will load all assets (`templates`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 
 ### Release
 We use default GitHub release. 
