@@ -2468,6 +2468,7 @@ dependencies = [
  "prometheus",
  "reqwest",
  "serde_json",
+ "tempfile",
  "testcontainers",
  "tokio",
  "typst",

@@ -77,3 +77,145 @@ pub fn load_test_data(data_dir: &str) -> HashMap<(String, String), Value> {
     }
     data
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    // --- load_templates_from_dir ---
+
+    #[test]
+    fn test_load_templates_single_file() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("hello.typ"), "Hello Typst").unwrap();
+
+        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(templates.len(), 1);
+        assert_eq!(templates["hello"], "Hello Typst");
+    }
+
+    #[test]
+    fn test_load_templates_nested_dir() {
+        let dir = TempDir::new().unwrap();
+        let sub = dir.path().join("myapp");
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(sub.join("report.typ"), "Report content").unwrap();
+
+        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(templates.len(), 1);
+        assert!(templates.contains_key("myapp/report"), "key should use forward slash");
+        assert_eq!(templates["myapp/report"], "Report content");
+    }
+
+    #[test]
+    fn test_load_templates_ignores_non_typ_files() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("template.typ"), "Typst source").unwrap();
+        fs::write(dir.path().join("data.json"), "{}").unwrap();
+        fs::write(dir.path().join("readme.txt"), "readme").unwrap();
+
+        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(templates.len(), 1);
+        assert!(templates.contains_key("template"));
+    }
+
+    #[test]
+    fn test_load_templates_empty_dir() {
+        let dir = TempDir::new().unwrap();
+
+        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+
+        assert!(templates.is_empty());
+    }
+
+    #[test]
+    fn test_load_templates_multiple_files() {
+        let dir = TempDir::new().unwrap();
+        let sub = dir.path().join("app");
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(dir.path().join("root.typ"), "root").unwrap();
+        fs::write(sub.join("one.typ"), "one").unwrap();
+        fs::write(sub.join("two.typ"), "two").unwrap();
+
+        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(templates.len(), 3);
+        assert!(templates.contains_key("root"));
+        assert!(templates.contains_key("app/one"));
+        assert!(templates.contains_key("app/two"));
+    }
+
+    // --- load_test_data ---
+
+    #[test]
+    fn test_load_test_data_basic() {
+        let dir = TempDir::new().unwrap();
+        let app_dir = dir.path().join("myapp");
+        fs::create_dir_all(&app_dir).unwrap();
+        fs::write(app_dir.join("mytemplate.json"), r#"{"key": "value"}"#).unwrap();
+
+        let data = load_test_data(dir.path().to_str().unwrap());
+
+        assert_eq!(data.len(), 1);
+        let key = ("myapp".to_string(), "mytemplate".to_string());
+        assert!(data.contains_key(&key));
+        assert_eq!(data[&key]["key"], "value");
+    }
+
+    #[test]
+    fn test_load_test_data_ignores_invalid_json() {
+        let dir = TempDir::new().unwrap();
+        let app_dir = dir.path().join("myapp");
+        fs::create_dir_all(&app_dir).unwrap();
+        fs::write(app_dir.join("valid.json"), r#"{"key": "value"}"#).unwrap();
+        fs::write(app_dir.join("invalid.json"), "not valid json").unwrap();
+
+        let data = load_test_data(dir.path().to_str().unwrap());
+
+        assert_eq!(data.len(), 1);
+        assert!(data.contains_key(&("myapp".to_string(), "valid".to_string())));
+    }
+
+    #[test]
+    fn test_load_test_data_ignores_non_json_files() {
+        let dir = TempDir::new().unwrap();
+        let app_dir = dir.path().join("myapp");
+        fs::create_dir_all(&app_dir).unwrap();
+        fs::write(app_dir.join("template.json"), r#"{"a": 1}"#).unwrap();
+        fs::write(app_dir.join("template.typ"), "typst").unwrap();
+
+        let data = load_test_data(dir.path().to_str().unwrap());
+
+        assert_eq!(data.len(), 1);
+        assert!(data.contains_key(&("myapp".to_string(), "template".to_string())));
+    }
+
+    #[test]
+    fn test_load_test_data_ignores_wrong_depth() {
+        let dir = TempDir::new().unwrap();
+        // depth 1: directly inside base dir – should be ignored
+        fs::write(dir.path().join("toplevel.json"), r#"{"a": 1}"#).unwrap();
+        // depth 3: too deep – should be ignored
+        let deep = dir.path().join("app").join("sub");
+        fs::create_dir_all(&deep).unwrap();
+        fs::write(deep.join("deep.json"), r#"{"a": 1}"#).unwrap();
+
+        let data = load_test_data(dir.path().to_str().unwrap());
+
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn test_load_test_data_empty_dir() {
+        let dir = TempDir::new().unwrap();
+
+        let data = load_test_data(dir.path().to_str().unwrap());
+
+        assert!(data.is_empty());
+    }
+}
