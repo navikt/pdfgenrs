@@ -2,10 +2,20 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
+    routing::get,
+    Router,
 };
 use std::collections::HashMap;
 
 use crate::{metrics, AppState};
+
+pub fn nais_router(state: AppState) -> Router {
+    Router::new()
+        .route("/internal/is_alive", get(is_alive))
+        .route("/internal/is_ready", get(is_ready))
+        .route("/internal/prometheus", get(prometheus_metrics))
+        .with_state(state)
+}
 
 pub async fn is_alive(State(state): State<AppState>) -> Response {
     if state.aliveness.is_alive() {
@@ -52,5 +62,71 @@ pub async fn prometheus_metrics(
             format!("Failed to gather metrics: {e}"),
         )
             .into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use axum::http::StatusCode;
+    use axum_test::TestServer;
+    use tokio::sync::RwLock;
+
+    use crate::config::Config;
+    use crate::state::AppAliveness;
+    use crate::AppState;
+    use super::nais_router;
+
+    fn test_state(alive: bool, ready: bool) -> AppState {
+        let aliveness = AppAliveness::new();
+        aliveness.set_alive(alive);
+        aliveness.set_ready(ready);
+        AppState {
+            templates: Arc::new(HashMap::new()),
+            data: Arc::new(RwLock::new(HashMap::new())),
+            aliveness,
+            config: Config::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn is_alive_returns_200_when_alive() {
+        let server = TestServer::new(nais_router(test_state(true, false))).unwrap();
+        let response = server.get("/internal/is_alive").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn is_alive_returns_500_when_not_alive() {
+        let server = TestServer::new(nais_router(test_state(false, false))).unwrap();
+        let response = server.get("/internal/is_alive").await;
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn is_ready_returns_200_when_ready() {
+        let server = TestServer::new(nais_router(test_state(false, true))).unwrap();
+        let response = server.get("/internal/is_ready").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn is_ready_returns_500_when_not_ready() {
+        let server = TestServer::new(nais_router(test_state(false, false))).unwrap();
+        let response = server.get("/internal/is_ready").await;
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn prometheus_metrics_returns_200() {
+        let server = TestServer::new(nais_router(test_state(true, true))).unwrap();
+        let response = server.get("/internal/prometheus").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "text/plain; version=0.0.4; charset=utf-8"
+        );
     }
 }

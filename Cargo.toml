@@ -22,3 +22,6 @@ typst-library = "0.14"
 typst-syntax = "0.14"
 log4rs = "1.4.0"
 log = "0.4.29"
+
+[dev-dependencies]
+axum-test = "17"
