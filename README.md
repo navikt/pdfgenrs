@@ -75,7 +75,7 @@ Run the code
 cargo run
 ```
 
-Running the application locally enables a GET endpoint at `/api/v1/genpdf/<application>/<template>`
+Running the application exposes a GET endpoint at `/api/v1/genpdf/<application>/<template>`
 which looks for test data at `data/<application>/<template>.json` and outputs a PDF to your browser.
 The template and data directory structure both follow the `<application>/<template>` structure.
 

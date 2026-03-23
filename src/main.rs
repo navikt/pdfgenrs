@@ -60,7 +60,7 @@ async fn main() {
         config: cfg.clone(),
     };
 
-    let app = build_router(state, &cfg);
+    let app = build_router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
     info!("Starting pdfgenrs server on {addr}");
@@ -78,17 +78,14 @@ async fn main() {
         .expect("Server error");
 }
 
-fn build_router(state: AppState, cfg: &config::Config) -> Router {
-    let pdf_template_route = if !cfg.disable_pdf_get {
-        get(routes::pdf::get_pdf).post(routes::pdf::post_pdf)
-    } else {
-        post(routes::pdf::post_pdf)
-    };
-
+fn build_router(state: AppState) -> Router {
     let pdf_router = Router::new()
         .route("/html/{app_name}", post(routes::pdf::post_html_to_pdf))
         .route("/image/{app_name}", post(routes::pdf::post_image_to_pdf))
-        .route("/{app_name}/{template}", pdf_template_route);
+        .route(
+            "/{app_name}/{template}",
+            get(routes::pdf::get_pdf).post(routes::pdf::post_pdf),
+        );
 
     Router::new()
         .nest("/api/v1/genpdf", pdf_router)
