@@ -47,9 +47,15 @@ async fn main() {
         }));
     info!("Loaded {} templates", templates.len());
 
-    info!("Loading test data from '{}'", cfg.data_dir);
-    let data = template::load_test_data(&cfg.data_dir);
-    info!("Loaded {} test data entries", data.len());
+    let data = if cfg.dev_mode {
+        info!("Loading test data from '{}'", cfg.data_dir);
+        let data = template::load_test_data(&cfg.data_dir);
+        info!("Loaded {} test data entries", data.len());
+        data
+    } else {
+        info!("Dev mode disabled, skipping test data loading");
+        HashMap::new()
+    };
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
@@ -82,13 +88,15 @@ async fn main() {
 }
 
 fn build_router(state: AppState) -> Router {
-    let pdf_router = Router::new()
+    let mut pdf_router = Router::new()
         .route("/html/{app_name}", post(routes::pdf::post_html_to_pdf))
         .route("/image/{app_name}", post(routes::pdf::post_image_to_pdf))
-        .route(
-            "/{app_name}/{template}",
-            get(routes::pdf::get_pdf).post(routes::pdf::post_pdf),
-        );
+        .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
+
+    if state.config.dev_mode {
+        pdf_router = pdf_router
+            .route("/{app_name}/{template}", get(routes::pdf::get_pdf));
+    }
 
     Router::new()
         .nest("/api/v1/genpdf", pdf_router)
