@@ -1,5 +1,5 @@
 use axum::{
-    body::{Body, Bytes},
+    body::Bytes,
     extract::{Path, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
@@ -83,68 +83,6 @@ pub async fn post_pdf(
             info!("Done generating PDF in {}ms", start.elapsed().as_millis());
             pdf_response(pdf_bytes)
         }
-    }
-}
-
-/// POST /api/v1/genpdf/html/{applicationName}
-/// Converts a raw HTML string to PDF using Typst.
-pub async fn post_html_to_pdf(
-    State(state): State<AppState>,
-    Path(_app_name): Path<String>,
-    body: String,
-) -> Response {
-    let font_cache = (*state.fonts).clone();
-    let root = PathBuf::from(&state.config.templates_dir);
-    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&body, font_cache, &root))
-        .await
-        .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    {
-        Err(e) => {
-            error!("HTML-to-PDF conversion failed: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-        }
-        Ok(pdf_bytes) => pdf_response(pdf_bytes),
-    }
-}
-
-/// POST /api/v1/genpdf/image/{applicationName}
-/// Converts a JPEG or PNG image to PDF using Typst.
-pub async fn post_image_to_pdf(
-    State(state): State<AppState>,
-    Path(_app_name): Path<String>,
-    request: axum::http::Request<Body>,
-) -> Response {
-    let content_type = request
-        .headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
-        .to_string();
-
-    if !content_type.contains("jpeg") && !content_type.contains("png") && !content_type.contains("jpg") {
-        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
-    }
-
-    let body_bytes = match axum::body::to_bytes(request.into_body(), usize::MAX).await {
-        Ok(b) => b,
-        Err(e) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response();
-        }
-    };
-
-    let font_cache = (*state.fonts).clone();
-    let root = PathBuf::from(&state.config.templates_dir);
-    match tokio::task::spawn_blocking(move || {
-        gen_pdf::image_to_pdf(&body_bytes, &content_type, font_cache, &root)
-    })
-    .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    {
-        Err(e) => {
-            error!("Image-to-PDF conversion failed: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-        }
-        Ok(pdf_bytes) => pdf_response(pdf_bytes),
     }
 }
 

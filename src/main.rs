@@ -96,8 +96,6 @@ async fn main() {
 
 fn build_router(state: AppState) -> Router {
     let mut pdf_router = Router::new()
-        .route("/html/{app_name}", post(routes::pdf::post_html_to_pdf))
-        .route("/image/{app_name}", post(routes::pdf::post_image_to_pdf))
         .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
 
     if state.config.dev_mode {
@@ -222,29 +220,5 @@ mod tests {
         let server = TestServer::new(build_router(make_state(true))).unwrap();
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
-    }
-
-    #[tokio::test]
-    async fn build_router_html_to_pdf_returns_pdf_response() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
-        let response = server
-            .post("/api/v1/genpdf/html/myapp")
-            .text("<p>Hello</p>")
-            .await;
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert_eq!(
-            response.headers().get("content-type").unwrap(),
-            "application/pdf"
-        );
-    }
-
-    #[tokio::test]
-    async fn build_router_image_to_pdf_returns_415_for_unsupported_media_type() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
-        let response = server
-            .post("/api/v1/genpdf/image/myapp")
-            .bytes(axum::body::Bytes::from_static(b"fake image data"))
-            .await;
-        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
 }
