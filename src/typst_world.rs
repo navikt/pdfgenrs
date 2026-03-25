@@ -15,6 +15,20 @@ static EMBEDDED_FONTS: &[&[u8]] = &[
     include_bytes!("../fonts/SourceSansPro-Bold.ttf"),
 ];
 
+/// Cached font data loaded once at startup and shared across requests.
+#[derive(Clone)]
+pub struct FontCache {
+    pub fonts: Vec<Font>,
+    pub book: FontBook,
+}
+
+/// Load fonts from `fonts_dir` (falling back to embedded fonts) and return a
+/// [`FontCache`] suitable for sharing across requests.
+pub fn load_font_cache(fonts_dir: &str) -> FontCache {
+    let (fonts, book) = load_fonts(fonts_dir);
+    FontCache { fonts, book }
+}
+
 /// A minimal Typst World implementation that:
 /// - Provides the standard library
 /// - Loads fonts from the fonts directory + embedded fallback fonts
@@ -35,18 +49,18 @@ impl PdfgenWorld {
     /// Create a new world for rendering a Typst source string with optional
     /// auxiliary files accessible via the virtual file system.
     ///
-    /// `fonts_dir`: path to fonts directory (loaded in addition to embedded fonts)
+    /// `font_cache`: pre-loaded fonts (load once at startup via [`load_font_cache`])
     /// `main_path`: virtual path of the main document (e.g. `/main.typ`)
     /// `main_source`: the Typst source code to compile
     /// `virtual_files`: additional files (e.g. `data.json`) accessible by virtual path
     pub fn new(
-        fonts_dir: &str,
+        font_cache: FontCache,
         root: &Path,
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
     ) -> Result<Self> {
-        let (fonts, font_book) = load_fonts(fonts_dir);
+        let FontCache { fonts, book: font_book } = font_cache;
 
         let main_id = FileId::new(None, VirtualPath::new(main_path));
         let source = Source::new(main_id, main_source);
@@ -165,19 +179,19 @@ fn load_fonts(fonts_dir: &str) -> (Vec<Font>, FontBook) {
 
 /// Compile a Typst source document to PDF bytes.
 ///
-/// `fonts_dir`: directory containing font files
+/// `font_cache`: pre-loaded fonts shared across requests
 /// `root`: base path for resolving template file includes
 /// `main_path`: virtual path for the main document  
 /// `main_source`: Typst source code
 /// `virtual_files`: additional virtual files (e.g. data.json)
 pub fn compile_to_pdf(
-    fonts_dir: &str,
+    font_cache: FontCache,
     root: &Path,
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let world = PdfgenWorld::new(fonts_dir, root, main_path, main_source, virtual_files)?;
+    let world = PdfgenWorld::new(font_cache, root, main_path, main_source, virtual_files)?;
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
     let document = result

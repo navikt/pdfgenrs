@@ -23,6 +23,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::RwLock;
+use typst_world::FontCache;
 use ::log::info;
 
 #[derive(Clone)]
@@ -31,6 +32,7 @@ pub struct AppState {
     pub data: Arc<RwLock<HashMap<(String, String), Value>>>,
     pub aliveness: AppAliveness,
     pub config: config::Config,
+    pub fonts: Arc<FontCache>,
 }
 
 #[tokio::main]
@@ -57,6 +59,10 @@ async fn main() {
         HashMap::new()
     };
 
+    info!("Loading fonts from '{}'", cfg.fonts_dir);
+    let fonts = Arc::new(typst_world::load_font_cache(&cfg.fonts_dir));
+    info!("Loaded {} fonts", fonts.fonts.len());
+
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
@@ -67,6 +73,7 @@ async fn main() {
         data: Arc::new(RwLock::new(data)),
         aliveness: aliveness.clone(),
         config: cfg.clone(),
+        fonts,
     };
 
     let app = build_router(state);
@@ -153,7 +160,7 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use crate::{build_router, config, state, AppState};
+    use crate::{build_router, config, state, typst_world, AppState};
 
     fn make_state(dev_mode: bool) -> AppState {
         AppState {
@@ -168,6 +175,7 @@ mod tests {
                 data_dir: "data".to_string(),
                 dev_mode,
             },
+            fonts: Arc::new(typst_world::load_font_cache("fonts")),
         }
     }
 

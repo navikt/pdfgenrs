@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use std::path::Path;
 use typst::foundations::Bytes;
 
-use crate::typst_world;
+use crate::typst_world::{self, FontCache};
 
 
-pub fn html_to_pdf(html: &str, fonts_dir: &str, root: &Path) -> Result<Vec<u8>> {
+pub fn html_to_pdf(html: &str, font_cache: FontCache, root: &Path) -> Result<Vec<u8>> {
     // Build a Typst document that displays the HTML content as a raw block
     // This allows PDF generation without an external browser.
     let typst_source = r#"#set document(title: "pdfgenrs", date: auto)
@@ -19,14 +19,14 @@ pub fn html_to_pdf(html: &str, fonts_dir: &str, root: &Path) -> Result<Vec<u8>> 
     let mut vfiles = HashMap::new();
     vfiles.insert("/html-content".to_string(), Bytes::new(html.as_bytes().to_vec()));
 
-    typst_world::compile_to_pdf(fonts_dir, root, "/main.typ", typst_source, vfiles)
+    typst_world::compile_to_pdf(font_cache, root, "/main.typ", typst_source, vfiles)
 }
 
 
 pub fn typst_to_pdf(
     template_source: &str,
     json_data: &serde_json::Value,
-    fonts_dir: &str,
+    font_cache: FontCache,
     root: &Path,
 ) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
@@ -34,7 +34,7 @@ pub fn typst_to_pdf(
     vfiles.insert("/data.json".to_string(), Bytes::new(json_bytes));
 
     typst_world::compile_to_pdf(
-        fonts_dir,
+        font_cache,
         root,
         "/main.typ",
         template_source.to_string(),
@@ -45,7 +45,7 @@ pub fn typst_to_pdf(
 pub fn image_to_pdf(
     image_bytes: &[u8],
     content_type: &str,
-    fonts_dir: &str,
+    font_cache: FontCache,
     root: &Path,
 ) -> Result<Vec<u8>> {
     let fmt = if content_type.contains("png") { "png" } else { "jpg" };
@@ -60,12 +60,13 @@ pub fn image_to_pdf(
     let mut vfiles = HashMap::new();
     vfiles.insert("/image-data".to_string(), Bytes::new(image_bytes.to_vec()));
 
-    typst_world::compile_to_pdf(fonts_dir, root, "/main.typ", typst_source, vfiles)
+    typst_world::compile_to_pdf(font_cache, root, "/main.typ", typst_source, vfiles)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::typst_world::load_font_cache;
     use std::path::PathBuf;
 
     fn fonts_dir() -> String {
@@ -101,7 +102,7 @@ mod tests {
     #[test]
     fn html_to_pdf_returns_pdf_bytes() {
         let html = "<h1>Hello</h1><p>Unit test</p>";
-        let result = html_to_pdf(html, &fonts_dir(), &root_dir());
+        let result = html_to_pdf(html, load_font_cache(&fonts_dir()), &root_dir());
         assert!(result.is_ok(), "html_to_pdf failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes), "Output does not start with %PDF");
@@ -109,7 +110,7 @@ mod tests {
 
     #[test]
     fn html_to_pdf_empty_html_returns_pdf_bytes() {
-        let result = html_to_pdf("", &fonts_dir(), &root_dir());
+        let result = html_to_pdf("", load_font_cache(&fonts_dir()), &root_dir());
         assert!(result.is_ok(), "html_to_pdf with empty input failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
@@ -122,7 +123,7 @@ mod tests {
 Hello, world!
 "#;
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, &fonts_dir(), &root_dir());
+        let result = typst_to_pdf(source, &data, load_font_cache(&fonts_dir()), &root_dir());
         assert!(result.is_ok(), "typst_to_pdf failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
@@ -135,7 +136,7 @@ Hello, world!
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let result = typst_to_pdf(source, &data, &fonts_dir(), &root_dir());
+        let result = typst_to_pdf(source, &data, load_font_cache(&fonts_dir()), &root_dir());
         assert!(result.is_ok(), "typst_to_pdf with JSON data failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
@@ -145,14 +146,14 @@ Hello, world!
     fn typst_to_pdf_invalid_source_returns_error() {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, &fonts_dir(), &root_dir());
+        let result = typst_to_pdf(source, &data, load_font_cache(&fonts_dir()), &root_dir());
         assert!(result.is_err(), "Expected an error for invalid Typst source");
     }
 
     #[test]
     fn image_to_pdf_png_returns_pdf_bytes() {
         let png = minimal_png();
-        let result = image_to_pdf(&png, "image/png", &fonts_dir(), &root_dir());
+        let result = image_to_pdf(&png, "image/png", load_font_cache(&fonts_dir()), &root_dir());
         assert!(result.is_ok(), "image_to_pdf (PNG) failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));

@@ -32,10 +32,10 @@ pub async fn get_pdf(
             (StatusCode::NOT_FOUND, "Template or application not found").into_response()
         }
         (Some(source), Some(data)) => {
-            let fonts_dir = state.config.fonts_dir.clone();
+            let font_cache = (*state.fonts).clone();
             let root = PathBuf::from(&state.config.templates_dir);
             match tokio::task::spawn_blocking(move || {
-                gen_pdf::typst_to_pdf(&source, &data, &fonts_dir, &root)
+                gen_pdf::typst_to_pdf(&source, &data, font_cache, &root)
             })
             .await
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -67,10 +67,10 @@ pub async fn post_pdf(
         }
     };
 
-    let fonts_dir = state.config.fonts_dir.clone();
+    let font_cache = (*state.fonts).clone();
     let root = PathBuf::from(&state.config.templates_dir);
     match tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(&template_source, &json_data, &fonts_dir, &root)
+        gen_pdf::typst_to_pdf(&template_source, &json_data, font_cache, &root)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -93,9 +93,9 @@ pub async fn post_html_to_pdf(
     Path(_app_name): Path<String>,
     body: String,
 ) -> Response {
-    let fonts_dir = state.config.fonts_dir.clone();
+    let font_cache = (*state.fonts).clone();
     let root = PathBuf::from(&state.config.templates_dir);
-    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&body, &fonts_dir, &root))
+    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&body, font_cache, &root))
         .await
         .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
@@ -132,10 +132,10 @@ pub async fn post_image_to_pdf(
         }
     };
 
-    let fonts_dir = state.config.fonts_dir.clone();
+    let font_cache = (*state.fonts).clone();
     let root = PathBuf::from(&state.config.templates_dir);
     match tokio::task::spawn_blocking(move || {
-        gen_pdf::image_to_pdf(&body_bytes, &content_type, &fonts_dir, &root)
+        gen_pdf::image_to_pdf(&body_bytes, &content_type, font_cache, &root)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))

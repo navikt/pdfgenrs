@@ -6,7 +6,7 @@ mod tests {
     use axum_test::TestServer;
     use tokio::task::JoinSet;
 
-    use crate::{build_router, config, state, template, AppState};
+    use crate::{build_router, config, state, template, typst_world, AppState};
     use tokio::sync::RwLock;
 
     fn create_test_state() -> AppState {
@@ -15,10 +15,12 @@ mod tests {
             template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default(),
         );
         let data = template::load_test_data(&cfg.data_dir);
+        let fonts = Arc::new(typst_world::load_font_cache(&cfg.fonts_dir));
         AppState {
             templates,
             data: Arc::new(RwLock::new(data)),
             aliveness: state::AppAliveness::new(),
+            fonts,
             config: cfg,
         }
     }
