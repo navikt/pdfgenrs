@@ -1,7 +1,7 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use prometheus::{HistogramOpts, HistogramVec, Registry, TextEncoder};
 
-pub static HTTP_HISTOGRAM: Lazy<HistogramVec> = Lazy::new(|| {
+pub static HTTP_HISTOGRAM: LazyLock<HistogramVec> = LazyLock::new(|| {
     HistogramVec::new(
         HistogramOpts::new(
             "requests_duration_seconds",
@@ -13,7 +13,7 @@ pub static HTTP_HISTOGRAM: Lazy<HistogramVec> = Lazy::new(|| {
     .expect("Failed to create HTTP histogram")
 });
 
-pub static RENDERING_SUMMARY: Lazy<HistogramVec> = Lazy::new(|| {
+pub static RENDERING_SUMMARY: LazyLock<HistogramVec> = LazyLock::new(|| {
     HistogramVec::new(
         HistogramOpts::new(
             "rendering_duration_seconds",
