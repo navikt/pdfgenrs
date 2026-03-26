@@ -194,6 +194,12 @@ pub fn compile_to_pdf(
     let world = PdfgenWorld::new(font_cache, root, main_path, main_source, virtual_files)?;
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
+
+    // Evict the comemo memoization cache to prevent unbounded memory growth.
+    // Each compilation populates Typst's global cache; without eviction this
+    // causes a memory leak under sustained load.
+    comemo::evict(30);
+
     let document = result
         .output
         .map_err(|errors| {
