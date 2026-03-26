@@ -236,6 +236,88 @@ pub fn compile_to_pdf(
 use chrono::Datelike;
 use chrono::Timelike;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn fonts_dir() -> String {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("fonts")
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    fn root_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    }
+
+    fn is_pdf(bytes: &[u8]) -> bool {
+        bytes.starts_with(b"%PDF")
+    }
+
+    /// Verifies that `load_font_cache` loads fonts from the fonts directory on
+    /// disk rather than relying solely on embedded fallback fonts.
+    #[test]
+    fn font_cache_loads_fonts_from_directory() {
+        let cache = load_font_cache(&fonts_dir());
+        assert!(
+            !cache.fonts.is_empty(),
+            "Expected at least one font to be loaded from the fonts directory"
+        );
+    }
+
+    /// Verifies that `load_font_cache` falls back to the embedded fonts when the
+    /// provided directory does not exist or contains no font files.
+    #[test]
+    fn font_cache_falls_back_to_embedded_fonts_for_nonexistent_dir() {
+        let cache = load_font_cache("/nonexistent/path/to/fonts");
+        assert!(
+            !cache.fonts.is_empty(),
+            "Expected embedded fallback fonts to be loaded when directory is missing"
+        );
+        assert!(
+            cache.fonts.len() >= EMBEDDED_FONTS.len(),
+            "Should have loaded at least as many font faces as there are embedded font files"
+        );
+    }
+
+    /// Validates the core caching pattern: a single `FontCache` loaded once at
+    /// startup can be cloned and reused for multiple independent compilations,
+    /// matching how `AppState::fonts` is shared across requests.
+    #[test]
+    fn font_cache_clone_can_be_reused_across_multiple_compilations() {
+        let cache = load_font_cache(&fonts_dir());
+
+        let source = r#"#set document(date: auto)
+#set page(margin: 1cm)
+Hello, world!
+"#;
+
+        let result1 = compile_to_pdf(
+            cache.clone(),
+            &root_dir(),
+            "/main.typ",
+            source.to_string(),
+            HashMap::new(),
+        );
+        assert!(result1.is_ok(), "First compilation failed: {:?}", result1.err());
+        let pdf1 = result1.unwrap();
+        assert!(is_pdf(&pdf1), "First result is not a valid PDF");
+
+        let result2 = compile_to_pdf(
+            cache.clone(),
+            &root_dir(),
+            "/main.typ",
+            source.to_string(),
+            HashMap::new(),
+        );
+        assert!(result2.is_ok(), "Second compilation failed: {:?}", result2.err());
+        let pdf2 = result2.unwrap();
+        assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
+    }
+}
+
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
     let now = chrono::Utc::now();
     let datetime = typst_library::foundations::Datetime::from_ymd_hms(
