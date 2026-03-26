@@ -12,7 +12,6 @@ Repository for `pdfgenrs`, an application written in Rust used to create PDFs
 * Cargo
 * Axum
 * Typst
-* Prometheus
 * Docker
 
 ## Getting started
