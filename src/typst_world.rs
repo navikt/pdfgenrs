@@ -22,16 +22,20 @@ pub struct FontCache {
     pub book: FontBook,
 }
 
-/// Load fonts from `fonts_dir` (falling back to embedded fonts) and return a
-/// [`FontCache`] suitable for sharing across requests.
-pub fn load_font_cache(fonts_dir: &str) -> FontCache {
-    let (fonts, book) = load_fonts(fonts_dir);
+/// Load embedded fonts and return a [`FontCache`] suitable for sharing across requests.
+pub fn load_font_cache() -> FontCache {
+    let mut fonts: Vec<Font> = Vec::new();
+    for &font_data in EMBEDDED_FONTS {
+        let bytes = Bytes::new(font_data);
+        fonts.extend(Font::iter(bytes));
+    }
+    let book = FontBook::from_fonts(&fonts);
     FontCache { fonts, book }
 }
 
 /// A minimal Typst World implementation that:
 /// - Provides the standard library
-/// - Loads fonts from the fonts directory + embedded fallback fonts
+/// - Uses embedded fonts
 /// - Serves a main `.typ` source and optional data as virtual files
 pub struct PdfgenWorld {
     library: LazyHash<Library>,
@@ -147,36 +151,6 @@ impl World for PdfgenWorld {
     }
 }
 
-fn load_fonts(fonts_dir: &str) -> (Vec<Font>, FontBook) {
-    let mut fonts: Vec<Font> = Vec::new();
-
-    // Load fonts from the fonts directory
-    if let Ok(entries) = std::fs::read_dir(fonts_dir) {
-        for entry in entries.filter_map(|e| e.ok()) {
-            let path = entry.path();
-            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                if matches!(ext.to_lowercase().as_str(), "ttf" | "otf" | "ttc") {
-                    if let Ok(data) = std::fs::read(&path) {
-                        let bytes = Bytes::new(data);
-                        fonts.extend(Font::iter(bytes));
-                    }
-                }
-            }
-        }
-    }
-
-    // If no fonts were loaded from disk, use embedded fonts as fallback
-    if fonts.is_empty() {
-        for &font_data in EMBEDDED_FONTS {
-            let bytes = Bytes::new(font_data.to_vec());
-            fonts.extend(Font::iter(bytes));
-        }
-    }
-
-    let font_book = FontBook::from_fonts(&fonts);
-    (fonts, font_book)
-}
-
 /// Compile a Typst source document to PDF bytes.
 ///
 /// `font_cache`: pre-loaded fonts shared across requests
@@ -241,13 +215,6 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    fn fonts_dir() -> String {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("fonts")
-            .to_string_lossy()
-            .into_owned()
-    }
-
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
@@ -256,29 +223,13 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
-    /// Verifies that `load_font_cache` loads fonts from the fonts directory on
-    /// disk rather than relying solely on embedded fallback fonts.
+    /// Verifies that `load_font_cache` loads the embedded fonts.
     #[test]
-    fn font_cache_loads_fonts_from_directory() {
-        let cache = load_font_cache(&fonts_dir());
-        assert!(
-            !cache.fonts.is_empty(),
-            "Expected at least one font to be loaded from the fonts directory"
-        );
-    }
-
-    /// Verifies that `load_font_cache` falls back to the embedded fonts when the
-    /// provided directory does not exist or contains no font files.
-    #[test]
-    fn font_cache_falls_back_to_embedded_fonts_for_nonexistent_dir() {
-        let cache = load_font_cache("/nonexistent/path/to/fonts");
-        assert!(
-            !cache.fonts.is_empty(),
-            "Expected embedded fallback fonts to be loaded when directory is missing"
-        );
+    fn font_cache_loads_embedded_fonts() {
+        let cache = load_font_cache();
         assert!(
             cache.fonts.len() >= EMBEDDED_FONTS.len(),
-            "Should have loaded at least as many font faces as there are embedded font files"
+            "Expected at least as many font faces as there are embedded font files"
         );
     }
 
@@ -287,7 +238,7 @@ mod tests {
     /// matching how `AppState::fonts` is shared across requests.
     #[test]
     fn font_cache_clone_can_be_reused_across_multiple_compilations() {
-        let cache = load_font_cache(&fonts_dir());
+        let cache = load_font_cache();
 
         let source = r#"#set document(date: auto)
 #set page(margin: 1cm)

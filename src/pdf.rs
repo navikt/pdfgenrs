@@ -31,13 +31,6 @@ mod tests {
     use crate::typst_world::load_font_cache;
     use std::path::PathBuf;
 
-    fn fonts_dir() -> String {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("fonts")
-            .to_string_lossy()
-            .into_owned()
-    }
-
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
@@ -53,7 +46,7 @@ mod tests {
 Hello, world!
 "#;
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, load_font_cache(&fonts_dir()), &root_dir());
+        let result = typst_to_pdf(source, &data, load_font_cache(), &root_dir());
         assert!(result.is_ok(), "typst_to_pdf failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
@@ -66,7 +59,7 @@ Hello, world!
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let result = typst_to_pdf(source, &data, load_font_cache(&fonts_dir()), &root_dir());
+        let result = typst_to_pdf(source, &data, load_font_cache(), &root_dir());
         assert!(result.is_ok(), "typst_to_pdf with JSON data failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
@@ -76,7 +69,7 @@ Hello, world!
     fn typst_to_pdf_invalid_source_returns_error() {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, load_font_cache(&fonts_dir()), &root_dir());
+        let result = typst_to_pdf(source, &data, load_font_cache(), &root_dir());
         assert!(result.is_err(), "Expected an error for invalid Typst source");
     }
 }

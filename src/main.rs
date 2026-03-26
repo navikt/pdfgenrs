@@ -57,8 +57,8 @@ async fn main() {
         HashMap::new()
     };
 
-    info!("Loading fonts from '{}'", cfg.fonts_dir);
-    let fonts = Arc::new(typst_world::load_font_cache(&cfg.fonts_dir));
+    info!("Loading fonts");
+    let fonts = Arc::new(typst_world::load_font_cache());
     info!("Loaded {} fonts", fonts.fonts.len());
 
     let aliveness = AppAliveness::new();
@@ -154,11 +154,10 @@ mod tests {
                 port: 8080,
                 templates_dir: "templates".to_string(),
                 resources_dir: "resources".to_string(),
-                fonts_dir: "fonts".to_string(),
                 data_dir: "data".to_string(),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_font_cache("fonts")),
+            fonts: Arc::new(typst_world::load_font_cache()),
         }
     }
 
