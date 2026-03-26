@@ -1,6 +1,5 @@
 mod config;
 mod log;
-mod metrics;
 mod pdf;
 mod routes;
 mod state;
@@ -11,7 +10,6 @@ mod typst_world;
 mod performance_test;
 
 use axum::{
-    middleware,
     routing::{get, post},
     Router,
 };
@@ -66,7 +64,6 @@ async fn main() {
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
-    metrics::register_metrics(prometheus::default_registry());
 
     let state = AppState {
         templates,
@@ -106,35 +103,7 @@ fn build_router(state: AppState) -> Router {
     Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .merge(routes::nais::nais_router())
-        .layer(middleware::from_fn(http_metrics_middleware))
         .with_state(state)
-}
-
-async fn http_metrics_middleware(
-    req: axum::extract::Request,
-    next: axum::middleware::Next,
-) -> axum::response::Response {
-    let path = normalize_path(req.uri().path());
-    let timer = metrics::HTTP_HISTOGRAM.with_label_values(&[path]).start_timer();
-    let resp = next.run(req).await;
-    timer.observe_duration();
-    resp
-}
-
-/// Normalize a request path for use as a Prometheus metric label.
-///
-/// Using raw paths as labels causes unbounded high-cardinality label growth
-/// (one series per unique app/template combination) which leaks memory.
-/// This function replaces variable path segments with fixed placeholders.
-fn normalize_path(path: &str) -> &str {
-    const GENPDF_PREFIX: &str = "/api/v1/genpdf/";
-    if let Some(suffix) = path.strip_prefix(GENPDF_PREFIX) {
-        let segments = suffix.split('/').filter(|s| !s.is_empty()).count();
-        if segments == 2 {
-            return "/api/v1/genpdf/{app}/{template}";
-        }
-    }
-    path
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) {
@@ -208,13 +177,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn build_router_prometheus_route_exists() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
-        let response = server.get("/internal/prometheus").await;
-        assert_eq!(response.status_code(), StatusCode::OK);
-    }
-
-    #[tokio::test]
     async fn build_router_post_pdf_returns_404_for_missing_template() {
         let server = TestServer::new(build_router(make_state(false))).unwrap();
         let response = server
@@ -238,47 +200,4 @@ mod tests {
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
     }
 
-    #[test]
-    fn normalize_path_replaces_genpdf_path_variable_segments() {
-        assert_eq!(
-            crate::normalize_path("/api/v1/genpdf/myapp/mytemplate"),
-            "/api/v1/genpdf/{app}/{template}"
-        );
-        assert_eq!(
-            crate::normalize_path("/api/v1/genpdf/otherapp/othertemplate"),
-            "/api/v1/genpdf/{app}/{template}"
-        );
-    }
-
-    #[test]
-    fn normalize_path_leaves_internal_paths_unchanged() {
-        assert_eq!(
-            crate::normalize_path("/internal/is_alive"),
-            "/internal/is_alive"
-        );
-        assert_eq!(
-            crate::normalize_path("/internal/is_ready"),
-            "/internal/is_ready"
-        );
-        assert_eq!(
-            crate::normalize_path("/internal/prometheus"),
-            "/internal/prometheus"
-        );
-    }
-
-    #[test]
-    fn normalize_path_leaves_malformed_genpdf_paths_unchanged() {
-        assert_eq!(
-            crate::normalize_path("/api/v1/genpdf/"),
-            "/api/v1/genpdf/"
-        );
-        assert_eq!(
-            crate::normalize_path("/api/v1/genpdf/onlyone"),
-            "/api/v1/genpdf/onlyone"
-        );
-        assert_eq!(
-            crate::normalize_path("/api/v1/genpdf/a/b/c"),
-            "/api/v1/genpdf/a/b/c"
-        );
-    }
 }
