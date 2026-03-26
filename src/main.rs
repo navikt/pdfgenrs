@@ -114,11 +114,27 @@ async fn http_metrics_middleware(
     req: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
-    let path = req.uri().path().to_string();
-    let timer = metrics::HTTP_HISTOGRAM.with_label_values(&[&path]).start_timer();
+    let path = normalize_path(req.uri().path());
+    let timer = metrics::HTTP_HISTOGRAM.with_label_values(&[path]).start_timer();
     let resp = next.run(req).await;
     timer.observe_duration();
     resp
+}
+
+/// Normalize a request path for use as a Prometheus metric label.
+///
+/// Using raw paths as labels causes unbounded high-cardinality label growth
+/// (one series per unique app/template combination) which leaks memory.
+/// This function replaces variable path segments with fixed placeholders.
+fn normalize_path(path: &str) -> &str {
+    const GENPDF_PREFIX: &str = "/api/v1/genpdf/";
+    if let Some(suffix) = path.strip_prefix(GENPDF_PREFIX) {
+        let segments = suffix.split('/').filter(|s| !s.is_empty()).count();
+        if segments == 2 {
+            return "/api/v1/genpdf/{app}/{template}";
+        }
+    }
+    path
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) {
@@ -220,5 +236,49 @@ mod tests {
         let server = TestServer::new(build_router(make_state(true))).unwrap();
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn normalize_path_replaces_genpdf_path_variable_segments() {
+        assert_eq!(
+            crate::normalize_path("/api/v1/genpdf/myapp/mytemplate"),
+            "/api/v1/genpdf/{app}/{template}"
+        );
+        assert_eq!(
+            crate::normalize_path("/api/v1/genpdf/otherapp/othertemplate"),
+            "/api/v1/genpdf/{app}/{template}"
+        );
+    }
+
+    #[test]
+    fn normalize_path_leaves_internal_paths_unchanged() {
+        assert_eq!(
+            crate::normalize_path("/internal/is_alive"),
+            "/internal/is_alive"
+        );
+        assert_eq!(
+            crate::normalize_path("/internal/is_ready"),
+            "/internal/is_ready"
+        );
+        assert_eq!(
+            crate::normalize_path("/internal/prometheus"),
+            "/internal/prometheus"
+        );
+    }
+
+    #[test]
+    fn normalize_path_leaves_malformed_genpdf_paths_unchanged() {
+        assert_eq!(
+            crate::normalize_path("/api/v1/genpdf/"),
+            "/api/v1/genpdf/"
+        );
+        assert_eq!(
+            crate::normalize_path("/api/v1/genpdf/onlyone"),
+            "/api/v1/genpdf/onlyone"
+        );
+        assert_eq!(
+            crate::normalize_path("/api/v1/genpdf/a/b/c"),
+            "/api/v1/genpdf/a/b/c"
+        );
     }
 }
