@@ -1,19 +1,17 @@
 use axum::{
-    extract::{Query, State},
+    extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
-use std::collections::HashMap;
 
-use crate::{metrics, AppState};
+use crate::AppState;
 
 pub fn nais_router() -> Router<AppState> {
     Router::new()
         .route("/internal/is_alive", get(is_alive))
         .route("/internal/is_ready", get(is_ready))
-        .route("/internal/prometheus", get(prometheus_metrics))
 }
 
 pub async fn is_alive(State(state): State<AppState>) -> Response {
@@ -33,34 +31,6 @@ pub async fn is_ready(State(state): State<AppState>) -> Response {
             "Please wait! I'm not ready :(",
         )
             .into_response()
-    }
-}
-
-pub async fn prometheus_metrics(
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let names: Vec<String> = params
-        .iter()
-        .filter(|(k, _)| k.as_str() == "name[]")
-        .map(|(_, v)| v.clone())
-        .collect();
-
-    match metrics::gather_metrics(&names) {
-        Ok(output) => {
-            let mut resp = output.into_response();
-            resp.headers_mut().insert(
-                "Content-Type",
-                axum::http::HeaderValue::from_static(
-                    "text/plain; version=0.0.4; charset=utf-8",
-                ),
-            );
-            resp
-        }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to gather metrics: {e}"),
-        )
-            .into_response(),
     }
 }
 
@@ -119,16 +89,5 @@ mod tests {
         let server = TestServer::new(nais_router().with_state(test_state(false, false))).unwrap();
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
-    }
-
-    #[tokio::test]
-    async fn prometheus_metrics_returns_200() {
-        let server = TestServer::new(nais_router().with_state(test_state(true, true))).unwrap();
-        let response = server.get("/internal/prometheus").await;
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert_eq!(
-            response.headers().get("content-type").unwrap(),
-            "text/plain; version=0.0.4; charset=utf-8"
-        );
     }
 }
