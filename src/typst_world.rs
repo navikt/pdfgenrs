@@ -171,6 +171,7 @@ pub fn compile_to_pdf(
 
     // Evict comemo's global memoization cache to prevent unbounded memory growth.
     // Entries not accessed in the last 15 eviction cycles are removed.
+    log::debug!("Evicting comemo cache");
     comemo::evict(15);
 
     let document = result
