@@ -163,21 +163,21 @@ mod tests {
 
     #[tokio::test]
     async fn build_router_is_alive_route_exists() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
+        let server = TestServer::new(build_router(make_state(false)));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[tokio::test]
     async fn build_router_is_ready_route_exists() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
+        let server = TestServer::new(build_router(make_state(false)));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[tokio::test]
     async fn build_router_post_pdf_returns_404_for_missing_template() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
+        let server = TestServer::new(build_router(make_state(false)));
         let response = server
             .post("/api/v1/genpdf/myapp/mytemplate")
             .json(&serde_json::json!({}))
@@ -187,14 +187,14 @@ mod tests {
 
     #[tokio::test]
     async fn build_router_get_pdf_returns_405_when_dev_mode_disabled() {
-        let server = TestServer::new(build_router(make_state(false))).unwrap();
+        let server = TestServer::new(build_router(make_state(false)));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
     #[tokio::test]
     async fn build_router_get_pdf_returns_404_when_dev_mode_enabled() {
-        let server = TestServer::new(build_router(make_state(true))).unwrap();
+        let server = TestServer::new(build_router(make_state(true)));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
     }

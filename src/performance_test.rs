@@ -87,7 +87,7 @@ mod tests {
     #[tokio::test]
     async fn performance_test_single_thread() {
         let app_state = create_test_state();
-        let server = TestServer::new(build_router(app_state.clone())).unwrap();
+        let server = TestServer::new(build_router(app_state.clone()));
 
         let passes = 30;
 

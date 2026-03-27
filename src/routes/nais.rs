@@ -65,28 +65,28 @@ mod tests {
 
     #[tokio::test]
     async fn is_alive_returns_200_when_alive() {
-        let server = TestServer::new(nais_router().with_state(test_state(true, false))).unwrap();
+        let server = TestServer::new(nais_router().with_state(test_state(true, false)));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::OK);
     }
 
     #[tokio::test]
     async fn is_alive_returns_500_when_not_alive() {
-        let server = TestServer::new(nais_router().with_state(test_state(false, false))).unwrap();
+        let server = TestServer::new(nais_router().with_state(test_state(false, false)));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[tokio::test]
     async fn is_ready_returns_200_when_ready() {
-        let server = TestServer::new(nais_router().with_state(test_state(false, true))).unwrap();
+        let server = TestServer::new(nais_router().with_state(test_state(false, true)));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::OK);
     }
 
     #[tokio::test]
     async fn is_ready_returns_500_when_not_ready() {
-        let server = TestServer::new(nais_router().with_state(test_state(false, false))).unwrap();
+        let server = TestServer::new(nais_router().with_state(test_state(false, false)));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
