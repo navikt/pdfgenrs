@@ -24,5 +24,5 @@ log = "0.4.29"
 
 [dev-dependencies]
 axum-test = "17"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.13", features = ["json"] }
 tempfile = "3.27.0"
