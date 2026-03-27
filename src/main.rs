@@ -21,7 +21,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::RwLock;
-use typst_world::FontCache;
+use typst_world::Fonts;
 use ::log::info;
 
 #[derive(Clone)]
@@ -30,7 +30,7 @@ pub struct AppState {
     pub data: Arc<RwLock<HashMap<(String, String), Value>>>,
     pub aliveness: AppAliveness,
     pub config: config::Config,
-    pub fonts: Arc<FontCache>,
+    pub fonts: Arc<Fonts>,
 }
 
 #[tokio::main]
@@ -58,7 +58,7 @@ async fn main() {
     };
 
     info!("Loading fonts");
-    let fonts = Arc::new(typst_world::load_font_cache());
+    let fonts = Arc::new(typst_world::load_fonts());
     info!("Loaded {} fonts", fonts.fonts.len());
 
     let aliveness = AppAliveness::new();
@@ -157,7 +157,7 @@ mod tests {
                 data_dir: "data".to_string(),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_font_cache()),
+            fonts: Arc::new(typst_world::load_fonts()),
         }
     }
 

@@ -15,22 +15,22 @@ static EMBEDDED_FONTS: &[&[u8]] = &[
     include_bytes!("../fonts/SourceSansPro-Bold.ttf"),
 ];
 
-/// Cached font data loaded once at startup and shared across requests.
+/// Font data loaded once at startup and shared across requests.
 #[derive(Clone)]
-pub struct FontCache {
+pub struct Fonts {
     pub fonts: Vec<Font>,
     pub book: FontBook,
 }
 
-/// Load embedded fonts and return a [`FontCache`] suitable for sharing across requests.
-pub fn load_font_cache() -> FontCache {
+/// Load embedded fonts and return a [`Fonts`] instance suitable for sharing across requests.
+pub fn load_fonts() -> Fonts {
     let mut fonts: Vec<Font> = Vec::new();
     for &font_data in EMBEDDED_FONTS {
         let bytes = Bytes::new(font_data);
         fonts.extend(Font::iter(bytes));
     }
     let book = FontBook::from_fonts(&fonts);
-    FontCache { fonts, book }
+    Fonts { fonts, book }
 }
 
 /// A minimal Typst World implementation that:
@@ -53,18 +53,18 @@ impl PdfgenWorld {
     /// Create a new world for rendering a Typst source string with optional
     /// auxiliary files accessible via the virtual file system.
     ///
-    /// `font_cache`: pre-loaded fonts (load once at startup via [`load_font_cache`])
+    /// `fonts`: pre-loaded fonts (load once at startup via [`load_fonts`])
     /// `main_path`: virtual path of the main document (e.g. `/main.typ`)
     /// `main_source`: the Typst source code to compile
     /// `virtual_files`: additional files (e.g. `data.json`) accessible by virtual path
     pub fn new(
-        font_cache: FontCache,
+        fonts: Fonts,
         root: &Path,
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
     ) -> Result<Self> {
-        let FontCache { fonts, book: font_book } = font_cache;
+        let Fonts { fonts, book: font_book } = fonts;
 
         let main_id = FileId::new(None, VirtualPath::new(main_path));
         let source = Source::new(main_id, main_source);
@@ -153,19 +153,19 @@ impl World for PdfgenWorld {
 
 /// Compile a Typst source document to PDF bytes.
 ///
-/// `font_cache`: pre-loaded fonts shared across requests
+/// `fonts`: pre-loaded fonts shared across requests
 /// `root`: base path for resolving template file includes
 /// `main_path`: virtual path for the main document  
 /// `main_source`: Typst source code
 /// `virtual_files`: additional virtual files (e.g. data.json)
 pub fn compile_to_pdf(
-    font_cache: FontCache,
+    fonts: Fonts,
     root: &Path,
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let world = PdfgenWorld::new(font_cache, root, main_path, main_source, virtual_files)?;
+    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files)?;
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
@@ -223,22 +223,22 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
-    /// Verifies that `load_font_cache` loads the embedded fonts.
+    /// Verifies that `load_fonts` loads the embedded fonts.
     #[test]
-    fn font_cache_loads_embedded_fonts() {
-        let cache = load_font_cache();
+    fn fonts_loads_embedded_fonts() {
+        let fonts = load_fonts();
         assert!(
-            cache.fonts.len() >= EMBEDDED_FONTS.len(),
+            fonts.fonts.len() >= EMBEDDED_FONTS.len(),
             "Expected at least as many font faces as there are embedded font files"
         );
     }
 
-    /// Validates the core caching pattern: a single `FontCache` loaded once at
+    /// Validates the core sharing pattern: a single `Fonts` instance loaded once at
     /// startup can be cloned and reused for multiple independent compilations,
     /// matching how `AppState::fonts` is shared across requests.
     #[test]
-    fn font_cache_clone_can_be_reused_across_multiple_compilations() {
-        let cache = load_font_cache();
+    fn fonts_clone_can_be_reused_across_multiple_compilations() {
+        let fonts = load_fonts();
 
         let source = r#"#set document(date: auto)
 #set page(margin: 1cm)
@@ -246,7 +246,7 @@ Hello, world!
 "#;
 
         let result1 = compile_to_pdf(
-            cache.clone(),
+            fonts.clone(),
             &root_dir(),
             "/main.typ",
             source.to_string(),
@@ -257,7 +257,7 @@ Hello, world!
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
         let result2 = compile_to_pdf(
-            cache.clone(),
+            fonts.clone(),
             &root_dir(),
             "/main.typ",
             source.to_string(),
