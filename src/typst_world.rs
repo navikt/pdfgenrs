@@ -170,8 +170,8 @@ pub fn compile_to_pdf(
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
     // Evict comemo's global memoization cache to prevent unbounded memory growth.
-    // Entries not accessed in the last 30 eviction cycles are removed.
-    comemo::evict(30);
+    // Entries not accessed in the last 15 eviction cycles are removed.
+    comemo::evict(15);
 
     let document = result
         .output
