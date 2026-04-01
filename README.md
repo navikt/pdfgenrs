@@ -46,6 +46,7 @@ mkdir {templates,data}/your_teamname # your_teamname can be anything, but it'll 
 
 ### Appications that uses pdfgenrs
 - https://github.com/navikt/pale-2-pdfgenrs
+- https://github.com/navikt/smarbeidsgiver-pdfgenrs
 
 ## Developing pdfgenrs
 
