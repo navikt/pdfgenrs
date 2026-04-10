@@ -23,6 +23,6 @@ log4rs = "1.4.0"
 log = "0.4.29"
 
 [dev-dependencies]
-axum-test = "19"
+axum-test = "20"
 reqwest = { version = "0.13", features = ["json"] }
 tempfile = "3.27.0"
