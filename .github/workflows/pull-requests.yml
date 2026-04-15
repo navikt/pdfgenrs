@@ -1,4 +1,4 @@
-name: Build PR
+name: Test and build PR
 on:
   push:
     branches-ignore:
