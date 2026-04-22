@@ -1,7 +1,9 @@
 FROM clux/muslrust:stable as builder
 
 WORKDIR /build
-COPY . .
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY fonts ./fonts
 ENV RUSTFLAGS='-C target-feature=+crt-static'
 
 RUN cargo build --release
