@@ -11,8 +11,6 @@ use ::log::{error, info};
 
 use crate::{pdf as gen_pdf, AppState};
 
-/// GET /api/v1/genpdf/{applicationName}/{template}
-/// Renders a PDF from a Typst template using pre-loaded test data.
 pub async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
@@ -50,8 +48,6 @@ pub async fn get_pdf(
     }
 }
 
-/// POST /api/v1/genpdf/{applicationName}/{template}
-/// Renders a PDF from a Typst template with JSON data from the request body.
 pub async fn post_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
