@@ -4,10 +4,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use walkdir::WalkDir;
 
-/// Loads all `.typ` Typst templates from the templates directory recursively.
-/// Returns a map from template name (e.g. `app/template`) to Typst source code.
-/// Templates receive request JSON data via the virtual file `/data.json`,
-/// accessible in Typst as `#let data = json("/data.json")`.
 pub fn load_templates_from_dir(templates_dir: &str) -> anyhow::Result<HashMap<String, String>> {
     let mut templates = HashMap::new();
     let base = Path::new(templates_dir);
@@ -38,7 +34,6 @@ pub fn load_templates_from_dir(templates_dir: &str) -> anyhow::Result<HashMap<St
     Ok(templates)
 }
 
-/// Loads all test data JSON files from the data directory.
 pub fn load_test_data(data_dir: &str) -> HashMap<(String, String), Value> {
     let mut data = HashMap::new();
     let base = Path::new(data_dir);
@@ -83,8 +78,6 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
-
-    // --- load_templates_from_dir ---
 
     #[test]
     fn test_load_templates_single_file() {
@@ -150,8 +143,6 @@ mod tests {
         assert!(templates.contains_key("app/two"));
     }
 
-    // --- load_test_data ---
-
     #[test]
     fn test_load_test_data_basic() {
         let dir = TempDir::new().unwrap();
@@ -198,9 +189,7 @@ mod tests {
     #[test]
     fn test_load_test_data_ignores_wrong_depth() {
         let dir = TempDir::new().unwrap();
-        // depth 1: directly inside base dir – should be ignored
         fs::write(dir.path().join("toplevel.json"), r#"{"a": 1}"#).unwrap();
-        // depth 3: too deep – should be ignored
         let deep = dir.path().join("app").join("sub");
         fs::create_dir_all(&deep).unwrap();
         fs::write(deep.join("deep.json"), r#"{"a": 1}"#).unwrap();

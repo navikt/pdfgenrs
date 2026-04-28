@@ -15,14 +15,12 @@ static EMBEDDED_FONTS: &[&[u8]] = &[
     include_bytes!("../fonts/SourceSansPro-Bold.ttf"),
 ];
 
-/// Font data loaded once at startup and shared across requests.
 #[derive(Clone)]
 pub struct Fonts {
     pub fonts: Vec<Font>,
     pub book: FontBook,
 }
 
-/// Load embedded fonts and return a [`Fonts`] instance suitable for sharing across requests.
 pub fn load_fonts() -> Fonts {
     let mut fonts: Vec<Font> = Vec::new();
     for &font_data in EMBEDDED_FONTS {
@@ -33,30 +31,17 @@ pub fn load_fonts() -> Fonts {
     Fonts { fonts, book }
 }
 
-/// A minimal Typst World implementation that:
-/// - Provides the standard library
-/// - Uses embedded fonts
-/// - Serves a main `.typ` source and optional data as virtual files
 pub struct PdfgenWorld {
     library: LazyHash<Library>,
     font_book: LazyHash<FontBook>,
     fonts: Vec<Font>,
     main_id: FileId,
     main_source: Source,
-    /// Virtual files accessible by ID: template files and data
     virtual_files: HashMap<FileId, Bytes>,
-    /// Physical file root for resolving relative paths in templates
     root: PathBuf,
 }
 
 impl PdfgenWorld {
-    /// Create a new world for rendering a Typst source string with optional
-    /// auxiliary files accessible via the virtual file system.
-    ///
-    /// `fonts`: pre-loaded fonts (load once at startup via [`load_fonts`])
-    /// `main_path`: virtual path of the main document (e.g. `/main.typ`)
-    /// `main_source`: the Typst source code to compile
-    /// `virtual_files`: additional files (e.g. `data.json`) accessible by virtual path
     pub fn new(
         fonts: Fonts,
         root: &Path,
@@ -103,14 +88,12 @@ impl World for PdfgenWorld {
         if id == self.main_id {
             return Ok(self.main_source.clone());
         }
-        // Check virtual files first
         if let Some(bytes) = self.virtual_files.get(&id) {
             let text = std::str::from_utf8(bytes.as_slice())
                 .map_err(|_| FileError::InvalidUtf8)?
                 .to_string();
             return Ok(Source::new(id, text));
         }
-        // Try resolving relative to the root
         let vpath = id.vpath();
         let physical = self.root.join(vpath.as_rootless_path());
         let text = std::fs::read_to_string(&physical)
@@ -119,11 +102,9 @@ impl World for PdfgenWorld {
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        // Check virtual files
         if let Some(bytes) = self.virtual_files.get(&id) {
             return Ok(bytes.clone());
         }
-        // Try resolving relative to the root
         let vpath = id.vpath();
         let physical = self.root.join(vpath.as_rootless_path());
         let bytes = std::fs::read(&physical)
@@ -151,13 +132,6 @@ impl World for PdfgenWorld {
     }
 }
 
-/// Compile a Typst source document to PDF bytes.
-///
-/// `fonts`: pre-loaded fonts shared across requests
-/// `root`: base path for resolving template file includes
-/// `main_path`: virtual path for the main document  
-/// `main_source`: Typst source code
-/// `virtual_files`: additional virtual files (e.g. data.json)
 pub fn compile_to_pdf(
     fonts: Fonts,
     root: &Path,
@@ -169,8 +143,6 @@ pub fn compile_to_pdf(
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
-    // Evict comemo's global memoization cache to prevent unbounded memory growth.
-    // Entries not accessed in the last 15 eviction cycles are removed.
     comemo::evict(15);
 
     let document = result
@@ -222,11 +194,6 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
-    /// Returns the current resident set size (RSS) of the process in kilobytes.
-    ///
-    /// This reads from `/proc/self/status`, which is only available on Linux.
-    /// On any other platform (macOS, Windows, etc.) the function returns `None`,
-    /// and callers should skip memory-growth assertions gracefully.
     fn rss_kb() -> Option<u64> {
         let status = std::fs::read_to_string("/proc/self/status").ok()?;
         status
@@ -236,7 +203,6 @@ mod tests {
             .and_then(|val| val.parse().ok())
     }
 
-    /// Verifies that `load_fonts` loads the embedded fonts.
     #[test]
     fn fonts_loads_embedded_fonts() {
         let fonts = load_fonts();
@@ -246,9 +212,6 @@ mod tests {
         );
     }
 
-    /// Validates the core sharing pattern: a single `Fonts` instance loaded once at
-    /// startup can be cloned and reused for multiple independent compilations,
-    /// matching how `AppState::fonts` is shared across requests.
     #[test]
     fn fonts_clone_can_be_reused_across_multiple_compilations() {
         let fonts = load_fonts();
@@ -281,18 +244,12 @@ Hello, world!
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
     }
 
-    /// Verifies that a full cache eviction (`comemo::evict(0)`) does not break
-    /// subsequent compilations. `compile_to_pdf` calls `comemo::evict(15)` after
-    /// every compilation to prevent unbounded memory growth; this test ensures
-    /// that the eviction is safe and compatible with the compilation pipeline.
     #[test]
     fn compilation_succeeds_after_full_cache_eviction() {
         let fonts = load_fonts();
         let root = root_dir();
         let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
 
-        // Completely clear the global comemo memoization cache before compiling.
-        // max_age = 0 removes every cached entry regardless of how recently it was used.
         comemo::evict(0);
 
         let result = compile_to_pdf(fonts, &root, "/main.typ", source, HashMap::new());
@@ -304,22 +261,11 @@ Hello, world!
         assert!(is_pdf(&result.unwrap()), "Result after cache eviction is not a valid PDF");
     }
 
-    /// Verifies that repeated compilations of distinct content do not cause
-    /// unbounded memory growth. Without `comemo::evict()`, each unique compilation
-    /// permanently adds entries to Typst's global memoization cache, leaking memory
-    /// over the lifetime of the service. The fix calls `comemo::evict(15)` inside
-    /// `compile_to_pdf` after every compilation so that stale cache entries are
-    /// removed before they can accumulate.
-    ///
-    /// This test measures the process RSS before and after a large number of
-    /// compilations and asserts that the growth stays below a generous bound.
-    /// It is skipped on platforms that do not expose `/proc/self/status`.
     #[test]
     fn repeated_compilations_do_not_grow_memory_unboundedly() {
         let fonts = load_fonts();
         let root = root_dir();
 
-        // Warmup: let allocators and caches reach a stable baseline.
         for i in 0..10 {
             let source = format!("#set page(margin: 1cm)\nWarmup {i}.");
             compile_to_pdf(fonts.clone(), &root, "/main.typ", source, HashMap::new())
@@ -327,12 +273,9 @@ Hello, world!
         }
 
         let Some(rss_before) = rss_kb() else {
-            // /proc/self/status is not available on this platform; skip the check.
             return;
         };
 
-        // Compile 200 documents with distinct content so that each one would
-        // create a new cache entry without eviction.
         for i in 0..200 {
             let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
             let result =
@@ -343,11 +286,6 @@ Hello, world!
         let rss_after = rss_kb().unwrap_or(0);
         let growth_kb = rss_after.saturating_sub(rss_before);
 
-        // Allow at most 64 MB of RSS growth. Each Typst compilation of a simple
-        // single-page document adds roughly 100–300 KB to the memoization cache.
-        // Without eviction, 200 distinct compilations would accumulate well above
-        // 64 MB. With eviction (max_age = 15), the cache holds at most ~15 entries
-        // at any time, so RSS growth stays well below this bound.
         assert!(
             growth_kb < 65_536,
             "RSS grew by {growth_kb} KB after 200 compilations – possible memory leak. \
