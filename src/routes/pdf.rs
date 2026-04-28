@@ -7,7 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use std::path::PathBuf;
-use ::log::{error, info};
+use log::{error, info};
 
 use crate::{pdf as gen_pdf, AppState};
 
@@ -40,7 +40,7 @@ pub async fn get_pdf(
             {
                 Err(e) => {
                     error!("PDF generation failed: {e}");
-                    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
                 Ok(pdf_bytes) => pdf_response(pdf_bytes),
             }
@@ -73,7 +73,7 @@ pub async fn post_pdf(
     {
         Err(e) => {
             error!("PDF generation failed for {tmpl_name}: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(pdf_bytes) => {
             info!("Done generating PDF in {}ms", start.elapsed().as_millis());

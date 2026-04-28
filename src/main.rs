@@ -1,5 +1,5 @@
 mod config;
-mod log;
+mod logging;
 mod pdf;
 mod routes;
 mod state;
@@ -22,7 +22,7 @@ use std::{
 };
 use tokio::sync::RwLock;
 use typst_world::Fonts;
-use ::log::info;
+use log::info;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -35,14 +35,14 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-    log::init_log4rs();
+    logging::init_log4rs();
 
     let cfg = config::Config::default();
 
     info!("Loading templates from '{}'", cfg.templates_dir);
     let templates = Arc::new(template::load_templates_from_dir(&cfg.templates_dir)
         .unwrap_or_else(|e| {
-            ::log::warn!("Failed to load templates: {e}");
+            log::warn!("Failed to load templates: {e}");
             HashMap::new()
         }));
     info!("Loaded {} templates", templates.len());
