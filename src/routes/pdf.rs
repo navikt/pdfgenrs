@@ -6,7 +6,7 @@ use axum::{
     Json,
 };
 use serde_json::Value;
-use std::path::PathBuf;
+use std::sync::Arc;
 use log::{error, info};
 
 use crate::{pdf as gen_pdf, AppState};
@@ -30,8 +30,8 @@ pub async fn get_pdf(
             (StatusCode::NOT_FOUND, "Template or application not found").into_response()
         }
         (Some(source), Some(data)) => {
-            let fonts = (*state.fonts).clone();
-            let root = PathBuf::from(&state.config.templates_dir);
+            let fonts = Arc::clone(&state.fonts);
+            let root = state.config.templates_dir.clone();
             match tokio::task::spawn_blocking(move || {
                 gen_pdf::typst_to_pdf(&source, &data, fonts, &root)
             })
@@ -63,8 +63,8 @@ pub async fn post_pdf(
         }
     };
 
-    let fonts = (*state.fonts).clone();
-    let root = PathBuf::from(&state.config.templates_dir);
+    let fonts = Arc::clone(&state.fonts);
+    let root = state.config.templates_dir.clone();
     match tokio::task::spawn_blocking(move || {
         gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root)
     })
@@ -93,6 +93,7 @@ fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::path::PathBuf;
     use std::sync::Arc;
 
     use axum::http::StatusCode;
@@ -118,9 +119,9 @@ mod tests {
             aliveness: state::AppAliveness::new(),
             config: config::Config {
                 port: 8080,
-                templates_dir: "templates".to_string(),
-                resources_dir: "resources".to_string(),
-                data_dir: "data".to_string(),
+                templates_dir: PathBuf::from("templates"),
+                resources_dir: PathBuf::from("resources"),
+                data_dir: PathBuf::from("data"),
                 dev_mode,
             },
             fonts: Arc::new(typst_world::load_fonts()),

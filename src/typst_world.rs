@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Result;
+use chrono::Datelike;
+use chrono::Timelike;
 use typst::foundations::Bytes;
 use typst::{Library, LibraryExt};
 use typst::utils::LazyHash;
@@ -18,7 +21,7 @@ static EMBEDDED_FONTS: &[&[u8]] = &[
 #[derive(Clone)]
 pub struct Fonts {
     pub fonts: Vec<Font>,
-    pub book: FontBook,
+    pub book: LazyHash<FontBook>,
 }
 
 pub fn load_fonts() -> Fonts {
@@ -28,13 +31,12 @@ pub fn load_fonts() -> Fonts {
         fonts.extend(Font::iter(bytes));
     }
     let book = FontBook::from_fonts(&fonts);
-    Fonts { fonts, book }
+    Fonts { fonts, book: LazyHash::new(book) }
 }
 
 pub struct PdfgenWorld {
     library: LazyHash<Library>,
-    font_book: LazyHash<FontBook>,
-    fonts: Vec<Font>,
+    fonts: Arc<Fonts>,
     main_id: FileId,
     main_source: Source,
     virtual_files: HashMap<FileId, Bytes>,
@@ -43,14 +45,12 @@ pub struct PdfgenWorld {
 
 impl PdfgenWorld {
     pub fn new(
-        fonts: Fonts,
+        fonts: Arc<Fonts>,
         root: &Path,
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
     ) -> Result<Self> {
-        let Fonts { fonts, book: font_book } = fonts;
-
         let main_id = FileId::new(None, VirtualPath::new(main_path));
         let source = Source::new(main_id, main_source);
 
@@ -61,7 +61,6 @@ impl PdfgenWorld {
 
         Ok(Self {
             library: LazyHash::new(Library::default()),
-            font_book: LazyHash::new(font_book),
             fonts,
             main_id,
             main_source: source,
@@ -77,7 +76,7 @@ impl World for PdfgenWorld {
     }
 
     fn book(&self) -> &LazyHash<FontBook> {
-        &self.font_book
+        &self.fonts.book
     }
 
     fn main(&self) -> FileId {
@@ -113,7 +112,7 @@ impl World for PdfgenWorld {
     }
 
     fn font(&self, index: usize) -> Option<Font> {
-        self.fonts.get(index).cloned()
+        self.fonts.fonts.get(index).cloned()
     }
 
     fn today(&self, offset: Option<i64>) -> Option<typst_library::foundations::Datetime> {
@@ -133,7 +132,7 @@ impl World for PdfgenWorld {
 }
 
 pub fn compile_to_pdf(
-    fonts: Fonts,
+    fonts: Arc<Fonts>,
     root: &Path,
     main_path: &str,
     main_source: String,
@@ -178,9 +177,6 @@ pub fn compile_to_pdf(
     Ok(pdf_bytes)
 }
 
-use chrono::Datelike;
-use chrono::Timelike;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,7 +210,7 @@ mod tests {
 
     #[test]
     fn fonts_clone_can_be_reused_across_multiple_compilations() {
-        let fonts = load_fonts();
+        let fonts = Arc::new(load_fonts());
 
         let source = r#"#set document(date: auto)
 #set page(margin: 1cm)
@@ -222,7 +218,7 @@ Hello, world!
 "#;
 
         let result1 = compile_to_pdf(
-            fonts.clone(),
+            Arc::clone(&fonts),
             &root_dir(),
             "/main.typ",
             source.to_string(),
@@ -233,7 +229,7 @@ Hello, world!
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
         let result2 = compile_to_pdf(
-            fonts.clone(),
+            Arc::clone(&fonts),
             &root_dir(),
             "/main.typ",
             source.to_string(),
@@ -246,7 +242,7 @@ Hello, world!
 
     #[test]
     fn compilation_succeeds_after_full_cache_eviction() {
-        let fonts = load_fonts();
+        let fonts = Arc::new(load_fonts());
         let root = root_dir();
         let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
 
@@ -263,12 +259,12 @@ Hello, world!
 
     #[test]
     fn repeated_compilations_do_not_grow_memory_unboundedly() {
-        let fonts = load_fonts();
+        let fonts = Arc::new(load_fonts());
         let root = root_dir();
 
         for i in 0..10 {
             let source = format!("#set page(margin: 1cm)\nWarmup {i}.");
-            compile_to_pdf(fonts.clone(), &root, "/main.typ", source, HashMap::new())
+            compile_to_pdf(Arc::clone(&fonts), &root, "/main.typ", source, HashMap::new())
                 .expect("warmup compilation should succeed");
         }
 
@@ -279,7 +275,7 @@ Hello, world!
         for i in 0..200 {
             let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
             let result =
-                compile_to_pdf(fonts.clone(), &root, "/main.typ", source, HashMap::new());
+                compile_to_pdf(Arc::clone(&fonts), &root, "/main.typ", source, HashMap::new());
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }
 

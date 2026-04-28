@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use std::path::Path;
 use walkdir::WalkDir;
 
-pub fn load_templates_from_dir(templates_dir: &str) -> anyhow::Result<HashMap<String, String>> {
+pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<String, String>> {
     let mut templates = HashMap::new();
-    let base = Path::new(templates_dir);
+    let base = templates_dir;
 
     for entry in WalkDir::new(templates_dir)
         .follow_links(true)
@@ -34,9 +34,9 @@ pub fn load_templates_from_dir(templates_dir: &str) -> anyhow::Result<HashMap<St
     Ok(templates)
 }
 
-pub fn load_test_data(data_dir: &str) -> HashMap<(String, String), Value> {
+pub fn load_test_data(data_dir: &Path) -> HashMap<(String, String), Value> {
     let mut data = HashMap::new();
-    let base = Path::new(data_dir);
+    let base = data_dir;
 
     for entry in WalkDir::new(data_dir)
         .min_depth(2)
@@ -84,7 +84,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("hello.typ"), "Hello Typst").unwrap();
 
-        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+        let templates = load_templates_from_dir(dir.path()).unwrap();
 
         assert_eq!(templates.len(), 1);
         assert_eq!(templates["hello"], "Hello Typst");
@@ -97,7 +97,7 @@ mod tests {
         fs::create_dir_all(&sub).unwrap();
         fs::write(sub.join("report.typ"), "Report content").unwrap();
 
-        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+        let templates = load_templates_from_dir(dir.path()).unwrap();
 
         assert_eq!(templates.len(), 1);
         assert!(templates.contains_key("myapp/report"), "key should use forward slash");
@@ -111,7 +111,7 @@ mod tests {
         fs::write(dir.path().join("data.json"), "{}").unwrap();
         fs::write(dir.path().join("readme.txt"), "readme").unwrap();
 
-        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+        let templates = load_templates_from_dir(dir.path()).unwrap();
 
         assert_eq!(templates.len(), 1);
         assert!(templates.contains_key("template"));
@@ -121,7 +121,7 @@ mod tests {
     fn test_load_templates_empty_dir() {
         let dir = TempDir::new().unwrap();
 
-        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+        let templates = load_templates_from_dir(dir.path()).unwrap();
 
         assert!(templates.is_empty());
     }
@@ -135,7 +135,7 @@ mod tests {
         fs::write(sub.join("one.typ"), "one").unwrap();
         fs::write(sub.join("two.typ"), "two").unwrap();
 
-        let templates = load_templates_from_dir(dir.path().to_str().unwrap()).unwrap();
+        let templates = load_templates_from_dir(dir.path()).unwrap();
 
         assert_eq!(templates.len(), 3);
         assert!(templates.contains_key("root"));
@@ -150,7 +150,7 @@ mod tests {
         fs::create_dir_all(&app_dir).unwrap();
         fs::write(app_dir.join("mytemplate.json"), r#"{"key": "value"}"#).unwrap();
 
-        let data = load_test_data(dir.path().to_str().unwrap());
+        let data = load_test_data(dir.path());
 
         assert_eq!(data.len(), 1);
         let key = ("myapp".to_string(), "mytemplate".to_string());
@@ -166,7 +166,7 @@ mod tests {
         fs::write(app_dir.join("valid.json"), r#"{"key": "value"}"#).unwrap();
         fs::write(app_dir.join("invalid.json"), "not valid json").unwrap();
 
-        let data = load_test_data(dir.path().to_str().unwrap());
+        let data = load_test_data(dir.path());
 
         assert_eq!(data.len(), 1);
         assert!(data.contains_key(&("myapp".to_string(), "valid".to_string())));
@@ -180,7 +180,7 @@ mod tests {
         fs::write(app_dir.join("template.json"), r#"{"a": 1}"#).unwrap();
         fs::write(app_dir.join("template.typ"), "typst").unwrap();
 
-        let data = load_test_data(dir.path().to_str().unwrap());
+        let data = load_test_data(dir.path());
 
         assert_eq!(data.len(), 1);
         assert!(data.contains_key(&("myapp".to_string(), "template".to_string())));
@@ -194,7 +194,7 @@ mod tests {
         fs::create_dir_all(&deep).unwrap();
         fs::write(deep.join("deep.json"), r#"{"a": 1}"#).unwrap();
 
-        let data = load_test_data(dir.path().to_str().unwrap());
+        let data = load_test_data(dir.path());
 
         assert!(data.is_empty());
     }
@@ -203,7 +203,7 @@ mod tests {
     fn test_load_test_data_empty_dir() {
         let dir = TempDir::new().unwrap();
 
-        let data = load_test_data(dir.path().to_str().unwrap());
+        let data = load_test_data(dir.path());
 
         assert!(data.is_empty());
     }

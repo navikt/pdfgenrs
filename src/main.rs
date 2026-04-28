@@ -39,7 +39,7 @@ async fn main() {
 
     let cfg = config::Config::default();
 
-    info!("Loading templates from '{}'", cfg.templates_dir);
+    info!("Loading templates from '{}'", cfg.templates_dir.display());
     let templates = Arc::new(template::load_templates_from_dir(&cfg.templates_dir)
         .unwrap_or_else(|e| {
             log::warn!("Failed to load templates: {e}");
@@ -48,7 +48,7 @@ async fn main() {
     info!("Loaded {} templates", templates.len());
 
     let data = if cfg.dev_mode {
-        info!("Loading test data from '{}'", cfg.data_dir);
+        info!("Loading test data from '{}'", cfg.data_dir.display());
         let data = template::load_test_data(&cfg.data_dir);
         info!("Loaded {} test data entries", data.len());
         data
@@ -137,6 +137,7 @@ async fn shutdown_signal(aliveness: AppAliveness) {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::path::PathBuf;
     use std::sync::Arc;
 
     use axum::http::StatusCode;
@@ -152,9 +153,9 @@ mod tests {
             aliveness: state::AppAliveness::new(),
             config: config::Config {
                 port: 8080,
-                templates_dir: "templates".to_string(),
-                resources_dir: "resources".to_string(),
-                data_dir: "data".to_string(),
+                templates_dir: PathBuf::from("templates"),
+                resources_dir: PathBuf::from("resources"),
+                data_dir: PathBuf::from("data"),
                 dev_mode,
             },
             fonts: Arc::new(typst_world::load_fonts()),
