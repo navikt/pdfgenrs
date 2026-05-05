@@ -38,11 +38,11 @@ mkdir {templates,fonts,resources,data}
 
 Create subfolders in `templates` and `data`
 ```bash
-mkdir {templates,data}/your_teamname # your_teamname can be anything, but it'll be a necessary part of the API later
+mkdir {templates,data}/your_appname # your_appname can be anything, but it'll be a necessary part of the API later
 ```
 
-* `templates/your_teamname/` should then be populated with your `.typ` Typst templates. the names of these templates will also decide parts of the API paths. Templates receive JSON data via `#let data = json("/data.json")`.
-* `data/your_teamname/` should be populated with json files with names corresponding to a target `.typ` template, this can be used to test your PDFs during development of templates.
+* `templates/your_appname/` should then be populated with your `.typ` Typst templates. the names of these templates will also decide parts of the API paths. Templates receive JSON data via `#let data = json("/data.json")`.
+* `data/your_appname/` should be populated with json files with names corresponding to a target `.typ` template, this can be used to test your PDFs during development of templates.
 
 ### Appications that uses pdfgenrs
 - https://github.com/navikt/pale-2-pdfgenrs
@@ -75,9 +75,9 @@ Run the code
 cargo run
 ```
 
-Running the application with enviroment DEV_MODE = true will exposes a GET endpoint at `/api/v1/genpdf/<application>/<template>`
-which looks for test data at `data/<application>/<template>.json` and outputs a PDF to your browser.
-The template and data directory structure both follow the `<application>/<template>` structure.
+Running the application with enviroment DEV_MODE = true will exposes a GET endpoint at `/api/v1/genpdf/<your_appname>/<template>`
+which looks for test data at `data/<your_appname>/<template>.json` and outputs a PDF to your browser.
+The template and data directory structure both follow the `<your_appname>/<template>` structure.
 
 By default, pdfgenrs will load all assets (`templates`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 
