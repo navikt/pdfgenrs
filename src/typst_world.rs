@@ -301,3 +301,4 @@ Hello, world!
              Ensure comemo::evict() is called after each compilation in compile_to_pdf."
         );
     }
+}
