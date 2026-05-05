@@ -11,6 +11,11 @@ use log::{error, info};
 
 use crate::{pdf as gen_pdf, AppState};
 
+/// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
+///
+/// Looks up the template source and pre-loaded test JSON data for the given
+/// `app_name` / `template` combination and returns a PDF response.
+/// Returns `404` if the template or its test data cannot be found.
 pub async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
@@ -48,6 +53,11 @@ pub async fn get_pdf(
     }
 }
 
+/// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
+///
+/// Accepts a JSON body and compiles the named Typst template with that data,
+/// returning the result as `application/pdf`.
+/// Returns `404` if the template is not found, or `500` if compilation fails.
 pub async fn post_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,

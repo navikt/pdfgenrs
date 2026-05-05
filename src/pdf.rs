@@ -7,6 +7,14 @@ use typst::foundations::Bytes;
 use crate::typst_world::{self, Fonts};
 
 
+/// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
+///
+/// The JSON data is serialised and injected as a virtual file at `/data.json`,
+/// which the template can read with `#let data = json("/data.json")`.
+///
+/// # Errors
+/// Returns an error if serialisation of `json_data` fails or if the Typst
+/// compilation / PDF export fails.
 pub fn typst_to_pdf(
     template_source: &str,
     json_data: &serde_json::Value,

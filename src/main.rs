@@ -24,12 +24,18 @@ use tokio::sync::RwLock;
 use typst_world::Fonts;
 use log::info;
 
+/// Shared application state injected into every Axum handler.
 #[derive(Clone)]
 pub struct AppState {
+    /// Pre-loaded Typst templates keyed by `"<app_name>/<template_name>"`.
     pub templates: Arc<HashMap<String, String>>,
+    /// Test JSON data keyed by `(app_name, template_name)`, used in dev mode.
     pub data: Arc<RwLock<HashMap<(String, String), Value>>>,
+    /// Liveness / readiness flags exposed via the NAIS health endpoints.
     pub aliveness: AppAliveness,
+    /// Server configuration derived from environment variables.
     pub config: config::Config,
+    /// Shared font data used by the Typst compiler.
     pub fonts: Arc<Fonts>,
 }
 
