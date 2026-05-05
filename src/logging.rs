@@ -4,6 +4,7 @@ use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::json::JsonEncoder;
 use log::LevelFilter;
 
+/// Initialises log4rs with a JSON-formatted console appender at `INFO` level.
 pub fn init_log4rs() {
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new( JsonEncoder::new()))

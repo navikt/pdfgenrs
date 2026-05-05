@@ -1,12 +1,22 @@
 use std::env;
 use std::path::PathBuf;
 
+/// Runtime configuration for the pdfgenrs server.
+///
+/// All fields are populated from environment variables when `Config::default()` is
+/// called, falling back to sensible defaults when the variables are absent.
 #[derive(Clone, Debug)]
 pub struct Config {
+    /// TCP port the server listens on. Defaults to `8080` (`SERVER_PORT`).
     pub port: u16,
+    /// Directory containing Typst template files. Defaults to `"templates"` (`TEMPLATES_DIR`).
     pub templates_dir: PathBuf,
+    /// Directory containing static resource files. Defaults to `"resources"` (`RESOURCES_DIR`).
     pub resources_dir: PathBuf,
+    /// Directory containing test JSON data used in dev mode. Defaults to `"data"` (`DATA_DIR`).
     pub data_dir: PathBuf,
+    /// When `true`, the GET PDF endpoint is enabled and test data is pre-loaded.
+    /// Defaults to `false` (`DEV_MODE`).
     pub dev_mode: bool,
 }
 

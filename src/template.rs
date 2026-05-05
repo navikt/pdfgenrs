@@ -4,6 +4,14 @@ use std::collections::HashMap;
 use std::path::Path;
 use walkdir::WalkDir;
 
+/// Recursively loads all `*.typ` template files from `templates_dir`.
+///
+/// Each template is keyed by its relative path with the `.typ` extension
+/// stripped and path separators normalised to `/`
+/// (e.g. `"myapp/invoice"` for `templates/myapp/invoice.typ`).
+///
+/// # Errors
+/// Returns an error if any file cannot be read or a path cannot be processed.
 pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<String, String>> {
     let mut templates = HashMap::new();
     let base = templates_dir;
@@ -34,6 +42,13 @@ pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<S
     Ok(templates)
 }
 
+/// Loads test JSON data files from a two-level directory structure under `data_dir`.
+///
+/// Files must be at exactly depth 2 (`<app_name>/<template_name>.json`).
+/// The returned map is keyed by `(app_name, template_name)` tuples where
+/// `template_name` has the `.json` extension removed.
+///
+/// Files that cannot be read or contain invalid JSON are silently ignored.
 pub fn load_test_data(data_dir: &Path) -> HashMap<(String, String), Value> {
     let mut data = HashMap::new();
     let base = data_dir;

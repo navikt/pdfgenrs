@@ -18,12 +18,16 @@ static EMBEDDED_FONTS: &[&[u8]] = &[
     include_bytes!("../fonts/SourceSansPro-Bold.ttf"),
 ];
 
+/// Holds the loaded fonts and the font book used by the Typst compiler.
 #[derive(Clone)]
 pub struct Fonts {
+    /// The list of individual font faces available for rendering.
     pub fonts: Vec<Font>,
+    /// The font book that indexes all available fonts for Typst's font resolver.
     pub book: LazyHash<FontBook>,
 }
 
+/// Loads the embedded fonts bundled with the binary and returns a [`Fonts`] instance.
 pub fn load_fonts() -> Fonts {
     let mut fonts: Vec<Font> = Vec::new();
     for &font_data in EMBEDDED_FONTS {
@@ -34,6 +38,10 @@ pub fn load_fonts() -> Fonts {
     Fonts { fonts, book: LazyHash::new(book) }
 }
 
+/// A Typst [`World`] implementation used to compile templates into PDF documents.
+///
+/// It resolves files from a combination of in-memory virtual files (e.g. JSON
+/// data injected at compile time) and the physical filesystem rooted at `root`.
 pub struct PdfgenWorld {
     library: LazyHash<Library>,
     fonts: Arc<Fonts>,
@@ -44,6 +52,15 @@ pub struct PdfgenWorld {
 }
 
 impl PdfgenWorld {
+    /// Creates a new `PdfgenWorld`.
+    ///
+    /// # Arguments
+    /// - `fonts` - Shared font data to use during compilation.
+    /// - `root` - Root directory for resolving physical file paths.
+    /// - `main_path` - Virtual path for the main Typst source file (e.g. `"/main.typ"`).
+    /// - `main_source` - Source text of the main Typst file.
+    /// - `virtual_files` - Map of virtual path to byte content for in-memory files
+    ///   (e.g. `"/data.json"` to JSON bytes).
     pub fn new(
         fonts: Arc<Fonts>,
         root: &Path,
@@ -131,6 +148,14 @@ impl World for PdfgenWorld {
     }
 }
 
+/// Compiles a Typst source document to PDF bytes.
+///
+/// Virtual files (e.g. injected JSON data) are provided via `virtual_files` and
+/// are resolved before falling back to the physical filesystem under `root`.
+/// The resulting PDF conforms to the PDF/A-2a standard.
+///
+/// # Errors
+/// Returns an error if Typst compilation fails or the PDF cannot be exported.
 pub fn compile_to_pdf(
     fonts: Arc<Fonts>,
     root: &Path,

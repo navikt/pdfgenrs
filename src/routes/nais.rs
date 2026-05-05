@@ -8,12 +8,17 @@ use axum::{
 
 use crate::AppState;
 
+/// Builds the NAIS health-check router with `/internal/is_alive` and
+/// `/internal/is_ready` endpoints.
 pub fn nais_router() -> Router<AppState> {
     Router::new()
         .route("/internal/is_alive", get(is_alive))
         .route("/internal/is_ready", get(is_ready))
 }
 
+/// Handles `GET /internal/is_alive`.
+///
+/// Returns 200 OK when the application is alive, or 500 otherwise.
 pub async fn is_alive(State(state): State<AppState>) -> Response {
     if state.aliveness.is_alive() {
         (StatusCode::OK, "I'm alive").into_response()
@@ -22,6 +27,9 @@ pub async fn is_alive(State(state): State<AppState>) -> Response {
     }
 }
 
+/// Handles `GET /internal/is_ready`.
+///
+/// Returns 200 OK when the application is ready to serve traffic, or 500 otherwise.
 pub async fn is_ready(State(state): State<AppState>) -> Response {
     if state.aliveness.is_ready() {
         (StatusCode::OK, "I'm ready").into_response()
