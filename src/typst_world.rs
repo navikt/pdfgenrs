@@ -177,6 +177,19 @@ pub fn compile_to_pdf(
     Ok(pdf_bytes)
 }
 
+fn build_timestamp() -> Option<typst_pdf::Timestamp> {
+    let now = chrono::Utc::now();
+    let datetime = typst_library::foundations::Datetime::from_ymd_hms(
+        now.year(),
+        now.month() as u8,
+        now.day() as u8,
+        now.hour() as u8,
+        now.minute() as u8,
+        now.second() as u8,
+    )?;
+    Some(typst_pdf::Timestamp::new_utc(datetime))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -288,17 +301,4 @@ Hello, world!
              Ensure comemo::evict() is called after each compilation in compile_to_pdf."
         );
     }
-}
-
-fn build_timestamp() -> Option<typst_pdf::Timestamp> {
-    let now = chrono::Utc::now();
-    let datetime = typst_library::foundations::Datetime::from_ymd_hms(
-        now.year(),
-        now.month() as u8,
-        now.day() as u8,
-        now.hour() as u8,
-        now.minute() as u8,
-        now.second() as u8,
-    )?;
-    Some(typst_pdf::Timestamp::new_utc(datetime))
 }
