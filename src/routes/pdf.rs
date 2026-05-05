@@ -20,7 +20,7 @@ pub async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Response {
-    let tmpl_name = format!("{}/{}", app_name, template_name);
+    let tmpl_name = format!("{app_name}/{template_name}");
 
     let template_source = state.templates.get(&tmpl_name).cloned();
     let json_data = {
@@ -64,13 +64,10 @@ pub async fn post_pdf(
     Json(json_data): Json<Value>,
 ) -> Response {
     let start = std::time::Instant::now();
-    let tmpl_name = format!("{}/{}", app_name, template_name);
+    let tmpl_name = format!("{app_name}/{template_name}");
 
-    let template_source = match state.templates.get(&tmpl_name).cloned() {
-        Some(s) => s,
-        None => {
-            return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
-        }
+    let Some(template_source) = state.templates.get(&tmpl_name).cloned() else {
+        return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
     };
 
     let fonts = Arc::clone(&state.fonts);

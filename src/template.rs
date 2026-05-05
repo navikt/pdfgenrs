@@ -14,19 +14,18 @@ use walkdir::WalkDir;
 /// Returns an error if any file cannot be read or a path cannot be processed.
 pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<String, String>> {
     let mut templates = HashMap::new();
-    let base = templates_dir;
 
     for entry in WalkDir::new(templates_dir)
         .follow_links(true)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(Result::ok)
     {
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "typ" {
                     let relative = path
-                        .strip_prefix(base)
+                        .strip_prefix(templates_dir)
                         .context("Failed to strip prefix")?;
                     let name = relative
                         .with_extension("")
@@ -51,20 +50,19 @@ pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<S
 /// Files that cannot be read or contain invalid JSON are silently ignored.
 pub fn load_test_data(data_dir: &Path) -> HashMap<(String, String), Value> {
     let mut data = HashMap::new();
-    let base = data_dir;
 
     for entry in WalkDir::new(data_dir)
         .min_depth(2)
         .max_depth(2)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(Result::ok)
     {
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "json" {
                     if let (Ok(relative), Ok(content)) =
-                        (path.strip_prefix(base), std::fs::read_to_string(path))
+                        (path.strip_prefix(data_dir), std::fs::read_to_string(path))
                     {
                         if let Ok(value) = serde_json::from_str::<Value>(&content) {
                             let parts: Vec<&str> = relative
