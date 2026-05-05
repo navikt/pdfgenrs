@@ -15,7 +15,7 @@ pub fn init_log4rs() {
             .build("stdout", Box::new(stdout)))
         .logger(Logger::builder().build("app::logs", LevelFilter::Info))
         .build(Root::builder().appender("stdout").build(LevelFilter::Info))
-        .unwrap();
+        .expect("Failed to build log4rs config: invalid appender or root configuration");
 
-    log4rs::init_config(config).unwrap();
+    log4rs::init_config(config).expect("Failed to initialize log4rs");
 }

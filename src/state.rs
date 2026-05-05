@@ -8,9 +8,9 @@ use std::sync::Arc;
 #[derive(Clone, Default)]
 pub struct AppAliveness {
     /// Whether the application process is alive (i.e. not shutting down).
-    pub alive: Arc<AtomicBool>,
+    alive: Arc<AtomicBool>,
     /// Whether the application is ready to serve traffic.
-    pub ready: Arc<AtomicBool>,
+    ready: Arc<AtomicBool>,
 }
 
 impl AppAliveness {
