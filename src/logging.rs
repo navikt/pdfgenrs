@@ -7,7 +7,7 @@ use log::LevelFilter;
 /// Initialises log4rs with a JSON-formatted console appender at `INFO` level.
 pub fn init_log4rs() {
     let stdout = ConsoleAppender::builder()
-        .encoder(Box::new( JsonEncoder::new()))
+        .encoder(Box::new(JsonEncoder::new()))
         .build();
 
     let config = Config::builder()

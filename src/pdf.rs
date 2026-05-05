@@ -51,10 +51,10 @@ mod tests {
 
     #[test]
     fn typst_to_pdf_simple_template_returns_pdf_bytes() {
-        let source = r#"#set document(date: auto)
+        let source = r"#set document(date: auto)
 #set page(margin: 1cm)
 Hello, world!
-"#;
+";
         let data = serde_json::json!({});
         let result = typst_to_pdf(source, &data, Arc::new(load_fonts()), &root_dir());
         assert!(result.is_ok(), "typst_to_pdf failed: {:?}", result.err());

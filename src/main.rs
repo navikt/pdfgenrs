@@ -70,7 +70,6 @@ async fn main() {
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
-
     let state = AppState {
         templates,
         data: Arc::new(RwLock::new(data)),
@@ -131,8 +130,8 @@ async fn shutdown_signal(aliveness: AppAliveness) {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        () = ctrl_c => {},
+        () = terminate => {},
     }
 
     info!("Shutdown signal received, stopping server...");

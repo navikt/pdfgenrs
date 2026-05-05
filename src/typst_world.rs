@@ -29,11 +29,10 @@ pub struct Fonts {
 
 /// Loads the embedded fonts bundled with the binary and returns a [`Fonts`] instance.
 pub fn load_fonts() -> Fonts {
-    let mut fonts: Vec<Font> = Vec::new();
-    for &font_data in EMBEDDED_FONTS {
-        let bytes = Bytes::new(font_data);
-        fonts.extend(Font::iter(bytes));
-    }
+    let fonts: Vec<Font> = EMBEDDED_FONTS
+        .iter()
+        .flat_map(|&font_data| Font::iter(Bytes::new(font_data)))
+        .collect();
     let book = FontBook::from_fonts(&fonts);
     Fonts { fonts, book: LazyHash::new(book) }
 }
@@ -67,7 +66,7 @@ impl PdfgenWorld {
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
-    ) -> Result<Self> {
+    ) -> Self {
         let main_id = FileId::new(None, VirtualPath::new(main_path));
         let source = Source::new(main_id, main_source);
 
@@ -76,14 +75,14 @@ impl PdfgenWorld {
             .map(|(path, bytes)| (FileId::new(None, VirtualPath::new(&path)), bytes))
             .collect();
 
-        Ok(Self {
+        Self {
             library: LazyHash::new(Library::default()),
             fonts,
             main_id,
             main_source: source,
             virtual_files: vfiles,
             root: root.to_path_buf(),
-        })
+        }
     }
 }
 
@@ -134,16 +133,17 @@ impl World for PdfgenWorld {
 
     fn today(&self, offset: Option<i64>) -> Option<typst_library::foundations::Datetime> {
         let now = chrono::Local::now();
-        let naive = if let Some(off) = offset {
-            let utc = now.with_timezone(&chrono::Utc);
-            (utc + chrono::Duration::hours(off)).naive_local()
-        } else {
-            now.naive_local()
-        };
+        let naive = offset.map_or_else(
+            || now.naive_local(),
+            |off| {
+                let utc = now.with_timezone(&chrono::Utc);
+                (utc + chrono::Duration::hours(off)).naive_local()
+            },
+        );
         typst_library::foundations::Datetime::from_ymd(
             naive.year(),
-            naive.month() as u8,
-            naive.day() as u8,
+            u8::try_from(naive.month()).ok()?,
+            u8::try_from(naive.day()).ok()?,
         )
     }
 }
@@ -163,7 +163,7 @@ pub fn compile_to_pdf(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files)?;
+    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
@@ -185,7 +185,7 @@ pub fn compile_to_pdf(
     }
 
     let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
-        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
 
     let timestamp = build_timestamp();
     let options = typst_pdf::PdfOptions {
@@ -206,11 +206,11 @@ fn build_timestamp() -> Option<typst_pdf::Timestamp> {
     let now = chrono::Utc::now();
     let datetime = typst_library::foundations::Datetime::from_ymd_hms(
         now.year(),
-        now.month() as u8,
-        now.day() as u8,
-        now.hour() as u8,
-        now.minute() as u8,
-        now.second() as u8,
+        u8::try_from(now.month()).ok()?,
+        u8::try_from(now.day()).ok()?,
+        u8::try_from(now.hour()).ok()?,
+        u8::try_from(now.minute()).ok()?,
+        u8::try_from(now.second()).ok()?,
     )?;
     Some(typst_pdf::Timestamp::new_utc(datetime))
 }
@@ -250,10 +250,10 @@ mod tests {
     fn fonts_clone_can_be_reused_across_multiple_compilations() {
         let fonts = Arc::new(load_fonts());
 
-        let source = r#"#set document(date: auto)
+        let source = r"#set document(date: auto)
 #set page(margin: 1cm)
 Hello, world!
-"#;
+";
 
         let result1 = compile_to_pdf(
             Arc::clone(&fonts),
