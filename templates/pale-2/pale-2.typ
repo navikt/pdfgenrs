@@ -28,7 +28,7 @@
 #let tf(_, y) = if y == 0 { header_fill } else { none }
 
 #set page(margin: 1cm)
-#set text(font: "Source Sans 3", lang: "nb", size: 10pt)
+#set text(font: ("Source Sans 3", "Noto Color Emoji"), lang: "nb", size: 10pt, fallback: false)
 #set table(stroke: 1pt + black, inset: 4pt)
 #show "\u{2011}": "-"
 #show "\u{2642}": "Mann"
