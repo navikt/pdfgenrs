@@ -5,7 +5,7 @@
 
 #set document(title: "Kontroll forespørsel")
 #set page(margin: (top: 1.5cm, bottom: 1.5cm, left: 1.5cm, right: 1.5cm))
-#set text(font: "Source Sans Pro", size: 11pt)
+#set text(font: "Source Sans 3", lang: "nb", size: 11pt)
 
 #let checkbox-item(label) = pad(left: 3mm, bottom: 3mm)[
   #box(width: 3mm, height: 3mm, stroke: 1pt + black, baseline: 20%)

@@ -14,8 +14,8 @@ use typst_library::World;
 use typst_syntax::{FileId, Source, VirtualPath};
 
 static EMBEDDED_FONTS: &[&[u8]] = &[
-    include_bytes!("../fonts/SourceSansPro-Regular.ttf"),
-    include_bytes!("../fonts/SourceSansPro-Bold.ttf"),
+    include_bytes!("../fonts/SourceSans3-Regular.ttf"),
+    include_bytes!("../fonts/SourceSans3-Bold.ttf"),
 ];
 
 /// Holds the loaded fonts and the font book used by the Typst compiler.
