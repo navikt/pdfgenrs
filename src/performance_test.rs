@@ -10,20 +10,25 @@ mod tests {
     use tokio::sync::RwLock;
 
     fn create_test_state() -> AppState {
-        let cfg = config::Config::default();
-        let templates = Arc::new(
-            template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default(),
-        );
-        let data = template::load_test_data(&cfg.data_dir);
-        let fonts = Arc::new(typst_world::load_fonts());
-        AppState {
-            templates,
-            data: Arc::new(RwLock::new(data)),
-            aliveness: state::AppAliveness::new(),
-            fonts,
-            config: cfg,
-        }
+    let mut cfg = config::Config::default();
+    cfg.templates_dir = "templates".into();
+    cfg.data_dir = "data".into();
+    cfg.resources_dir = "resources".into();
+
+    let templates = Arc::new(
+        template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default(),
+    );
+    let data = template::load_test_data(&cfg.data_dir);
+    let fonts = Arc::new(typst_world::load_fonts());
+
+    AppState {
+        templates,
+        data: Arc::new(RwLock::new(data)),
+        aliveness: state::AppAliveness::new(),
+        fonts,
+        config: cfg,
     }
+}
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn performance_test_multi_thread() {
