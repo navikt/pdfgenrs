@@ -1,4 +1,4 @@
-#let data = json("/pale-2.json")
+#let data = json("/data.json")
 #let legeerklaering = data.legeerklaering
 #let validationResult = data.validationResult
 #let mottattDato = data.at("mottattDato", default: "")
