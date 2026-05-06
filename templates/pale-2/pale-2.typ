@@ -40,7 +40,7 @@
     fill: (_, _) => header_fill,
     [*#if validationResult.status == "INVALID" [AVVIST ]LEGEERKLÆRING*],
   ),
-  align(right + horizon, image("/NAVLogoRed.png", width: 100%, alt: "NAV logo")),
+  align(right + horizon, image("NAVLogoRed.png", width: 100%, alt: "NAV logo")),
 )
 
 // Section 0: Erklæringen gjelder
