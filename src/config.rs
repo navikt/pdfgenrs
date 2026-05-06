@@ -9,6 +9,10 @@ use std::path::PathBuf;
 pub struct Config {
     /// TCP port the server listens on. Defaults to `8080` (`SERVER_PORT`).
     pub port: u16,
+    /// Root directory used as the Typst filesystem root. Templates can reference
+    /// resources with absolute paths such as `/resources/logo.png`. Defaults to
+    /// `"."` (`ROOT_DIR`).
+    pub root_dir: PathBuf,
     /// Directory containing Typst template files. Defaults to `"templates"` (`TEMPLATES_DIR`).
     pub templates_dir: PathBuf,
     /// Directory containing static resource files. Defaults to `"resources"` (`RESOURCES_DIR`).
@@ -27,6 +31,9 @@ impl Default for Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(8080),
+            root_dir: PathBuf::from(
+                env::var("ROOT_DIR").unwrap_or_else(|_| ".".to_string()),
+            ),
             templates_dir: PathBuf::from(
                 env::var("TEMPLATES_DIR").unwrap_or_else(|_| "templates".to_string()),
             ),

@@ -158,6 +158,7 @@ mod tests {
             aliveness: state::AppAliveness::new(),
             config: config::Config {
                 port: 8080,
+                root_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
                 templates_dir: PathBuf::from("templates"),
                 resources_dir: PathBuf::from("resources"),
                 data_dir: PathBuf::from("data"),

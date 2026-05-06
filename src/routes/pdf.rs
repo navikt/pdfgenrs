@@ -36,7 +36,7 @@ pub async fn get_pdf(
         }
         (Some(source), Some(data)) => {
             let fonts = Arc::clone(&state.fonts);
-            let root = state.config.templates_dir.clone();
+            let root = state.config.root_dir.clone();
             match tokio::task::spawn_blocking(move || {
                 gen_pdf::typst_to_pdf(&source, &data, fonts, &root)
             })
@@ -71,7 +71,7 @@ pub async fn post_pdf(
     };
 
     let fonts = Arc::clone(&state.fonts);
-    let root = state.config.templates_dir.clone();
+    let root = state.config.root_dir.clone();
     match tokio::task::spawn_blocking(move || {
         gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root)
     })
@@ -126,6 +126,7 @@ mod tests {
             aliveness: state::AppAliveness::new(),
             config: config::Config {
                 port: 8080,
+                root_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
                 templates_dir: PathBuf::from("templates"),
                 resources_dir: PathBuf::from("resources"),
                 data_dir: PathBuf::from("data"),
@@ -237,5 +238,24 @@ mod tests {
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn post_pdf_can_reference_image_from_resources_folder() {
+        const TEMPLATE_WITH_IMAGE: &str = r#"#set document(date: auto)
+#set page(margin: 1cm)
+#image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
+"#;
+        let mut templates = HashMap::new();
+        templates.insert("myapp/mytemplate".to_string(), TEMPLATE_WITH_IMAGE.to_string());
+        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(is_pdf(response.as_bytes()));
     }
 }
