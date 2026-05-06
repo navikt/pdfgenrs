@@ -4,7 +4,7 @@
 
 #set document(title: "Søknad om sykepenger")
 #set page(margin: (top: 2cm, bottom: 2cm, left: 2.5cm, right: 2.5cm))
-#set text(font: "Source Sans 3", lang: "nb", size: 11pt)
+#set text(font: ("Source Sans 3", "Noto Color Emoji"), lang: "nb", size: 10pt, fallback: false)
 
 #align(center)[
   #text(size: 18pt, weight: "bold")[Søknad om sykepenger]
