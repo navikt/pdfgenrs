@@ -30,12 +30,6 @@
 #set page(margin: 1cm)
 #set text(font: ("Source Sans 3", "Noto Color Emoji"), lang: "nb", size: 10pt, fallback: false)
 #set table(stroke: 1pt + black, inset: 4pt)
-#show "\u{2011}": "-"
-#show "\u{2642}": "Mann"
-#show "\u{2640}": "Kvinne"
-#show "\u{1FA7A}": "Stetoskop"
-#show "\u{1F539}": "[*]"
-#show "\u{1F449}": "->"
 
 // Header with NAV logo
 #grid(
