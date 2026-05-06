@@ -30,12 +30,7 @@
 #set page(margin: 1cm)
 #set text(font: "Source Sans 3", size: 10pt)
 #set table(stroke: 1pt + black, inset: 4pt)
-#show "\u{2011}": "-"
-#show "\u{2642}": "Mann"
-#show "\u{2640}": "Kvinne"
-#show "\u{1FA7A}": "Stetoskop"
-#show "\u{1F539}": "[*]"
-#show "\u{1F449}": "->"
+
 
 // Header with NAV logo
 #grid(
@@ -45,7 +40,7 @@
     fill: (_, _) => header_fill,
     [*#if validationResult.status == "INVALID" [AVVIST ]LEGEERKLÆRING*],
   ),
-  align(right + horizon, image("/resources/NAVLogoRed.png", width: 100%, alt: "NAV logo")),
+  align(right + horizon, image("/NAVLogoRed.png", width: 100%, alt: "NAV logo")),
 )
 
 // Section 0: Erklæringen gjelder
