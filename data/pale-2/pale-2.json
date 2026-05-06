@@ -1,0 +1,129 @@
+{
+  "legeerklaering": {
+    "id": "12314",
+    "arbeidsvurderingVedSykefravaer": true,
+    "arbeidsavklaringspenger": true,
+    "yrkesrettetAttforing": false,
+    "uforepensjon": true,
+    "pasient": {
+      "fornavn": "Test",
+      "mellomnavn": "Testerino",
+      "etternavn": "Testsen",
+      "fnr": "0123456789",
+      "navKontor": "NAV Stockholm",
+      "adresse": "Oppdiktet veg 99",
+      "postnummer": 9999,
+      "poststed": "Stockholm",
+      "yrke": "Taco spesialist ♂",
+      "arbeidsgiver": {
+        "navn": "NAV IKT",
+        "adresse": "Sannergata 2",
+        "postnummer": 557,
+        "poststed": "Oslo"
+      }
+    },
+    "sykdomsopplysninger": {
+      "hoveddiagnose": {
+        "tekst": "Fysikalsk behandling/rehabilitering",
+        "kode": "-57"
+      },
+      "bidiagnose": [
+        {
+          "tekst": "Engstelig for hjertesykdom",
+          "kode": "K24"
+        }
+      ],
+      "arbeidsuforFra": "2020-03-06T13:04:49.594953",
+      "sykdomshistorie": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\n\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa.",
+      "statusPresens": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\n\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa.",
+      "borNavKontoretVurdereOmDetErEnYrkesskade": true,
+      "yrkesSkadeDato": "2020-03-05T13:04:49.597058"
+    },
+    "plan": {
+      "utredning": null,
+      "behandling": {
+        "tekst": "2 timer i uken med svømming",
+        "dato": "2020-03-09T13:04:49.598296",
+        "antattVentetIUker": 1
+      },
+      "utredningsplan": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\\n\\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa.",
+      "behandlingsplan": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\\n\\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa.",
+      "vurderingAvTidligerePlan": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\\n\\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa.",
+      "narSporreOmNyeLegeopplysninger": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\\n\\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa.",
+      "videreBehandlingIkkeAktueltGrunn": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam tincidunt id mauris imperdiet ultrices. Nulla a lacus condimentum, fringilla magna non, viverra turpis. Aliquam tempor pretium mauris eget rutrum. Sed et augue non dui vulputate mattis. Duis ullamcorper enim nec risus accumsan auctor. Vestibulum scelerisque quam sodales, dapibus nulla a, dignissim ex. Pellentesque ornare eget nisl id mattis. Cras vehicula enim vitae magna lobortis tempus.\\n\\nCurabitur in mattis quam. Aenean sit amet laoreet nisl. Etiam sagittis magna a odio tristique, congue semper leo vulputate. Morbi ac commodo nunc. Nulla convallis fringilla neque dictum tempus. Fusce lacinia aliquam diam, eu viverra lacus euismod at. Quisque congue, turpis eu luctus sollicitudin, dolor augue rhoncus augue, non porta lectus nulla vel massa."
+    },
+    "forslagTilTiltak": {
+      "behov": true,
+      "kjopAvHelsetjenester": true,
+      "reisetilskudd": false,
+      "aktivSykmelding": false,
+      "hjelpemidlerArbeidsplassen": true,
+      "arbeidsavklaringspenger": true,
+      "friskmeldingTilArbeidsformidling": false,
+      "andreTiltak": "Trenger taco i lunsjen",
+      "naermereOpplysninger": "Tacoen må bestå av ordentlige råvarer",
+      "tekst": "Pasienten har store problemer med fordøying av annen mat enn Taco"
+    },
+    "funksjonsOgArbeidsevne": {
+      "vurderingFunksjonsevne": "Fusce tincidunt metus eu imperdiet egestas. Nulla tristique, neque consequat volutpat pretium, diam eros ultricies mauris, non vulputate nibh leo et turpis. Nam erat nisi, aliquet eget eleifend quis, cursus in ante. Mauris turpis tellus, accumsan at velit vitae, efficitur consequat risus. Sed nec justo eget ante consequat pellentesque ut a arcu. Sed pulvinar placerat feugiat. Phasellus quis turpis hendrerit, eleifend nibh sed, ultrices urna. In non auctor metus, convallis tristique diam. Vestibulum vel ornare lacus. Phasellus placerat imperdiet consectetur. Fusce mattis elementum urna, at elementum orci euismod et.",
+      "inntektsgivendeArbeid": false,
+      "hjemmearbeidende": false,
+      "student": false,
+      "annetArbeid": "Reisende taco tester",
+      "kravTilArbeid": "Kun taco i kantina",
+      "kanGjenopptaTidligereArbeid": true,
+      "kanGjenopptaTidligereArbeidNa": true,
+      "kanGjenopptaTidligereArbeidEtterBehandling": true,
+      "kanIkkeGjenopptaNaverendeArbeid": "Spise annen mat enn Taco",
+      "kanTaAnnetArbeid": true,
+      "kanTaAnnetArbeidNa": true,
+      "kanTaAnnetArbeidEtterBehandling": true,
+      "kanIkkeTaAnnetArbeid": "Spise annen mat enn Taco"
+    },
+    "prognose": {
+      "vilForbedreArbeidsevne": true,
+      "anslattVarighetSykdom": "1 uke",
+      "anslattVarighetFunksjonsnedsetting": "2 uker",
+      "anslattVarighetNedsattArbeidsevne": "4 uker"
+    },
+    "arsakssammenheng": "Funksjonsnedsettelsen har stor betydning for at arbeidsevnen er nedsatt",
+    "andreOpplysninger": "Tekst",
+    "kontakt": {
+      "skalKontakteBehandlendeLege": true,
+      "skalKontakteArbeidsgiver": true,
+      "skalKontakteBasisgruppe": false,
+      "kontakteAnnenInstans": null,
+      "onskesKopiAvVedtak": true
+    },
+    "pasientenBurdeIkkeVite": null,
+    "tilbakeholdInnhold": false,
+    "signatur": {
+      "dato": "2020-03-08T13:04:49.60254",
+      "navn": "Lege Legesen",
+      "adresse": "Legeveien 33",
+      "postnummer": "9999",
+      "poststed": "Stockholm",
+      "signatur": "Lege Legesen",
+      "tlfNummer": "98765432"
+    },
+    "signaturDato": "2020-03-09T13:04:49.60264"
+  },
+  "validationResult": {
+    "status": "INVALID",
+    "ruleHits": [
+      {
+        "ruleName": "BEHANDLER_MANGLER_AUTORISASJON_I_HPR",
+        "messageForSender": "Den som skrev legeerklæringen manglet autorisasjon.",
+        "messageForUser": "Behandler har ikke gyldig autorisasjon i HPR",
+        "ruleStatus": "INVALID"
+      },
+      {
+        "ruleName": "BEHANDLER_SUSPENDERT",
+        "messageForSender": "Den som sendte legeerklæringen har mistet retten til å skrive legeerklæringer.",
+        "messageForUser": "Behandler er suspendert av NAV på konsultasjonstidspunkt",
+        "ruleStatus": "INVALID"
+      }
+    ]
+  },
+  "mottattDato": "2018-10-14T14:52:35"
+}
