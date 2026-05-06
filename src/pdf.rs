@@ -82,4 +82,17 @@ Hello, world!
         let result = typst_to_pdf(source, &data, Arc::new(load_fonts()), &root_dir());
         assert!(result.is_err(), "Expected an error for invalid Typst source");
     }
+
+    #[test]
+    fn typst_to_pdf_with_resource_image_returns_pdf_bytes() {
+        let source = r#"#set document(date: auto)
+#set page(margin: 1cm)
+#image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
+"#;
+        let data = serde_json::json!({});
+        let result = typst_to_pdf(source, &data, Arc::new(load_fonts()), &root_dir());
+        assert!(result.is_ok(), "typst_to_pdf with image failed: {:?}", result.err());
+        let bytes = result.unwrap();
+        assert!(is_pdf(&bytes));
+    }
 }
