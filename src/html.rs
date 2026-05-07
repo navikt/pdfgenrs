@@ -52,7 +52,7 @@ mod tests {
         let result = typst_to_html(source, &data, Arc::new(load_fonts()), &root_dir());
         assert!(result.is_ok(), "typst_to_html failed: {:?}", result.err());
         let html = result.unwrap();
-        assert!(html.contains("<!DOCTYPE html>"), "Expected HTML document");
+        assert!(html.contains("<!DOCTYPE html>") && html.contains("<html"), "Expected HTML document");
         assert!(html.contains("Hello, world!"));
     }
 

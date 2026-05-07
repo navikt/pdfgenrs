@@ -146,7 +146,7 @@ mod tests {
     }
 
     fn is_html(body: &str) -> bool {
-        body.contains("<!DOCTYPE html>")
+        body.contains("<!DOCTYPE html>") && body.contains("<html")
     }
 
     #[tokio::test]
