@@ -278,6 +278,7 @@ mod tests {
         assert!(is_pdf(response.as_bytes()));
     }
 
+    #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
         let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
@@ -299,10 +300,7 @@ mod tests {
             response.assert_status_success();
         }
 
-        let Some(rss_before) = rss_kb() else {
-            eprintln!("Skipping request memory regression check because RSS metrics are unavailable on this platform.");
-            return;
-        };
+        let rss_before = rss_kb().expect("RSS measurement should be available on Linux");
 
         for _ in 0..MEMORY_REGRESSION_REQUEST_COUNT {
             let response = server
@@ -313,12 +311,18 @@ mod tests {
             assert!(is_pdf(response.as_bytes()));
         }
 
-        let rss_after = rss_kb().unwrap_or(0);
+        let rss_after = rss_kb().expect("RSS measurement should remain available during the test");
         let growth_kb = rss_after.saturating_sub(rss_before);
 
         assert!(
             growth_kb < MAX_REQUEST_RSS_GROWTH_KB,
             "RSS grew by {growth_kb} KB after {MEMORY_REGRESSION_REQUEST_COUNT} requests – possible memory leak."
         );
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    #[tokio::test]
+    async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
+        eprintln!("Skipping request memory regression check because RSS metrics are unavailable on this platform.");
     }
 }
