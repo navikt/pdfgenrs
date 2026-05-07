@@ -1,5 +1,5 @@
 mod config;
-mod logging;
+mod tracing_setup;
 mod pdf;
 mod routes;
 mod state;
@@ -22,7 +22,7 @@ use std::{
 };
 use tokio::sync::RwLock;
 use typst_world::Fonts;
-use log::info;
+use tracing::info;
 
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static std::sync::Mutex<()> {
@@ -47,14 +47,14 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-    logging::init_log4rs();
+    tracing_setup::setup_tracing().expect("Failed to initialise tracing");
 
     let cfg = config::Config::default();
 
     info!("Loading templates from '{}'", cfg.templates_dir.display());
     let templates = Arc::new(template::load_templates_from_dir(&cfg.templates_dir)
         .unwrap_or_else(|e| {
-            log::warn!("Failed to load templates: {e}");
+            tracing::warn!("Failed to load templates: {e}");
             HashMap::new()
         }));
     info!("Loaded {} templates", templates.len());

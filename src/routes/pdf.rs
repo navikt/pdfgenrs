@@ -7,7 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
-use log::{error, info};
+use tracing::{error, info};
 
 use crate::{pdf as gen_pdf, AppState};
 

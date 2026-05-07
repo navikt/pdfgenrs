@@ -181,7 +181,7 @@ pub fn compile_to_pdf(
 
     if !result.warnings.is_empty() {
         let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
-        log::warn!("Typst warnings: {}", warns.join("; "));
+        tracing::warn!("Typst warnings: {}", warns.join("; "));
     }
 
     let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
