@@ -1,5 +1,5 @@
 mod config;
-mod logging;
+mod tracing_setup;
 mod pdf;
 mod routes;
 mod state;
@@ -47,7 +47,7 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-    logging::setup_tracing().expect("Failed to initialise tracing");
+    tracing_setup::setup_tracing().expect("Failed to initialise tracing");
 
     let cfg = config::Config::default();
 

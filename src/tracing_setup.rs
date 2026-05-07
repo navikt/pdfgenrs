@@ -1,5 +1,11 @@
-// This module was consolidated into logging.rs.
-
+use anyhow::Result;
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::{global, KeyValue};
+use opentelemetry_otlp::{SpanExporter, WithExportConfig};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, Resource};
+use std::time::Duration;
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Custom JSON formatter that emits NAIS-compatible structured log lines.
 ///
@@ -71,8 +77,12 @@ where
                 if self.result.is_err() {
                     return;
                 }
-                self.result =
-                    write!(&mut self.writer, ",\"{}\":\"{}\"", field.name(), value);
+                self.result = write!(
+                    &mut self.writer,
+                    ",\"{}\":\"{}\"",
+                    field.name(),
+                    value.replace('\\', "\\\\").replace('"', "\\\"")
+                );
             }
             fn record_debug(
                 &mut self,
@@ -82,8 +92,13 @@ where
                 if self.result.is_err() {
                     return;
                 }
-                self.result =
-                    write!(&mut self.writer, ",\"{}\":\"{:?}\"", field.name(), value);
+                let s = format!("{:?}", value);
+                self.result = write!(
+                    &mut self.writer,
+                    ",\"{}\":\"{}\"",
+                    field.name(),
+                    s.replace('\\', "\\\\").replace('"', "\\\"")
+                );
             }
         }
 
@@ -168,7 +183,9 @@ pub fn setup_tracing() -> Result<()> {
         .init();
 
     // Bridge `log` crate records from third-party libraries into tracing.
-    tracing_log::LogTracer::init().ok();
+    if let Err(e) = tracing_log::LogTracer::init() {
+        tracing::debug!("LogTracer already initialised: {e}");
+    }
 
     tracing::info!(
         exporter_active,
