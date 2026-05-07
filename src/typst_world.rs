@@ -6,7 +6,7 @@ use anyhow::Result;
 use chrono::Datelike;
 use chrono::Timelike;
 use typst::foundations::Bytes;
-use typst::{Library, LibraryExt};
+use typst::{Feature, Features, Library, LibraryExt};
 use typst::utils::LazyHash;
 use typst_library::diag::{FileError, FileResult};
 use typst_library::text::{Font, FontBook};
@@ -60,12 +60,14 @@ impl PdfgenWorld {
     /// - `main_source` - Source text of the main Typst file.
     /// - `virtual_files` - Map of virtual path to byte content for in-memory files
     ///   (e.g. `"/data.json"` to JSON bytes).
+    /// - `features` - In-development Typst features to enable (e.g. [`Feature::Html`]).
     pub fn new(
         fonts: Arc<Fonts>,
         root: &Path,
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
+        features: Features,
     ) -> Self {
         let main_id = FileId::new(None, VirtualPath::new(main_path));
         let source = Source::new(main_id, main_source);
@@ -75,8 +77,10 @@ impl PdfgenWorld {
             .map(|(path, bytes)| (FileId::new(None, VirtualPath::new(&path)), bytes))
             .collect();
 
+        let library = Library::builder().with_features(features).build();
+
         Self {
-            library: LazyHash::new(Library::default()),
+            library: LazyHash::new(library),
             fonts,
             main_id,
             main_source: source,
@@ -163,7 +167,7 @@ pub fn compile_to_pdf(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
+    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files, Features::default());
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
@@ -200,6 +204,55 @@ pub fn compile_to_pdf(
         })?;
 
     Ok(pdf_bytes)
+}
+
+/// Compiles a Typst source document to an HTML string.
+///
+/// Virtual files (e.g. injected JSON data) are provided via `virtual_files` and
+/// are resolved before falling back to the physical filesystem under `root`.
+///
+/// # Errors
+/// Returns an error if Typst compilation fails or the HTML cannot be exported.
+pub fn compile_to_html(
+    fonts: Arc<Fonts>,
+    root: &Path,
+    main_path: &str,
+    main_source: String,
+    virtual_files: HashMap<String, Bytes>,
+) -> Result<String> {
+    let world = PdfgenWorld::new(
+        fonts,
+        root,
+        main_path,
+        main_source,
+        virtual_files,
+        [Feature::Html].into_iter().collect(),
+    );
+
+    let result = typst::compile::<typst_html::HtmlDocument>(&world);
+
+    comemo::evict(15);
+
+    let document = result
+        .output
+        .map_err(|errors| {
+            let msgs: Vec<String> = errors
+                .iter()
+                .map(|e| e.message.to_string())
+                .collect();
+            anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
+        })?;
+
+    if !result.warnings.is_empty() {
+        let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
+        log::warn!("Typst warnings: {}", warns.join("; "));
+    }
+
+    typst_html::html(&document)
+        .map_err(|errors| {
+            let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+            anyhow::anyhow!("Typst HTML export failed: {}", msgs.join("; "))
+        })
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {

@@ -1,4 +1,5 @@
 mod config;
+mod html;
 mod logging;
 mod pdf;
 mod routes;
@@ -106,13 +107,19 @@ fn build_router(state: AppState) -> Router {
     let mut pdf_router = Router::new()
         .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
 
+    let mut html_router = Router::new()
+        .route("/{app_name}/{template}", post(routes::html::post_html));
+
     if state.config.dev_mode {
         pdf_router = pdf_router
             .route("/{app_name}/{template}", get(routes::pdf::get_pdf));
+        html_router = html_router
+            .route("/{app_name}/{template}", get(routes::html::get_html));
     }
 
     Router::new()
         .nest("/api/v1/genpdf", pdf_router)
+        .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router())
         .with_state(state)
 }
@@ -209,6 +216,30 @@ mod tests {
     async fn build_router_get_pdf_returns_404_when_dev_mode_enabled() {
         let server = TestServer::new(build_router(make_state(true)));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn build_router_post_html_returns_404_for_missing_template() {
+        let server = TestServer::new(build_router(make_state(false)));
+        let response = server
+            .post("/api/v1/genhtml/myapp/mytemplate")
+            .json(&serde_json::json!({}))
+            .await;
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn build_router_get_html_returns_405_when_dev_mode_disabled() {
+        let server = TestServer::new(build_router(make_state(false)));
+        let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
+        assert_eq!(response.status_code(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn build_router_get_html_returns_404_when_dev_mode_enabled() {
+        let server = TestServer::new(build_router(make_state(true)));
+        let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
     }
 
