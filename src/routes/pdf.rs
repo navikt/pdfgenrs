@@ -149,6 +149,9 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
+    const MAX_REQUEST_RSS_GROWTH_KB: u64 = 110_000;
+
+    #[cfg(target_os = "linux")]
     fn rss_kb() -> Option<u64> {
         let status = std::fs::read_to_string("/proc/self/status").ok()?;
         status
@@ -156,6 +159,11 @@ mod tests {
             .find(|line| line.starts_with("VmRSS:"))
             .and_then(|line| line.split_whitespace().nth(1))
             .and_then(|value| value.parse().ok())
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn rss_kb() -> Option<u64> {
+        None
     }
 
     #[tokio::test]
@@ -306,7 +314,7 @@ mod tests {
         let growth_kb = rss_after.saturating_sub(rss_before);
 
         assert!(
-            growth_kb < 110_000,
+            growth_kb < MAX_REQUEST_RSS_GROWTH_KB,
             "RSS grew by {growth_kb} KB after 200 requests – possible memory leak."
         );
     }
