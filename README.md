@@ -12,7 +12,7 @@ Repository for `pdfgenrs`, an application written in Rust used to create PDFs th
 * [Cargo](https://crates.io/)
 * [Axum](https://docs.rs/axum/latest/axum/)
 * [Docker](https://www.docker.com/)
-* [Typst](https://typst.app/#start) 
+* [Typst](https://typst.app/#start)
 * [Json](https://www.json.org/json-en.html)
 
 
@@ -46,7 +46,7 @@ mkdir {templates,data}/your_appname # your_appname can be anything, but it'll be
 * `templates/your_appname/` should then be populated with your `.typ` Typst templates. the names of these templates will also decide parts of the API paths. Templates receive JSON data via `#let data = json("/data.json")`.
 * `data/your_appname/` should be populated with json files with names corresponding to a target `.typ` template, this can be used to test your PDFs during development of templates.
 
-### Appications that uses pdfgenrs
+### Applications that uses pdfgenrs
 - https://github.com/navikt/pale-2-pdfgenrs
 - https://github.com/navikt/smarbeidsgiver-pdfgenrs
 
@@ -77,7 +77,7 @@ Run the code
 cargo run
 ```
 
-Running the application with enviroment DEV_MODE = true will exposes a GET endpoint at `/api/v1/genpdf/<your_appname>/<template>`
+Running the application with environment DEV_MODE = true will exposes a GET endpoint at `/api/v1/genpdf/<your_appname>/<template>`
 which looks for test data at `data/<your_appname>/<template>.json` and outputs a PDF to your browser.
 The template and data directory structure both follow the `<your_appname>/<template>` structure.
 
