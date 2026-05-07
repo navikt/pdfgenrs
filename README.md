@@ -84,6 +84,24 @@ Running the application with environment DEV_MODE = true will exposes a GET endp
 which looks for test data at `data/<your_appname>/<template>.json` and outputs a PDF to your browser.
 The template and data directory structure both follow the `<your_appname>/<template>` structure.
 
+To generate a PDF by posting JSON data directly, use the POST endpoint:
+```bash
+curl -s -X POST http://localhost:8080/api/v1/genpdf/<your_appname>/<template> \
+  -H "Content-Type: application/json" \
+  -d '{"key": "value"}' \
+  --output output.pdf
+```
+
+Similarly, pdfgenrs exposes a `POST /api/v1/genhtml/<your_appname>/<template>` endpoint that compiles the Typst template with the provided JSON data and returns the result as HTML:
+```bash
+curl -s -X POST http://localhost:8080/api/v1/genhtml/<your_appname>/<template> \
+  -H "Content-Type: application/json" \
+  -d '{"key": "value"}'
+```
+
+Running with DEV_MODE = true also exposes a GET endpoint at `/api/v1/genhtml/<your_appname>/<template>`
+which looks for test data at `data/<your_appname>/<template>.json` and returns the rendered HTML in your browser.
+
 By default, pdfgenrs will load all assets (`templates`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 
 ### Release
