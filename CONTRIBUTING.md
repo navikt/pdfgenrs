@@ -4,9 +4,9 @@ Please fork the repo and start a new branch to work on.
 
 
 ## Building locally
-This project is using [Cargo](hhttps://doc.rust-lang.org/cargo//) for its build tool.
+This project is using [Cargo](https://doc.rust-lang.org/cargo/) for its build tool.
 
-To run a build simply exucute the following:
+To run a build simply execute the following:
 
 ```shell script
 cargo build
