@@ -149,6 +149,15 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
+    fn rss_kb() -> Option<u64> {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        status
+            .lines()
+            .find(|line| line.starts_with("VmRSS:"))
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|value| value.parse().ok())
+    }
+
     #[tokio::test]
     async fn post_pdf_returns_pdf_for_valid_template() {
         let mut templates = HashMap::new();
@@ -257,5 +266,47 @@ mod tests {
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert!(is_pdf(response.as_bytes()));
+    }
+
+    #[tokio::test]
+    async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
+        const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto)
+#set page(margin: 1cm)
+#let data = json("/data.json")
+#data.at("message", default: "")
+"#;
+
+        let mut templates = HashMap::new();
+        templates.insert("myapp/mytemplate".to_string(), TEMPLATE_WITH_JSON.to_string());
+        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+
+        for i in 0..10 {
+            let response = server
+                .post("/myapp/mytemplate")
+                .json(&serde_json::json!({ "message": format!("warmup-{i}") }))
+                .await;
+            response.assert_status_success();
+        }
+
+        let Some(rss_before) = rss_kb() else {
+            return;
+        };
+
+        for i in 0..200 {
+            let response = server
+                .post("/myapp/mytemplate")
+                .json(&serde_json::json!({ "message": format!("request-{i}") }))
+                .await;
+            response.assert_status_success();
+            assert!(is_pdf(response.as_bytes()));
+        }
+
+        let rss_after = rss_kb().unwrap_or(0);
+        let growth_kb = rss_after.saturating_sub(rss_before);
+
+        assert!(
+            growth_kb < 110_000,
+            "RSS grew by {growth_kb} KB after 200 requests – possible memory leak."
+        );
     }
 }
