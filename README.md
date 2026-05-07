@@ -8,11 +8,13 @@ Repository for `pdfgenrs`, an application written in Rust used to create PDFs th
 
 ## Technologies & Tools
 
-* Rust
-* Cargo
-* Axum
-* Typst
-* Docker
+* [Rust](https://rust-lang.org/)
+* [Cargo](https://crates.io/)
+* [Axum](https://docs.rs/axum/latest/axum/)
+* [Docker](https://www.docker.com/)
+* [Typst](https://typst.app/#start) 
+* [Json](https://www.json.org/json-en.html)
+
 
 ## Getting started
 
