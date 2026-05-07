@@ -150,6 +150,8 @@ mod tests {
     }
 
     const MAX_REQUEST_RSS_GROWTH_KB: u64 = 110_000;
+    const WARMUP_REQUEST_COUNT: usize = 10;
+    const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
 
     #[cfg(target_os = "linux")]
     fn rss_kb() -> Option<u64> {
@@ -289,7 +291,7 @@ mod tests {
         templates.insert("myapp/mytemplate".to_string(), TEMPLATE_WITH_JSON.to_string());
         let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
 
-        for i in 0..10 {
+        for i in 0..WARMUP_REQUEST_COUNT {
             let response = server
                 .post("/myapp/mytemplate")
                 .json(&serde_json::json!({ "message": format!("warmup-{i}") }))
@@ -302,7 +304,7 @@ mod tests {
             return;
         };
 
-        for _ in 0..200 {
+        for _ in 0..MEMORY_REGRESSION_REQUEST_COUNT {
             let response = server
                 .post("/myapp/mytemplate")
                 .json(&serde_json::json!({ "message": "steady-request" }))
@@ -316,7 +318,7 @@ mod tests {
 
         assert!(
             growth_kb < MAX_REQUEST_RSS_GROWTH_KB,
-            "RSS grew by {growth_kb} KB after 200 requests – possible memory leak."
+            "RSS grew by {growth_kb} KB after {MEMORY_REGRESSION_REQUEST_COUNT} requests – possible memory leak."
         );
     }
 }
