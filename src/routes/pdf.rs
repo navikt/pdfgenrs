@@ -149,8 +149,9 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
-    // Allows modest request-handling overhead above the compile-only regression test while
-    // still failing if RSS keeps climbing across a long run of PDF requests.
+    // Keeps the request-level check slightly above the 90 MB compile-only guard in typst_world,
+    // leaving room for Axum/TestServer/request handling overhead while still catching sustained
+    // RSS growth across a long run of PDF requests.
     const MAX_REQUEST_RSS_GROWTH_KB: u64 = 110_000;
     const WARMUP_REQUEST_COUNT: usize = 10;
     const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
@@ -324,5 +325,6 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires Linux RSS metrics from /proc/self/status"]
     async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
+        // Intentionally empty: this regression check only runs on Linux.
     }
 }
