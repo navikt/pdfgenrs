@@ -1,11 +1,5 @@
-use anyhow::Result;
-use opentelemetry::trace::TracerProvider as _;
-use opentelemetry::{global, KeyValue};
-use opentelemetry_otlp::{SpanExporter, WithExportConfig};
-use opentelemetry_sdk::{propagation::TraceContextPropagator, Resource};
-use std::time::Duration;
-use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+// This module was consolidated into logging.rs.
+
 
 /// Custom JSON formatter that emits NAIS-compatible structured log lines.
 ///
