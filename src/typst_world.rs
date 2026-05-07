@@ -165,41 +165,50 @@ pub fn compile_to_pdf(
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
 
-    let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
+    let result: Result<Vec<u8>> = (|| {
+        let compile_result = typst::compile::<typst_library::layout::PagedDocument>(&world);
+
+        let document = compile_result
+            .output
+            .map_err(|errors| {
+                let msgs: Vec<String> = errors
+                    .iter()
+                    .map(|e| e.message.to_string())
+                    .collect();
+                anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
+            })?;
+
+        if !compile_result.warnings.is_empty() {
+            let warns: Vec<String> = compile_result
+                .warnings
+                .iter()
+                .map(|w| w.message.to_string())
+                .collect();
+            log::warn!("Typst warnings: {}", warns.join("; "));
+        }
+
+        let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
+            .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
+
+        let timestamp = build_timestamp();
+        let options = typst_pdf::PdfOptions {
+            standards,
+            timestamp,
+            ..typst_pdf::PdfOptions::default()
+        };
+
+        typst_pdf::pdf(&document, &options)
+            .map_err(|errors| {
+                let msgs: Vec<String> = errors
+                    .iter()
+                    .map(|e| e.message.to_string())
+                    .collect();
+                anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
+            })
+    })();
 
     comemo::evict(0);
-
-    let document = result
-        .output
-        .map_err(|errors| {
-            let msgs: Vec<String> = errors
-                .iter()
-                .map(|e| e.message.to_string())
-                .collect();
-            anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
-        })?;
-
-    if !result.warnings.is_empty() {
-        let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
-        log::warn!("Typst warnings: {}", warns.join("; "));
-    }
-
-    let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
-        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
-
-    let timestamp = build_timestamp();
-    let options = typst_pdf::PdfOptions {
-        standards,
-        timestamp,
-        ..typst_pdf::PdfOptions::default()
-    };
-    let pdf_bytes = typst_pdf::pdf(&document, &options)
-        .map_err(|errors| {
-            let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-            anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
-        })?;
-
-    Ok(pdf_bytes)
+    result
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
