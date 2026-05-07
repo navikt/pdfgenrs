@@ -163,20 +163,18 @@ pub fn compile_to_pdf(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
+    let result = {
+        let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
 
-    let result: Result<Vec<u8>> = (|| {
         let compile_result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
-        let document = compile_result
-            .output
-            .map_err(|errors| {
-                let msgs: Vec<String> = errors
-                    .iter()
-                    .map(|e| e.message.to_string())
-                    .collect();
-                anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
-            })?;
+        let document = compile_result.output.map_err(|errors| {
+            let msgs: Vec<String> = errors
+                .iter()
+                .map(|e| e.message.to_string())
+                .collect();
+            anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
+        })?;
 
         if !compile_result.warnings.is_empty() {
             let warns: Vec<String> = compile_result
@@ -197,15 +195,14 @@ pub fn compile_to_pdf(
             ..typst_pdf::PdfOptions::default()
         };
 
-        typst_pdf::pdf(&document, &options)
-            .map_err(|errors| {
-                let msgs: Vec<String> = errors
-                    .iter()
-                    .map(|e| e.message.to_string())
-                    .collect();
-                anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
-            })
-    })();
+        typst_pdf::pdf(&document, &options).map_err(|errors| {
+            let msgs: Vec<String> = errors
+                .iter()
+                .map(|e| e.message.to_string())
+                .collect();
+            anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
+        })
+    };
 
     comemo::evict(0);
     result
