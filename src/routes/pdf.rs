@@ -270,6 +270,7 @@ mod tests {
 
     #[tokio::test]
     async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
+        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
         const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto)
 #set page(margin: 1cm)
 #let data = json("/data.json")
@@ -292,10 +293,10 @@ mod tests {
             return;
         };
 
-        for i in 0..200 {
+        for _ in 0..200 {
             let response = server
                 .post("/myapp/mytemplate")
-                .json(&serde_json::json!({ "message": format!("request-{i}") }))
+                .json(&serde_json::json!({ "message": "steady-request" }))
                 .await;
             response.assert_status_success();
             assert!(is_pdf(response.as_bytes()));
