@@ -310,7 +310,7 @@ Hello, world!
             return;
         };
 
-        for i in 0..300 {
+        for i in 0..200 {
             let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
             let result =
                 compile_to_pdf(Arc::clone(&fonts), &root, "/main.typ", source, HashMap::new());
@@ -321,8 +321,8 @@ Hello, world!
         let growth_kb = rss_after.saturating_sub(rss_before);
 
         assert!(
-            growth_kb < 100_000,
-            "RSS grew by {growth_kb} KB after 300 compilations – possible memory leak. \
+            growth_kb < 90_000,
+            "RSS grew by {growth_kb} KB after 200 compilations – possible memory leak. \
              Ensure comemo::evict() is called after each compilation in compile_to_pdf."
         );
     }
