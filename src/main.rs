@@ -24,6 +24,12 @@ use tokio::sync::RwLock;
 use typst_world::Fonts;
 use log::info;
 
+#[cfg(test)]
+pub(crate) fn memory_sensitive_test_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
 /// Shared application state injected into every Axum handler.
 #[derive(Clone)]
 pub struct AppState {

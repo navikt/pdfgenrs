@@ -297,6 +297,7 @@ Hello, world!
 
     #[test]
     fn repeated_compilations_do_not_grow_memory_unboundedly() {
+        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
         let fonts = Arc::new(load_fonts());
         let root = root_dir();
 

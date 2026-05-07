@@ -27,6 +27,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
     async fn performance_test_multi_thread() {
+        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
         let app_state = create_test_state();
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -86,6 +87,7 @@ mod tests {
 
     #[tokio::test]
     async fn performance_test_single_thread() {
+        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
         let app_state = create_test_state();
         let server = TestServer::new(build_router(app_state.clone()));
 

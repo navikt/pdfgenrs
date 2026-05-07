@@ -149,6 +149,25 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
+    // Keeps the request-level check slightly above the 90 MB compile-only guard in typst_world,
+    // leaving room for Axum/TestServer/request handling overhead while still catching sustained
+    // RSS growth across a long run of PDF requests.
+    const MAX_REQUEST_RSS_GROWTH_KB: u64 = 110_000;
+    const WARMUP_REQUEST_COUNT: usize = 10;
+    const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
+
+    #[cfg(target_os = "linux")]
+    fn rss_kb() -> u64 {
+        let status = std::fs::read_to_string("/proc/self/status")
+            .expect("Failed to read /proc/self/status for RSS measurement");
+        status
+            .lines()
+            .find(|line| line.starts_with("VmRSS:"))
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|value| value.parse().ok())
+            .expect("Failed to parse VmRSS from /proc/self/status")
+    }
+
     #[tokio::test]
     async fn post_pdf_returns_pdf_for_valid_template() {
         let mut templates = HashMap::new();
@@ -257,5 +276,55 @@ mod tests {
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert!(is_pdf(response.as_bytes()));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
+        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
+        const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto)
+#set page(margin: 1cm)
+#let data = json("/data.json")
+#data.at("message", default: "")
+"#;
+
+        let mut templates = HashMap::new();
+        templates.insert("myapp/mytemplate".to_string(), TEMPLATE_WITH_JSON.to_string());
+        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+
+        for i in 0..WARMUP_REQUEST_COUNT {
+            let response = server
+                .post("/myapp/mytemplate")
+                .json(&serde_json::json!({ "message": format!("warmup-{i}") }))
+                .await;
+            response.assert_status_success();
+            assert!(is_pdf(response.as_bytes()));
+        }
+
+        let rss_before = rss_kb();
+
+        for _ in 0..MEMORY_REGRESSION_REQUEST_COUNT {
+            let response = server
+                .post("/myapp/mytemplate")
+                .json(&serde_json::json!({ "message": "steady-request" }))
+                .await;
+            response.assert_status_success();
+            assert!(is_pdf(response.as_bytes()));
+        }
+
+        let rss_after = rss_kb();
+        let growth_kb = rss_after.saturating_sub(rss_before);
+
+        assert!(
+            growth_kb < MAX_REQUEST_RSS_GROWTH_KB,
+            "RSS grew by {growth_kb} KB after {MEMORY_REGRESSION_REQUEST_COUNT} requests – possible memory leak."
+        );
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    #[tokio::test]
+    #[ignore = "requires Linux RSS metrics from /proc/self/status"]
+    async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
+        // Intentionally empty: this regression check only runs on Linux.
     }
 }
