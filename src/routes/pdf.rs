@@ -298,6 +298,7 @@ mod tests {
         }
 
         let Some(rss_before) = rss_kb() else {
+            eprintln!("Skipping request memory regression check because RSS metrics are unavailable on this platform.");
             return;
         };
 
