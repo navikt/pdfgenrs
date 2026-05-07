@@ -167,7 +167,7 @@ pub fn compile_to_pdf(
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
-    comemo::evict(10);
+    comemo::evict(0);
 
     let document = result
         .output
