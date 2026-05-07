@@ -149,6 +149,8 @@ mod tests {
         bytes.starts_with(b"%PDF")
     }
 
+    // Allows modest request-handling overhead above the compile-only regression test while
+    // still failing if RSS keeps climbing across a long run of PDF requests.
     const MAX_REQUEST_RSS_GROWTH_KB: u64 = 110_000;
     const WARMUP_REQUEST_COUNT: usize = 10;
     const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
