@@ -300,6 +300,7 @@ mod tests {
                 .json(&serde_json::json!({ "message": format!("warmup-{i}") }))
                 .await;
             response.assert_status_success();
+            assert!(is_pdf(response.as_bytes()));
         }
 
         let rss_before = rss_kb().expect("RSS measurement should be available on Linux");
