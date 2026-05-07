@@ -156,18 +156,15 @@ mod tests {
     const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
 
     #[cfg(target_os = "linux")]
-    fn rss_kb() -> Option<u64> {
-        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    fn rss_kb() -> u64 {
+        let status = std::fs::read_to_string("/proc/self/status")
+            .expect("Failed to read /proc/self/status for RSS measurement");
         status
             .lines()
             .find(|line| line.starts_with("VmRSS:"))
             .and_then(|line| line.split_whitespace().nth(1))
             .and_then(|value| value.parse().ok())
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    fn rss_kb() -> Option<u64> {
-        None
+            .expect("Failed to parse VmRSS from /proc/self/status")
     }
 
     #[tokio::test]
@@ -303,7 +300,7 @@ mod tests {
             assert!(is_pdf(response.as_bytes()));
         }
 
-        let rss_before = rss_kb().expect("RSS measurement should be available on Linux");
+        let rss_before = rss_kb();
 
         for _ in 0..MEMORY_REGRESSION_REQUEST_COUNT {
             let response = server
@@ -314,7 +311,7 @@ mod tests {
             assert!(is_pdf(response.as_bytes()));
         }
 
-        let rss_after = rss_kb().expect("RSS measurement should remain available during the test");
+        let rss_after = rss_kb();
         let growth_kb = rss_after.saturating_sub(rss_before);
 
         assert!(
@@ -325,7 +322,7 @@ mod tests {
 
     #[cfg(not(target_os = "linux"))]
     #[tokio::test]
+    #[ignore = "requires Linux RSS metrics from /proc/self/status"]
     async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
-        eprintln!("Skipping request memory regression check because RSS metrics are unavailable on this platform.");
     }
 }
