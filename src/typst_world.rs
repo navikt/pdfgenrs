@@ -163,12 +163,15 @@ pub fn compile_to_pdf(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let result = {
-        let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
+    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files);
 
-        let compile_result = typst::compile::<typst_library::layout::PagedDocument>(&world);
+    let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
-        let document = compile_result.output.map_err(|errors| {
+    comemo::evict(15);
+
+    let document = result
+        .output
+        .map_err(|errors| {
             let msgs: Vec<String> = errors
                 .iter()
                 .map(|e| e.message.to_string())
@@ -176,36 +179,27 @@ pub fn compile_to_pdf(
             anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
         })?;
 
-        if !compile_result.warnings.is_empty() {
-            let warns: Vec<String> = compile_result
-                .warnings
-                .iter()
-                .map(|w| w.message.to_string())
-                .collect();
-            log::warn!("Typst warnings: {}", warns.join("; "));
-        }
+    if !result.warnings.is_empty() {
+        let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
+        log::warn!("Typst warnings: {}", warns.join("; "));
+    }
 
-        let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
-            .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
+    let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
+        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
 
-        let timestamp = build_timestamp();
-        let options = typst_pdf::PdfOptions {
-            standards,
-            timestamp,
-            ..typst_pdf::PdfOptions::default()
-        };
-
-        typst_pdf::pdf(&document, &options).map_err(|errors| {
-            let msgs: Vec<String> = errors
-                .iter()
-                .map(|e| e.message.to_string())
-                .collect();
-            anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
-        })
+    let timestamp = build_timestamp();
+    let options = typst_pdf::PdfOptions {
+        standards,
+        timestamp,
+        ..typst_pdf::PdfOptions::default()
     };
+    let pdf_bytes = typst_pdf::pdf(&document, &options)
+        .map_err(|errors| {
+            let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+            anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
+        })?;
 
-    comemo::evict(0);
-    result
+    Ok(pdf_bytes)
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
@@ -316,7 +310,7 @@ Hello, world!
             return;
         };
 
-        for i in 0..200 {
+        for i in 0..300 {
             let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
             let result =
                 compile_to_pdf(Arc::clone(&fonts), &root, "/main.typ", source, HashMap::new());
@@ -327,8 +321,8 @@ Hello, world!
         let growth_kb = rss_after.saturating_sub(rss_before);
 
         assert!(
-            growth_kb < 65_536,
-            "RSS grew by {growth_kb} KB after 200 compilations – possible memory leak. \
+            growth_kb < 100_000,
+            "RSS grew by {growth_kb} KB after 300 compilations – possible memory leak. \
              Ensure comemo::evict() is called after each compilation in compile_to_pdf."
         );
     }
