@@ -52,6 +52,7 @@ mkdir {templates,data}/your_appname # your_appname can be anything, but it'll be
 ### Applications that uses pdfgenrs
 - https://github.com/navikt/pale-2-pdfgenrs
 - https://github.com/navikt/smarbeidsgiver-pdfgenrs
+- https://github.com/navikt/pdfgenrs-test
 
 ## Developing pdfgenrs
 
