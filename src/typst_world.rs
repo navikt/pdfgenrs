@@ -39,7 +39,15 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
     for font_path in font_paths {
         let font_bytes = std::fs::read(&font_path)
             .with_context(|| format!("Failed to read font file '{}'", font_path.display()))?;
-        fonts.extend(Font::iter(Bytes::new(font_bytes)));
+        let mut parsed_fonts: Vec<Font> = Font::iter(Bytes::new(font_bytes)).collect();
+        if parsed_fonts.is_empty() {
+            tracing::warn!(
+                "Font file '{}' did not contain any readable font faces",
+                font_path.display()
+            );
+            continue;
+        }
+        fonts.append(&mut parsed_fonts);
     }
 
     if fonts.is_empty() {
@@ -53,6 +61,7 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
     Ok(Fonts { fonts, book: LazyHash::new(book) })
 }
 
+/// Recursively walks `dir` and appends all supported font files to `files`.
 fn collect_font_files(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
@@ -71,6 +80,7 @@ fn collect_font_files(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<(
     Ok(())
 }
 
+/// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
 fn is_supported_font_file(path: &Path) -> bool {
     match path.extension().and_then(|ext| ext.to_str()) {
         Some(ext) => matches!(ext.to_ascii_lowercase().as_str(), "ttf" | "otf" | "ttc"),
