@@ -108,6 +108,7 @@ async fn main() {
 
 fn build_router(state: AppState) -> Router {
     let mut pdf_router = Router::new()
+        .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
         .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
 
     let mut html_router = Router::new()
@@ -207,6 +208,16 @@ mod tests {
             .json(&serde_json::json!({}))
             .await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn build_router_post_pdf_from_html_returns_501() {
+        let server = TestServer::new(build_router(make_state(false)));
+        let response = server
+            .post("/api/v1/genpdf/html/myapp")
+            .text("<html><body>Hello</body></html>")
+            .await;
+        assert_eq!(response.status_code(), StatusCode::NOT_IMPLEMENTED);
     }
 
     #[tokio::test]
