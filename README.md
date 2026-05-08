@@ -28,6 +28,8 @@ FROM ghcr.io/navikt/pdfgenrs:<release>
 
 COPY templates /app/templates # typst templates
 
+COPY fonts /app/fonts         # fonts to be embedded
+
 COPY resources /app/resources # additional resources
 ```
 
