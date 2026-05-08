@@ -27,7 +27,7 @@ In your own repository, create a Dockerfile with the following contents
 FROM ghcr.io/navikt/pdfgenrs:<release>
 
 COPY templates /app/templates # typst templates
-COPY fonts /app/fonts         # fonts to be embedded
+
 COPY resources /app/resources # additional resources
 ```
 
@@ -35,7 +35,7 @@ Check [GitHub releases](https://github.com/navikt/pdfgenrs/releases) to find the
 
 Set up the basic folder structure
 ```bash
-mkdir {templates,fonts,resources,data}
+mkdir {templates,resources,data}
 ```
 
 Create subfolders in `templates` and `data`
