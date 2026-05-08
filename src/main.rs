@@ -211,13 +211,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn build_router_post_pdf_from_html_returns_501() {
+    async fn build_router_post_pdf_from_html_returns_pdf() {
         let server = TestServer::new(build_router(make_state(false)));
         let response = server
             .post("/api/v1/genpdf/html/myapp")
-            .text("<html><body>Hello</body></html>")
+            .text("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>")
             .await;
-        assert_eq!(response.status_code(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/pdf"
+        );
     }
 
     #[tokio::test]

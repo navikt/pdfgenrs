@@ -95,15 +95,32 @@ pub async fn post_pdf(
 
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
 ///
-/// Accepts an HTML body, but HTML-to-PDF conversion is not implemented in
-/// pdfgenrs yet.
-pub async fn post_pdf_from_html(Path(app_name): Path<String>, _html: String) -> Response {
-    error!("HTML-to-PDF generation is not implemented for app '{app_name}'");
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        "HTML-to-PDF generation is not implemented",
-    )
-        .into_response()
+/// Accepts an HTML body and converts it to PDF.
+pub async fn post_pdf_from_html(
+    State(state): State<AppState>,
+    Path(app_name): Path<String>,
+    html: String,
+) -> Response {
+    let start = std::time::Instant::now();
+    let root = state.config.root_dir.clone();
+    let fonts_dir = root.join(&state.config.fonts_dir);
+
+    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &fonts_dir))
+        .await
+        .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+    {
+        Err(e) => {
+            error!("HTML-to-PDF generation failed for {app_name}: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
+        }
+        Ok(pdf_bytes) => {
+            info!(
+                "Done generating PDF from HTML for {app_name} in {}ms",
+                start.elapsed().as_millis()
+            );
+            pdf_response(pdf_bytes)
+        }
+    }
 }
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
@@ -233,15 +250,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_from_html_returns_501() {
+    async fn post_pdf_from_html_returns_pdf() {
         let server = TestServer::new(make_router(make_state(HashMap::new(), HashMap::new(), false), false));
 
         let response = server
             .post("/html/myapp")
-            .text("<html><body>Hello</body></html>")
+            .text(
+                r#"<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        h1 {
+            font-family: "Source Sans Pro" !important;
+        }
+    </style>
+</head>
+<body><h1>Hello</h1></body>
+</html>"#,
+            )
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/pdf"
+        );
+        assert!(is_pdf(response.as_bytes()));
     }
 
     #[tokio::test]

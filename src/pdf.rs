@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use ironpress::HtmlConverter;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -6,6 +7,19 @@ use typst::foundations::Bytes;
 
 use crate::typst_world::{self, Fonts};
 
+const HTML_FONT_ALIASES: &[(&str, &str)] = &[
+    ("Source Sans Pro", "SourceSans3-Regular.ttf"),
+    ("Source Sans Pro__bold", "SourceSans3-Bold.ttf"),
+    ("Source Sans Pro__italic", "SourceSans3-Italic.ttf"),
+    ("Source Sans 3", "SourceSans3-Regular.ttf"),
+    ("Source Sans 3__bold", "SourceSans3-Bold.ttf"),
+    ("Source Sans 3__italic", "SourceSans3-Italic.ttf"),
+    ("SourceSans3", "SourceSans3-Regular.ttf"),
+    ("SourceSans3__bold", "SourceSans3-Bold.ttf"),
+    ("SourceSans3__italic", "SourceSans3-Italic.ttf"),
+    ("Noto Color Emoji", "NotoColorEmoji-Regular.ttf"),
+    ("Noto Emoji", "NotoColorEmoji-Regular.ttf"),
+];
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
 ///
@@ -32,6 +46,22 @@ pub fn typst_to_pdf(
         template_source.to_string(),
         vfiles,
     )
+}
+
+/// Converts an HTML document into PDF bytes.
+pub fn html_to_pdf(html: &str, root: &Path, fonts_dir: &Path) -> Result<Vec<u8>> {
+    let mut converter = HtmlConverter::new().base_path(root);
+
+    for (family, file_name) in HTML_FONT_ALIASES {
+        let font_path = fonts_dir.join(file_name);
+        if let Ok(font_bytes) = std::fs::read(font_path) {
+            converter = converter.add_font(family, font_bytes);
+        }
+    }
+
+    converter
+        .convert(html)
+        .context("Failed to convert HTML to PDF")
 }
 
 #[cfg(test)]
@@ -85,6 +115,40 @@ Hello, world!
         let data = serde_json::json!({});
         let result = typst_to_pdf(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
         assert!(result.is_err(), "Expected an error for invalid Typst source");
+    }
+
+    #[test]
+    fn html_to_pdf_simple_document_returns_pdf_bytes() {
+        let source = "<!DOCTYPE html><html><body><h1>Hello, world!</h1></body></html>";
+        let result = html_to_pdf(source, &root_dir(), &fonts_dir());
+        assert!(result.is_ok(), "html_to_pdf failed: {:?}", result.err());
+        let bytes = result.unwrap();
+        assert!(is_pdf(&bytes));
+    }
+
+    #[test]
+    fn html_to_pdf_with_source_sans_pro_alias_returns_pdf_bytes() {
+        let source = r#"<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        h1 {
+            font-family: "Source Sans Pro" !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hello, world!</h1>
+</body>
+</html>"#;
+        let result = html_to_pdf(source, &root_dir(), &fonts_dir());
+        assert!(
+            result.is_ok(),
+            "html_to_pdf with Source Sans Pro failed: {:?}",
+            result.err()
+        );
+        let bytes = result.unwrap();
+        assert!(is_pdf(&bytes));
     }
 
     #[test]
