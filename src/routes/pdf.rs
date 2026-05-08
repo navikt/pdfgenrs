@@ -32,7 +32,6 @@ pub async fn get_pdf(
     };
 
     match (template_source, json_data) {
-    
         (None, _) | (_, None) => {
             (StatusCode::NOT_FOUND, "Template or application not found").into_response()
         }
@@ -50,12 +49,12 @@ pub async fn get_pdf(
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
                 Ok(pdf_bytes) => {
-                   info!("Done generating PDF in {}ms", start.elapsed().as_millis());
-                   pdf_response(pdf_bytes)                      
-                } 
+                    info!("Done generating PDF in {}ms", start.elapsed().as_millis());
+                    pdf_response(pdf_bytes)
+                }
             }
-       }
-   }
+        }
+    }
 }
 /// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
 ///
@@ -143,8 +142,8 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use crate::{config, state, typst_world, AppState};
     use super::{get_pdf, post_pdf, post_pdf_from_html};
+    use crate::{config, state, typst_world, AppState};
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
@@ -167,7 +166,10 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts")).expect("test fonts should load")),
+            fonts: Arc::new(
+                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))
+                    .expect("test fonts should load"),
+            ),
         }
     }
 
@@ -208,7 +210,10 @@ mod tests {
     async fn post_pdf_returns_pdf_for_valid_template() {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -225,7 +230,10 @@ mod tests {
 
     #[tokio::test]
     async fn post_pdf_returns_404_when_template_missing() {
-        let server = TestServer::new(make_router(make_state(HashMap::new(), HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -239,7 +247,10 @@ mod tests {
     async fn post_pdf_returns_500_for_invalid_template() {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), INVALID_TEMPLATE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -251,7 +262,10 @@ mod tests {
 
     #[tokio::test]
     async fn post_pdf_from_html_returns_pdf() {
-        let server = TestServer::new(make_router(make_state(HashMap::new(), HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/html/myapp")
@@ -303,7 +317,10 @@ mod tests {
     async fn get_pdf_returns_404_when_data_missing() {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), true), true));
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), true),
+            true,
+        ));
 
         let response = server.get("/myapp/mytemplate").await;
 
@@ -331,8 +348,14 @@ mod tests {
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
         let mut templates = HashMap::new();
-        templates.insert("myapp/mytemplate".to_string(), TEMPLATE_WITH_IMAGE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+        templates.insert(
+            "myapp/mytemplate".to_string(),
+            TEMPLATE_WITH_IMAGE.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -354,8 +377,14 @@ mod tests {
 "#;
 
         let mut templates = HashMap::new();
-        templates.insert("myapp/mytemplate".to_string(), TEMPLATE_WITH_JSON.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+        templates.insert(
+            "myapp/mytemplate".to_string(),
+            TEMPLATE_WITH_JSON.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false),
+            false,
+        ));
 
         for i in 0..WARMUP_REQUEST_COUNT {
             let response = server

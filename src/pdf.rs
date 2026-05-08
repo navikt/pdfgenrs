@@ -90,7 +90,12 @@ mod tests {
 Hello, world!
 ";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
+        let result = typst_to_pdf(
+            source,
+            &data,
+            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            &root_dir(),
+        );
         assert!(result.is_ok(), "typst_to_pdf failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
@@ -103,8 +108,17 @@ Hello, world!
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let result = typst_to_pdf(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
-        assert!(result.is_ok(), "typst_to_pdf with JSON data failed: {:?}", result.err());
+        let result = typst_to_pdf(
+            source,
+            &data,
+            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            &root_dir(),
+        );
+        assert!(
+            result.is_ok(),
+            "typst_to_pdf with JSON data failed: {:?}",
+            result.err()
+        );
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
     }
@@ -113,8 +127,16 @@ Hello, world!
     fn typst_to_pdf_invalid_source_returns_error() {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
-        assert!(result.is_err(), "Expected an error for invalid Typst source");
+        let result = typst_to_pdf(
+            source,
+            &data,
+            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            &root_dir(),
+        );
+        assert!(
+            result.is_err(),
+            "Expected an error for invalid Typst source"
+        );
     }
 
     #[test]
@@ -158,8 +180,17 @@ Hello, world!
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
-        assert!(result.is_ok(), "typst_to_pdf with image failed: {:?}", result.err());
+        let result = typst_to_pdf(
+            source,
+            &data,
+            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            &root_dir(),
+        );
+        assert!(
+            result.is_ok(),
+            "typst_to_pdf with image failed: {:?}",
+            result.err()
+        );
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
     }
