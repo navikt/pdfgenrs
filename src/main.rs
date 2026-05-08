@@ -70,8 +70,11 @@ async fn main() {
         HashMap::new()
     };
 
-    info!("Loading fonts");
-    let fonts = Arc::new(typst_world::load_fonts());
+    info!("Loading fonts from '{}'", cfg.fonts_dir.display());
+    let fonts = Arc::new(
+        typst_world::load_fonts(&cfg.fonts_dir)
+            .unwrap_or_else(|e| panic!("Failed to load fonts from '{}': {e}", cfg.fonts_dir.display())),
+    );
     info!("Loaded {} fonts", fonts.fonts.len());
 
     let aliveness = AppAliveness::new();
@@ -175,9 +178,10 @@ mod tests {
                 templates_dir: PathBuf::from("templates"),
                 resources_dir: PathBuf::from("resources"),
                 data_dir: PathBuf::from("data"),
+                fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_fonts()),
+            fonts: Arc::new(typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts")).expect("test fonts should load")),
         }
     }
 

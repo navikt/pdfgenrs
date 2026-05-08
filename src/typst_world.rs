@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Datelike;
 use chrono::Timelike;
 use typst::foundations::Bytes;
@@ -13,12 +13,6 @@ use typst_library::text::{Font, FontBook};
 use typst_library::World;
 use typst_syntax::{FileId, Source, VirtualPath};
 
-static EMBEDDED_FONTS: &[&[u8]] = &[
-    include_bytes!("../fonts/SourceSans3-Regular.ttf"),
-    include_bytes!("../fonts/SourceSans3-Bold.ttf"),
-    include_bytes!("../fonts/NotoColorEmoji-Regular.ttf"),
-];
-
 /// Holds the loaded fonts and the font book used by the Typst compiler.
 #[derive(Clone)]
 pub struct Fonts {
@@ -28,14 +22,70 @@ pub struct Fonts {
     pub book: LazyHash<FontBook>,
 }
 
-/// Loads the embedded fonts bundled with the binary and returns a [`Fonts`] instance.
-pub fn load_fonts() -> Fonts {
-    let fonts: Vec<Font> = EMBEDDED_FONTS
-        .iter()
-        .flat_map(|&font_data| Font::iter(Bytes::new(font_data)))
-        .collect();
+/// Loads fonts from the provided directory and returns a [`Fonts`] instance.
+pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
+    let mut font_paths = Vec::new();
+    collect_font_files(fonts_dir, &mut font_paths)
+        .with_context(|| format!("Failed to read font directory '{}'", fonts_dir.display()))?;
+
+    if font_paths.is_empty() {
+        return Err(anyhow::anyhow!(
+            "No font files found in '{}'",
+            fonts_dir.display()
+        ));
+    }
+
+    let mut fonts = Vec::new();
+    for font_path in font_paths {
+        let font_bytes = std::fs::read(&font_path)
+            .with_context(|| format!("Failed to read font file '{}'", font_path.display()))?;
+        let mut parsed_fonts: Vec<Font> = Font::iter(Bytes::new(font_bytes)).collect();
+        if parsed_fonts.is_empty() {
+            tracing::warn!(
+                "Font file '{}' did not contain any readable font faces",
+                font_path.display()
+            );
+            continue;
+        }
+        fonts.append(&mut parsed_fonts);
+    }
+
+    if fonts.is_empty() {
+        return Err(anyhow::anyhow!(
+            "No valid font faces found in '{}'",
+            fonts_dir.display()
+        ));
+    }
+
     let book = FontBook::from_fonts(&fonts);
-    Fonts { fonts, book: LazyHash::new(book) }
+    Ok(Fonts { fonts, book: LazyHash::new(book) })
+}
+
+/// Recursively walks `dir` and appends all supported font files to `files`.
+fn collect_font_files(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let metadata = entry.metadata()?;
+
+        if metadata.is_dir() {
+            collect_font_files(&path, files)?;
+            continue;
+        }
+
+        if metadata.is_file() && is_supported_font_file(&path) {
+            files.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
+fn is_supported_font_file(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => matches!(ext.to_ascii_lowercase().as_str(), "ttf" | "otf" | "ttc"),
+        None => false,
+    }
 }
 
 /// A Typst [`World`] implementation used to compile templates into PDF documents.
@@ -292,17 +342,17 @@ mod tests {
     }
 
     #[test]
-    fn fonts_loads_embedded_fonts() {
-        let fonts = load_fonts();
+    fn fonts_load_from_directory() {
+        let fonts = load_fonts(&root_dir().join("fonts")).expect("fonts should load from directory");
         assert!(
-            fonts.fonts.len() >= EMBEDDED_FONTS.len(),
-            "Expected at least as many font faces as there are embedded font files"
+            !fonts.fonts.is_empty(),
+            "Expected at least one font face loaded from fonts directory"
         );
     }
 
     #[test]
     fn fonts_clone_can_be_reused_across_multiple_compilations() {
-        let fonts = Arc::new(load_fonts());
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts")).expect("fonts should load"));
 
         let source = r"#set document(date: auto)
 #set page(margin: 1cm)
@@ -334,7 +384,7 @@ Hello, world!
 
     #[test]
     fn compilation_succeeds_after_full_cache_eviction() {
-        let fonts = Arc::new(load_fonts());
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts")).expect("fonts should load"));
         let root = root_dir();
         let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
 
@@ -352,7 +402,7 @@ Hello, world!
     #[test]
     fn repeated_compilations_do_not_grow_memory_unboundedly() {
         let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
-        let fonts = Arc::new(load_fonts());
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts")).expect("fonts should load"));
         let root = root_dir();
 
         for i in 0..10 {

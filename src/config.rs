@@ -19,6 +19,8 @@ pub struct Config {
     pub resources_dir: PathBuf,
     /// Directory containing test JSON data used in dev mode. Defaults to `"data"` (`DATA_DIR`).
     pub data_dir: PathBuf,
+    /// Directory containing font files used by Typst. Defaults to `"fonts"` (`FONTS_DIR`).
+    pub fonts_dir: PathBuf,
     /// When `true`, the GET PDF endpoint is enabled and test data is pre-loaded.
     /// Defaults to `false` (`DEV_MODE`).
     pub dev_mode: bool,
@@ -42,6 +44,9 @@ impl Default for Config {
             ),
             data_dir: PathBuf::from(
                 env::var("DATA_DIR").unwrap_or_else(|_| "data".to_string()),
+            ),
+            fonts_dir: PathBuf::from(
+                env::var("FONTS_DIR").unwrap_or_else(|_| "fonts".to_string()),
             ),
             dev_mode: env::var("DEV_MODE")
                 .map(|v| v.eq_ignore_ascii_case("true"))

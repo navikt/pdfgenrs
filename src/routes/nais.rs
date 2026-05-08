@@ -61,7 +61,9 @@ mod tests {
         aliveness.set_alive(alive);
         aliveness.set_ready(ready);
         let cfg = Config::default();
-        let fonts = Arc::new(typst_world::load_fonts());
+        let fonts = Arc::new(
+            typst_world::load_fonts(&cfg.fonts_dir).expect("health test fonts should load"),
+        );
         AppState {
             templates: Arc::new(HashMap::new()),
             data: Arc::new(RwLock::new(HashMap::new())),

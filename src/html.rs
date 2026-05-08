@@ -45,11 +45,15 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
 
+    fn fonts_dir() -> PathBuf {
+        root_dir().join("fonts")
+    }
+
     #[test]
     fn typst_to_html_simple_template_returns_html_string() {
         let source = "Hello, world!\n";
         let data = serde_json::json!({});
-        let result = typst_to_html(source, &data, Arc::new(load_fonts()), &root_dir());
+        let result = typst_to_html(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
         assert!(result.is_ok(), "typst_to_html failed: {:?}", result.err());
         let html = result.unwrap();
         assert!(html.contains("<!DOCTYPE html>") && html.contains("<html"), "Expected HTML document");
@@ -62,7 +66,7 @@ mod tests {
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let result = typst_to_html(source, &data, Arc::new(load_fonts()), &root_dir());
+        let result = typst_to_html(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
         assert!(result.is_ok(), "typst_to_html with JSON data failed: {:?}", result.err());
         let html = result.unwrap();
         assert!(html.contains("Test User"));
@@ -72,7 +76,7 @@ mod tests {
     fn typst_to_html_invalid_source_returns_error() {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_html(source, &data, Arc::new(load_fonts()), &root_dir());
+        let result = typst_to_html(source, &data, Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")), &root_dir());
         assert!(result.is_err(), "Expected an error for invalid Typst source");
     }
 }
