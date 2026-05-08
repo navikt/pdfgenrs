@@ -49,8 +49,9 @@ pub async fn get_pdf(
                     error!("PDF generation failed: {e}");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
-                info!("Done generating PDF in {}ms", start.elapsed().as_millis());
-                Ok(pdf_bytes) => pdf_response(pdf_bytes),
+                Ok(pdf_bytes)=> {
+                   info!("Done generating PDF in {}ms", start.elapsed().as_millis());
+                   pdf_response(pdf_bytes)                      
             }
         }
     }
