@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn fonts_loads_embedded_fonts() {
+    fn fonts_load_from_directory() {
         let fonts = load_fonts(&root_dir().join("fonts")).expect("fonts should load from directory");
         assert!(
             !fonts.fonts.is_empty(),
