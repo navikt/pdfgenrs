@@ -89,6 +89,19 @@ pub async fn post_pdf(
     }
 }
 
+/// Handles `POST /api/v1/genpdf/html/{app_name}`.
+///
+/// Accepts an HTML body, but HTML-to-PDF conversion is not implemented in
+/// pdfgenrs yet.
+pub async fn post_pdf_from_html(Path(app_name): Path<String>, _html: String) -> Response {
+    error!("HTML-to-PDF generation is not implemented for app '{app_name}'");
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        "HTML-to-PDF generation is not implemented",
+    )
+        .into_response()
+}
+
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
     (
         [(header::CONTENT_TYPE, "application/pdf")],
@@ -110,7 +123,7 @@ mod tests {
     use tokio::sync::RwLock;
 
     use crate::{config, state, typst_world, AppState};
-    use super::{get_pdf, post_pdf};
+    use super::{get_pdf, post_pdf, post_pdf_from_html};
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
@@ -139,7 +152,8 @@ mod tests {
 
     fn make_router(state: AppState, dev_mode: bool) -> Router {
         let mut router = Router::new()
-            .route("/{app_name}/{template}", post(post_pdf));
+            .route("/{app_name}/{template}", post(post_pdf))
+            .route("/html/{app_name}", post(post_pdf_from_html));
         if dev_mode {
             router = router.route("/{app_name}/{template}", get(get_pdf));
         }
@@ -212,6 +226,18 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_html_returns_501() {
+        let server = TestServer::new(make_router(make_state(HashMap::new(), HashMap::new(), false), false));
+
+        let response = server
+            .post("/html/myapp")
+            .text("<html><body>Hello</body></html>")
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::NOT_IMPLEMENTED);
     }
 
     #[tokio::test]
