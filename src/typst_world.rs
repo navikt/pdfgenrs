@@ -16,6 +16,7 @@ use typst_syntax::{FileId, Source, VirtualPath};
 static EMBEDDED_FONTS: &[&[u8]] = &[
     include_bytes!("../fonts/SourceSans3-Regular.ttf"),
     include_bytes!("../fonts/SourceSans3-Bold.ttf"),
+    include_bytes!("../fonts/NotoColorEmoji-Regular.ttf"),
 ];
 
 /// Holds the loaded fonts and the font book used by the Typst compiler.
