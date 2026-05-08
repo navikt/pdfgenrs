@@ -20,6 +20,7 @@ pub async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Response {
+    let start = std::time::Instant::now();
     let tmpl_name = format!("{app_name}/{template_name}");
 
     let template_source = state.templates.get(&tmpl_name).cloned();
@@ -31,6 +32,7 @@ pub async fn get_pdf(
     };
 
     match (template_source, json_data) {
+    
         (None, _) | (_, None) => {
             (StatusCode::NOT_FOUND, "Template or application not found").into_response()
         }
@@ -47,12 +49,14 @@ pub async fn get_pdf(
                     error!("PDF generation failed: {e}");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
-                Ok(pdf_bytes) => pdf_response(pdf_bytes),
+                Ok(pdf_bytes) => {
+                   info!("Done generating PDF in {}ms", start.elapsed().as_millis());
+                   pdf_response(pdf_bytes)                      
+                } 
             }
-        }
-    }
+       }
+   }
 }
-
 /// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
 ///
 /// Accepts a JSON body and compiles the named Typst template with that data,
