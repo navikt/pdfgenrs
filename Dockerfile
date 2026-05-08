@@ -11,6 +11,7 @@ RUN cargo build --release
 FROM gcr.io/distroless/static-debian13:nonroot
 WORKDIR /app
 COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/pdfgenrs /app/pdfgenrs
+COPY --from=builder /build/fonts /app/fonts
 
 EXPOSE 8080
 CMD ["/app/pdfgenrs"]

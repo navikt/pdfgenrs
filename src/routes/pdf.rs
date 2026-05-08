@@ -130,9 +130,10 @@ mod tests {
                 templates_dir: PathBuf::from("templates"),
                 resources_dir: PathBuf::from("resources"),
                 data_dir: PathBuf::from("data"),
+                fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_fonts()),
+            fonts: Arc::new(typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts")).expect("test fonts should load")),
         }
     }
 
