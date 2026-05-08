@@ -3,6 +3,7 @@ use ironpress::HtmlConverter;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use tracing::warn;
 use typst::foundations::Bytes;
 
 use crate::typst_world::{self, Fonts};
@@ -54,8 +55,17 @@ pub fn html_to_pdf(html: &str, root: &Path, fonts_dir: &Path) -> Result<Vec<u8>>
 
     for (family, file_name) in HTML_FONT_ALIASES {
         let font_path = fonts_dir.join(file_name);
-        if let Ok(font_bytes) = std::fs::read(font_path) {
-            converter = converter.add_font(family, font_bytes);
+        match std::fs::read(&font_path) {
+            Ok(font_bytes) => {
+                converter = converter.add_font(family, font_bytes);
+            }
+            Err(error) => {
+                warn!(
+                    font_path = %font_path.display(),
+                    font_family = family,
+                    "Failed to load HTML font alias: {error}"
+                );
+            }
         }
     }
 
