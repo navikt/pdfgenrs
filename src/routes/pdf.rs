@@ -56,7 +56,7 @@ pub async fn get_pdf(
             }
        }
    }
-
+}
 /// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
 ///
 /// Accepts a JSON body and compiles the named Typst template with that data,
