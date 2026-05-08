@@ -102,7 +102,7 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
   -H "Content-Type: text/html" \
   --data-binary '<html><body>Hello</body></html>'
 ```
-This endpoint currently returns `501 Not Implemented`.
+This endpoint converts the posted HTML into a PDF and returns it as `application/pdf`.
 
 Similarly, pdfgenrs exposes a `POST /api/v1/genhtml/<your_appname>/<template>` endpoint that compiles the Typst template with the provided JSON data and returns the result as HTML:
 ```bash

@@ -1,10 +1,10 @@
 mod config;
 mod html;
-mod tracing_setup;
 mod pdf;
 mod routes;
 mod state;
 mod template;
+mod tracing_setup;
 mod typst_world;
 
 #[cfg(test)]
@@ -16,14 +16,10 @@ use axum::{
 };
 use serde_json::Value;
 use state::AppAliveness;
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    sync::Arc,
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
-use typst_world::Fonts;
 use tracing::info;
+use typst_world::Fonts;
 
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static std::sync::Mutex<()> {
@@ -53,11 +49,12 @@ async fn main() {
     let cfg = config::Config::default();
 
     info!("Loading templates from '{}'", cfg.templates_dir.display());
-    let templates = Arc::new(template::load_templates_from_dir(&cfg.templates_dir)
-        .unwrap_or_else(|e| {
+    let templates = Arc::new(
+        template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_else(|e| {
             tracing::warn!("Failed to load templates: {e}");
             HashMap::new()
-        }));
+        }),
+    );
     info!("Loaded {} templates", templates.len());
 
     let data = if cfg.dev_mode {
@@ -71,10 +68,12 @@ async fn main() {
     };
 
     info!("Loading fonts from '{}'", cfg.fonts_dir.display());
-    let fonts = Arc::new(
-        typst_world::load_fonts(&cfg.fonts_dir)
-            .unwrap_or_else(|e| panic!("Failed to load fonts from '{}': {e}", cfg.fonts_dir.display())),
-    );
+    let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir).unwrap_or_else(|e| {
+        panic!(
+            "Failed to load fonts from '{}': {e}",
+            cfg.fonts_dir.display()
+        )
+    }));
     info!("Loaded {} fonts", fonts.fonts.len());
 
     let aliveness = AppAliveness::new();
@@ -111,14 +110,12 @@ fn build_router(state: AppState) -> Router {
         .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
         .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
 
-    let mut html_router = Router::new()
-        .route("/{app_name}/{template}", post(routes::html::post_html));
+    let mut html_router =
+        Router::new().route("/{app_name}/{template}", post(routes::html::post_html));
 
     if state.config.dev_mode {
-        pdf_router = pdf_router
-            .route("/{app_name}/{template}", get(routes::pdf::get_pdf));
-        html_router = html_router
-            .route("/{app_name}/{template}", get(routes::html::get_html));
+        pdf_router = pdf_router.route("/{app_name}/{template}", get(routes::pdf::get_pdf));
+        html_router = html_router.route("/{app_name}/{template}", get(routes::html::get_html));
     }
 
     Router::new()
@@ -182,7 +179,10 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts")).expect("test fonts should load")),
+            fonts: Arc::new(
+                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))
+                    .expect("test fonts should load"),
+            ),
         }
     }
 
@@ -211,13 +211,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn build_router_post_pdf_from_html_returns_501() {
+    async fn build_router_post_pdf_from_html_returns_pdf() {
         let server = TestServer::new(build_router(make_state(false)));
         let response = server
             .post("/api/v1/genpdf/html/myapp")
-            .text("<html><body>Hello</body></html>")
+            .text("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>")
             .await;
-        assert_eq!(response.status_code(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/pdf"
+        );
     }
 
     #[tokio::test]
@@ -257,5 +261,4 @@ mod tests {
         let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
     }
-
 }
