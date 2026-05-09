@@ -175,7 +175,7 @@ fn image_virtual_path(content_type: Option<&HeaderValue>) -> Option<&'static str
 
     match content_type {
         "image/png" => Some("/image.png"),
-        "image/jpeg" | "image/jpg" => Some("/image.jpg"),
+        "image/jpeg" => Some("/image.jpg"),
         _ => None,
     }
 }
@@ -398,10 +398,6 @@ mod tests {
         );
         assert_eq!(
             image_virtual_path(Some(&HeaderValue::from_static("image/jpeg"))),
-            Some("/image.jpg")
-        );
-        assert_eq!(
-            image_virtual_path(Some(&HeaderValue::from_static("image/jpg"))),
             Some("/image.jpg")
         );
         assert_eq!(
