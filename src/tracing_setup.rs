@@ -153,13 +153,22 @@ pub fn setup_tracing() -> Result<()> {
         builder
     };
 
-    // Resource::builder() auto-detects OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES
-    // (injected by NAIS). The explicit service.name attribute serves as a fallback
-    // for local development when those env vars are absent.
+    // NAIS injects OTEL_SERVICE_NAME (and OTEL_RESOURCE_ATTRIBUTES) into the pod when
+    // spec.observability.autoInstrumentation.enabled=true / runtime=sdk is set.
+    // Resource::builder() includes SdkProvidedResourceDetector which always produces a
+    // service.name (falling back to "unknown_service" when OTEL_SERVICE_NAME is absent).
+    // Because ResourceBuilder::with_attribute() merges by letting the new value win, calling
+    // it unconditionally would silently override whatever OTEL_SERVICE_NAME NAIS injects.
+    // We therefore read the env var ourselves and only substitute the hardcoded name as a
+    // local-development fallback when the variable is absent or empty.
+    let service_name = std::env::var("OTEL_SERVICE_NAME")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "pdfgenrs".to_string());
     let tracer_provider = builder
         .with_resource(
             Resource::builder()
-                .with_attribute(KeyValue::new("service.name", "pdfgenrs"))
+                .with_attribute(KeyValue::new("service.name", service_name))
                 .build(),
         )
         .build();
