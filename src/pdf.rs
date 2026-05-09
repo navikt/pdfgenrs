@@ -87,7 +87,7 @@ pub fn image_to_pdf(
     let source = format!(
         r#"#set document(date: auto)
 #set page(margin: 0pt)
-#image("{image_path}", width: 100%)
+#image("{image_path}", width: 100%, alt: "Uploaded image")
 "#
     );
 

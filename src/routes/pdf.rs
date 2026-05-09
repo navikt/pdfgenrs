@@ -193,6 +193,7 @@ mod tests {
     use tokio::sync::RwLock;
 
     use axum::body::Bytes;
+    use axum::http::HeaderValue;
 
     use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
     use crate::{config, state, typst_world, AppState};
