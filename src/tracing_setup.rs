@@ -2,7 +2,12 @@ use anyhow::Result;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
-use opentelemetry_sdk::{propagation::TraceContextPropagator, Resource};
+use opentelemetry::propagation::TextMapCompositePropagator;
+use opentelemetry_sdk::{
+    propagation::{BaggagePropagator, TraceContextPropagator},
+    trace::Sampler,
+    Resource,
+};
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -153,6 +158,10 @@ pub fn setup_tracing() -> Result<()> {
         builder
     };
 
+    // NAIS injects OTEL_TRACES_SAMPLER=parentbased_always_on. The Rust SDK does not read
+    // this env var automatically, so we configure the sampler explicitly to match.
+    let builder = builder.with_sampler(Sampler::ParentBased(Box::new(Sampler::AlwaysOn)));
+
     // NAIS injects OTEL_SERVICE_NAME (and OTEL_RESOURCE_ATTRIBUTES) into the pod when
     // spec.observability.autoInstrumentation.enabled=true / runtime=sdk is set.
     // Resource::builder() includes SdkProvidedResourceDetector which always produces a
@@ -173,7 +182,12 @@ pub fn setup_tracing() -> Result<()> {
         )
         .build();
 
-    global::set_text_map_propagator(TraceContextPropagator::new());
+    // NAIS injects OTEL_PROPAGATORS=tracecontext,baggage. The Rust SDK does not read this env
+    // var automatically, so both propagators are registered explicitly to match.
+    global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
+        Box::new(TraceContextPropagator::new()),
+        Box::new(BaggagePropagator::new()),
+    ]));
 
     let fmt_layer = fmt::layer()
         .event_format(NaisJsonFormat)
