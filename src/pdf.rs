@@ -74,6 +74,26 @@ pub fn html_to_pdf(html: &str, root: &Path, fonts_dir: &Path) -> Result<Vec<u8>>
         .context("Failed to convert HTML to PDF")
 }
 
+/// Converts a PNG or JPEG image into PDF bytes.
+pub fn image_to_pdf(
+    image_bytes: Vec<u8>,
+    image_path: &str,
+    fonts: Arc<Fonts>,
+    root: &Path,
+) -> Result<Vec<u8>> {
+    let mut vfiles = HashMap::new();
+    vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
+
+    let source = format!(
+        r#"#set document(date: auto)
+#set page(margin: 0pt)
+#image("{image_path}", width: 100%, alt: "Uploaded image")
+"#
+    );
+
+    typst_world::compile_to_pdf(fonts, root, "/main.typ", source, vfiles)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,6 +199,21 @@ Hello, world!
             "html_to_pdf with Source Sans Pro failed: {:?}",
             result.err()
         );
+        let bytes = result.unwrap();
+        assert!(is_pdf(&bytes));
+    }
+
+    #[test]
+    fn image_to_pdf_png_returns_pdf_bytes() {
+        let image_bytes =
+            std::fs::read(root_dir().join("resources").join("NAVLogoRed.png")).unwrap();
+        let result = image_to_pdf(
+            image_bytes,
+            "/image.png",
+            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            &root_dir(),
+        );
+        assert!(result.is_ok(), "image_to_pdf failed: {:?}", result.err());
         let bytes = result.unwrap();
         assert!(is_pdf(&bytes));
     }

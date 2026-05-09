@@ -1,7 +1,7 @@
 use axum::{
     body::Bytes,
     extract::{Path, State},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -122,12 +122,62 @@ pub async fn post_pdf_from_html(
     }
 }
 
+/// Handles `POST /api/v1/genpdf/image/{app_name}`.
+///
+/// Accepts a PNG or JPEG body and converts it to PDF.
+pub async fn post_pdf_from_image(
+    State(state): State<AppState>,
+    Path(app_name): Path<String>,
+    headers: HeaderMap,
+    image_bytes: Bytes,
+) -> Response {
+    let start = std::time::Instant::now();
+    let Some(image_path) = image_virtual_path(headers.get(header::CONTENT_TYPE)) else {
+        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
+    };
+
+    let fonts = Arc::clone(&state.fonts);
+    let root = state.config.root_dir.clone();
+    match tokio::task::spawn_blocking(move || {
+        gen_pdf::image_to_pdf(image_bytes.to_vec(), image_path, fonts, &root)
+    })
+    .await
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+    {
+        Err(e) => {
+            error!("Image-to-PDF generation failed for {app_name}: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
+        }
+        Ok(pdf_bytes) => {
+            info!(
+                "Done generating PDF from image for {app_name} in {}ms",
+                start.elapsed().as_millis()
+            );
+            pdf_response(pdf_bytes)
+        }
+    }
+}
+
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
     (
         [(header::CONTENT_TYPE, "application/pdf")],
         Bytes::from(pdf_bytes),
     )
         .into_response()
+}
+
+fn image_virtual_path(content_type: Option<&HeaderValue>) -> Option<&'static str> {
+    let content_type = content_type
+        .and_then(|value| value.to_str().ok())?
+        .split(';')
+        .next()?
+        .trim();
+
+    match content_type {
+        "image/png" => Some("/image.png"),
+        "image/jpeg" => Some("/image.jpg"),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -142,7 +192,10 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use super::{get_pdf, post_pdf, post_pdf_from_html};
+    use axum::body::Bytes;
+    use axum::http::HeaderValue;
+
+    use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
     use crate::{config, state, typst_world, AppState};
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
@@ -176,7 +229,8 @@ mod tests {
     fn make_router(state: AppState, dev_mode: bool) -> Router {
         let mut router = Router::new()
             .route("/{app_name}/{template}", post(post_pdf))
-            .route("/html/{app_name}", post(post_pdf_from_html));
+            .route("/html/{app_name}", post(post_pdf_from_html))
+            .route("/image/{app_name}", post(post_pdf_from_image));
         if dev_mode {
             router = router.route("/{app_name}/{template}", get(get_pdf));
         }
@@ -290,6 +344,70 @@ mod tests {
             "application/pdf"
         );
         assert!(is_pdf(response.as_bytes()));
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_pdf_for_png() {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false),
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from(
+                std::fs::read(
+                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                        .join("resources")
+                        .join("NAVLogoRed.png"),
+                )
+                .unwrap(),
+            ))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/pdf"
+        );
+        assert!(is_pdf(response.as_bytes()));
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_415_for_unsupported_media_type() {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false),
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/gif")
+            .bytes(Bytes::from_static(b"gif"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    #[test]
+    fn image_virtual_path_supports_png_and_jpeg() {
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("image/png"))),
+            Some("/image.png")
+        );
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("image/jpeg"))),
+            Some("/image.jpg")
+        );
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("image/png; charset=utf-8"))),
+            Some("/image.png")
+        );
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("image/gif"))),
+            None
+        );
     }
 
     #[tokio::test]
