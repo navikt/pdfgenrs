@@ -104,6 +104,15 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
 ```
 This endpoint converts the posted HTML into a PDF and returns it as `application/pdf`.
 
+pdfgenrs also exposes a compatibility endpoint matching pdfgen's image-to-PDF route:
+```bash
+curl -s -X POST http://localhost:8080/api/v1/genpdf/image/<your_appname> \
+  -H "Content-Type: image/png" \
+  --data-binary @image.png \
+  --output output.pdf
+```
+This endpoint accepts `image/png` and `image/jpeg` request bodies and returns `application/pdf`.
+
 Similarly, pdfgenrs exposes a `POST /api/v1/genhtml/<your_appname>/<template>` endpoint that compiles the Typst template with the provided JSON data and returns the result as HTML:
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genhtml/<your_appname>/<template> \

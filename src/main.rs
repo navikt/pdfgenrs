@@ -108,6 +108,7 @@ async fn main() {
 fn build_router(state: AppState) -> Router {
     let mut pdf_router = Router::new()
         .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
+        .route("/image/{app_name}", post(routes::pdf::post_pdf_from_image))
         .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
 
     let mut html_router =
@@ -216,6 +217,28 @@ mod tests {
         let response = server
             .post("/api/v1/genpdf/html/myapp")
             .text("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>")
+            .await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/pdf"
+        );
+    }
+
+    #[tokio::test]
+    async fn build_router_post_pdf_from_image_returns_pdf() {
+        let server = TestServer::new(build_router(make_state(false)));
+        let response = server
+            .post("/api/v1/genpdf/image/myapp")
+            .content_type("image/png")
+            .bytes(axum::body::Bytes::from(
+                std::fs::read(
+                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                        .join("resources")
+                        .join("NAVLogoRed.png"),
+                )
+                .unwrap(),
+            ))
             .await;
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
