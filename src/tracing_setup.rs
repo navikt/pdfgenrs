@@ -147,7 +147,10 @@ fn nais_otlp_exporter() -> Result<Option<SpanExporter>> {
 ///
 /// Log records emitted by third-party crates via the `log` crate are bridged
 /// into tracing so they appear in the same JSON output.
-pub fn setup_tracing() -> Result<()> {
+///
+/// Returns the `SdkTracerProvider` so the caller can call `.shutdown()` for a
+/// graceful flush before the process exits.
+pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
     let exporter = nais_otlp_exporter()?;
     let exporter_active = exporter.is_some();
 
@@ -194,6 +197,9 @@ pub fn setup_tracing() -> Result<()> {
         .with_ansi(false);
 
     let tracer = tracer_provider.tracer("pdfgenrs");
+    // Keep a clone for the caller to shut down gracefully before exit.
+    // SdkTracerProvider is backed by Arc so this is cheap.
+    let provider_for_shutdown = tracer_provider.clone();
     global::set_tracer_provider(tracer_provider);
 
     tracing_subscriber::registry()
@@ -214,5 +220,5 @@ pub fn setup_tracing() -> Result<()> {
         exporter_active,
         "Tracing initialised (OTEL exporter active: {exporter_active})"
     );
-    Ok(())
+    Ok(provider_for_shutdown)
 }

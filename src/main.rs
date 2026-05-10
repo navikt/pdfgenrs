@@ -11,14 +11,19 @@ mod typst_world;
 mod performance_test;
 
 use axum::{
+    body::Body,
     routing::{get, post},
     Router,
 };
+use opentelemetry::{global, propagation::Extractor};
+use axum::http::{HeaderMap, Request};
 use serde_json::Value;
 use state::AppAliveness;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
-use tracing::info;
+use tower_http::trace::TraceLayer;
+use tracing::{info, Level};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use typst_world::Fonts;
 
 #[cfg(test)]
@@ -27,7 +32,44 @@ pub(crate) fn memory_sensitive_test_lock() -> &'static std::sync::Mutex<()> {
     LOCK.get_or_init(|| std::sync::Mutex::new(()))
 }
 
-/// Shared application state injected into every Axum handler.
+/// Implements [`opentelemetry::propagation::Extractor`] for an Axum [`HeaderMap`] so that
+/// the global W3C TraceContext + Baggage propagators can extract an incoming parent trace context
+/// from request headers.
+struct HeaderExtractor<'a>(&'a HeaderMap);
+
+impl<'a> Extractor for HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
+}
+
+/// Creates a tracing span for an HTTP request and sets the remote span as OTel parent.
+///
+/// This is passed to [`TraceLayer::make_span_with`].  Extracting the trace context and calling
+/// [`OpenTelemetrySpanExt::set_parent`] here (synchronously, before any `.await`) avoids the
+/// `!Send` constraint of [`opentelemetry::ContextGuard`] and correctly parents the new span to
+/// the caller's distributed trace when a `traceparent` header is present.
+fn make_otel_span(request: &Request<Body>) -> tracing::Span {
+    let span = tracing::info_span!(
+        "HTTP request",
+        http.method = %request.method(),
+        http.uri = %request.uri(),
+        http.version = ?request.version(),
+        otel.kind = "server",
+        otel.status_code = tracing::field::Empty,
+        http.status_code = tracing::field::Empty,
+    );
+    let parent_cx = global::get_text_map_propagator(|propagator| {
+        propagator.extract(&HeaderExtractor(request.headers()))
+    });
+    let _ = span.set_parent(parent_cx);
+    span
+}
+
 #[derive(Clone)]
 pub struct AppState {
     /// Pre-loaded Typst templates keyed by `"<app_name>/<template_name>"`.
@@ -44,7 +86,8 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-    tracing_setup::setup_tracing().expect("Failed to initialise tracing");
+    let tracer_provider =
+        tracing_setup::setup_tracing().expect("Failed to initialise tracing");
 
     let cfg = config::Config::default();
 
@@ -103,6 +146,11 @@ async fn main() {
         .with_graceful_shutdown(shutdown_signal(aliveness_clone))
         .await
         .expect("Server error");
+
+    // Flush and export any remaining spans buffered by the batch processor.
+    if let Err(e) = tracer_provider.shutdown() {
+        tracing::warn!("OpenTelemetry tracer provider shutdown error: {e}");
+    }
 }
 
 fn build_router(state: AppState) -> Router {
@@ -124,6 +172,18 @@ fn build_router(state: AppState) -> Router {
         .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router())
         .with_state(state)
+        // Creates a tracing::Span for every HTTP request.  The custom make_span_with function
+        // also extracts W3C traceparent/baggage headers and sets the remote span as the OTel
+        // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
+        // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
+        // spans into OpenTelemetry spans forwarded to the OTLP exporter.
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(make_otel_span)
+                .on_response(
+                    tower_http::trace::DefaultOnResponse::new().level(Level::INFO),
+                ),
+        )
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) {
