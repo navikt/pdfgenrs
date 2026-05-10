@@ -33,7 +33,7 @@ pub(crate) fn memory_sensitive_test_lock() -> &'static std::sync::Mutex<()> {
 }
 
 /// Implements [`opentelemetry::propagation::Extractor`] for an Axum [`HeaderMap`] so that
-/// the global W3C TraceContext + Baggage propagators can extract an incoming remote span context
+/// the global W3C TraceContext + Baggage propagators can extract an incoming parent trace context
 /// from request headers.
 struct HeaderExtractor<'a>(&'a HeaderMap);
 
@@ -69,7 +69,6 @@ fn make_otel_span(request: &Request<Body>) -> tracing::Span {
     let _ = span.set_parent(parent_cx);
     span
 }
-
 
 #[derive(Clone)]
 pub struct AppState {
