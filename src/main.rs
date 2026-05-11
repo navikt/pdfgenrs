@@ -67,7 +67,7 @@ fn make_otel_span(request: &Request<Body>) -> tracing::Span {
     let parent_cx = global::get_text_map_propagator(|propagator| {
         propagator.extract(&HeaderExtractor(request.headers()))
     });
-    let _ = span.set_parent(parent_cx);
+    span.set_parent(parent_cx).ok();
     span
 }
 
