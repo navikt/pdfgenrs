@@ -96,7 +96,7 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/<your_appname>/<template> \
   --output output.pdf
 ```
 
-pdfgenrs also exposes a compatibility endpoint matching pdfgen's HTML-to-PDF route:
+pdfgenrs also exposes a endpoint HTML-to-PDF route:
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
   -H "Content-Type: text/html" \
@@ -104,7 +104,7 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
 ```
 This endpoint converts the posted HTML into a PDF and returns it as `application/pdf`.
 
-pdfgenrs also exposes a compatibility endpoint matching pdfgen's image-to-PDF route:
+pdfgenrs also exposes a endpoint image-to-PDF route:
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/image/<your_appname> \
   -H "Content-Type: image/png" \
