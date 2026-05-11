@@ -42,8 +42,8 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
         let mut parsed_fonts: Vec<Font> = Font::iter(Bytes::new(font_bytes)).collect();
         if parsed_fonts.is_empty() {
             tracing::warn!(
-                "Font file '{}' did not contain any readable font faces",
-                font_path.display()
+                path = %font_path.display(),
+                "Font file did not contain any readable font faces"
             );
             continue;
         }
@@ -236,7 +236,7 @@ pub fn compile_to_pdf(
 
     if !result.warnings.is_empty() {
         let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
-        tracing::warn!("Typst warnings: {}", warns.join("; "));
+        tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
 
     let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
@@ -296,7 +296,7 @@ pub fn compile_to_html(
 
     if !result.warnings.is_empty() {
         let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
-        tracing::warn!("Typst warnings: {}", warns.join("; "));
+        tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
 
     typst_html::html(&document)

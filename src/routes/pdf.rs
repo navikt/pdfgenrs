@@ -45,11 +45,11 @@ pub async fn get_pdf(
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
             {
                 Err(e) => {
-                    error!("PDF generation failed: {e}");
+                    error!(template = %tmpl_name, error = %e, "PDF generation failed");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
                 Ok(pdf_bytes) => {
-                    info!("Done generating PDF in {}ms", start.elapsed().as_millis());
+                    info!(template = %tmpl_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
                     pdf_response(pdf_bytes)
                 }
             }
@@ -82,11 +82,11 @@ pub async fn post_pdf(
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
-            error!("PDF generation failed for {tmpl_name}: {e}");
+            error!(template = %tmpl_name, error = %e, "PDF generation failed");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(pdf_bytes) => {
-            info!("Done generating PDF in {}ms", start.elapsed().as_millis());
+            info!(template = %tmpl_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
             pdf_response(pdf_bytes)
         }
     }
@@ -109,14 +109,11 @@ pub async fn post_pdf_from_html(
         .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
-            error!("HTML-to-PDF generation failed for {app_name}: {e}");
+            error!(app_name = %app_name, error = %e, "HTML-to-PDF generation failed");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(pdf_bytes) => {
-            info!(
-                "Done generating PDF from HTML for {app_name} in {}ms",
-                start.elapsed().as_millis()
-            );
+            info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
             pdf_response(pdf_bytes)
         }
     }
@@ -145,14 +142,11 @@ pub async fn post_pdf_from_image(
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
-            error!("Image-to-PDF generation failed for {app_name}: {e}");
+            error!(app_name = %app_name, error = %e, "Image-to-PDF generation failed");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(pdf_bytes) => {
-            info!(
-                "Done generating PDF from image for {app_name} in {}ms",
-                start.elapsed().as_millis()
-            );
+            info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from image");
             pdf_response(pdf_bytes)
         }
     }

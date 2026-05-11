@@ -44,7 +44,7 @@ pub async fn get_html(
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
             {
                 Err(e) => {
-                    error!("HTML generation failed: {e}");
+                    error!(template = %tmpl_name, error = %e, "HTML generation failed");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
                 Ok(html_string) => html_response(html_string),
@@ -79,11 +79,11 @@ pub async fn post_html(
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
-            error!("HTML generation failed for {tmpl_name}: {e}");
+            error!(template = %tmpl_name, error = %e, "HTML generation failed");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(html_string) => {
-            info!("Done generating HTML in {}ms", start.elapsed().as_millis());
+            info!(template = %tmpl_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
             html_response(html_string)
         }
     }

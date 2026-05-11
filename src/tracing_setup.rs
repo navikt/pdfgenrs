@@ -226,7 +226,7 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
 
     tracing::info!(
         exporter_active,
-        "Tracing initialised (OTEL exporter active: {exporter_active})"
+        "Tracing initialised"
     );
     Ok(provider_for_shutdown)
 }
