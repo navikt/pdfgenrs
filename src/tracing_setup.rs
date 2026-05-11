@@ -78,7 +78,7 @@ where
         }
 
         fn escape_json(s: &str) -> String {
-            let mut out = String::with_capacity(s.len());
+            let mut out = String::with_capacity(s.len() + 16);
             for c in s.chars() {
                 match c {
                     '\\' => out.push_str("\\\\"),
@@ -86,7 +86,7 @@ where
                     '\n' => out.push_str("\\n"),
                     '\r' => out.push_str("\\r"),
                     '\t' => out.push_str("\\t"),
-                    c if c.is_control() => {
+                    c if (c as u32) < 0x20 => {
                         out.push_str(&format!("\\u{:04x}", c as u32));
                     }
                     c => out.push(c),
