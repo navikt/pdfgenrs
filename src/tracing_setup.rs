@@ -132,8 +132,8 @@ where
 /// standard OTEL environment variables injected by the NAIS platform. Returns
 /// `None` when the variable is absent so that tracing remains a no-op in local
 /// development without any additional configuration.
-fn nais_otlp_exporter() -> Result<Option<SpanExporter>> {
-    if std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_err() {
+fn nais_otlp_exporter(endpoint: Option<&str>) -> Result<Option<SpanExporter>> {
+    if endpoint.is_none() {
         return Ok(None);
     }
     let exporter = SpanExporter::builder()
@@ -143,10 +143,9 @@ fn nais_otlp_exporter() -> Result<Option<SpanExporter>> {
     Ok(Some(exporter))
 }
 
-fn resolve_service_name() -> String {
-    std::env::var("OTEL_SERVICE_NAME")
-        .ok()
-        .filter(|s| !s.is_empty())
+fn resolve_service_name(name: Option<&str>) -> String {
+    name.filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
         .unwrap_or_else(|| "pdfgenrs".to_string())
 }
 
@@ -165,7 +164,7 @@ fn resolve_service_name() -> String {
 /// Returns the `SdkTracerProvider` so the caller can call `.shutdown()` for a
 /// graceful flush before the process exits.
 pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
-    let exporter = nais_otlp_exporter()?;
+    let exporter = nais_otlp_exporter(std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().as_deref())?;
     let exporter_active = exporter.is_some();
 
     let builder = opentelemetry_sdk::trace::SdkTracerProvider::builder();
@@ -187,7 +186,7 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
     // it unconditionally would silently override whatever OTEL_SERVICE_NAME NAIS injects.
     // We therefore read the env var ourselves and only substitute the hardcoded name as a
     // local-development fallback when the variable is absent or empty.
-    let service_name = resolve_service_name();
+    let service_name = resolve_service_name(std::env::var("OTEL_SERVICE_NAME").ok().as_deref());
     let tracer_provider = builder
         .with_resource(
             Resource::builder()
@@ -237,12 +236,6 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Mutex, OnceLock};
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     #[test]
     fn logger_name_for_file_rewrites_path_and_suffix() {
@@ -259,49 +252,18 @@ mod tests {
 
     #[test]
     fn resolve_service_name_uses_env_value() {
-        let _guard = env_lock().lock().expect("lock poisoned");
-        let previous = std::env::var_os("OTEL_SERVICE_NAME");
-        std::env::set_var("OTEL_SERVICE_NAME", "custom-service");
-
-        let resolved = resolve_service_name();
-
-        match previous {
-            Some(value) => std::env::set_var("OTEL_SERVICE_NAME", value),
-            None => std::env::remove_var("OTEL_SERVICE_NAME"),
-        }
-        assert_eq!(resolved, "custom-service");
+        assert_eq!(resolve_service_name(Some("custom-service")), "custom-service");
     }
 
     #[test]
     fn resolve_service_name_falls_back_when_missing_or_empty() {
-        let _guard = env_lock().lock().expect("lock poisoned");
-        let previous = std::env::var_os("OTEL_SERVICE_NAME");
-        std::env::remove_var("OTEL_SERVICE_NAME");
-
-        let resolved_missing = resolve_service_name();
-        std::env::set_var("OTEL_SERVICE_NAME", "");
-        let resolved_empty = resolve_service_name();
-
-        match previous {
-            Some(value) => std::env::set_var("OTEL_SERVICE_NAME", value),
-            None => std::env::remove_var("OTEL_SERVICE_NAME"),
-        }
-        assert_eq!(resolved_missing, "pdfgenrs");
-        assert_eq!(resolved_empty, "pdfgenrs");
+        assert_eq!(resolve_service_name(None), "pdfgenrs");
+        assert_eq!(resolve_service_name(Some("")), "pdfgenrs");
     }
 
     #[test]
     fn nais_otlp_exporter_is_none_without_endpoint() {
-        let _guard = env_lock().lock().expect("lock poisoned");
-        let previous = std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT");
-        std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT");
-
-        let exporter = nais_otlp_exporter().expect("exporter setup should not fail");
-
-        match previous {
-            Some(value) => std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", value),
-            None => std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT"),
-        }
+        let exporter = nais_otlp_exporter(None).expect("exporter setup should not fail");
         assert!(exporter.is_none());
     }
 }
