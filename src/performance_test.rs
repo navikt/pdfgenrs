@@ -14,7 +14,7 @@ mod tests {
         let templates = Arc::new(
             template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default(),
         );
-        let data = template::load_test_data(&cfg.data_dir);
+        let data = template::load_test_data(&cfg.data_dir).data;
         let fonts = Arc::new(
             typst_world::load_fonts(&cfg.fonts_dir).expect("performance test fonts should load"),
         );
