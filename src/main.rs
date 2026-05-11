@@ -22,7 +22,7 @@ use state::AppAliveness;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
-use tracing::{info, Level};
+use tracing::{info, warn, Level};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use typst_world::Fonts;
 
@@ -102,9 +102,25 @@ async fn main() {
 
     let data = if cfg.dev_mode {
         info!(path = %cfg.data_dir.display(), "Loading test data");
-        let data = template::load_test_data(&cfg.data_dir);
-        info!(count = data.len(), "Loaded test data entries");
-        data
+        let result = template::load_test_data(&cfg.data_dir);
+        for diagnostic in &result.diagnostics {
+            warn!(
+                path = %diagnostic.path.display(),
+                kind = ?diagnostic.kind,
+                error = %diagnostic.message,
+                "Failed to load test data file"
+            );
+        }
+        let summary = result.error_summary();
+        if !summary.is_empty() {
+            warn!(?summary, "Test data loading completed with errors");
+        }
+        info!(
+            count = result.data.len(),
+            errors = result.diagnostics.len(),
+            "Loaded test data entries"
+        );
+        result.data
     } else {
         info!("Dev mode disabled, skipping test data loading");
         HashMap::new()
