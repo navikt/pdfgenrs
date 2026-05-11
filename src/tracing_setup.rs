@@ -110,8 +110,15 @@ where
         };
         event.record(&mut visitor);
 
-        let serialized = serde_json::to_string(&log_object).map_err(|_| std::fmt::Error)?;
-        write!(&mut writer, "{serialized}")?;
+        match serde_json::to_string(&log_object) {
+            Ok(serialized) => write!(&mut writer, "{serialized}")?,
+            Err(err) => write!(
+                &mut writer,
+                "{{\"timestamp\":\"{}\",\"log_level\":\"ERROR\",\"target\":\"tracing_setup\",\"message\":\"failed to serialize log object\",\"error\":\"{}\"}}",
+                chrono::Utc::now().to_rfc3339(),
+                err
+            )?,
+        }
         writeln!(&mut writer)
     }
 }
