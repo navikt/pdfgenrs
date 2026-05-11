@@ -35,62 +35,62 @@ where
         event: &tracing::Event<'_>,
     ) -> std::fmt::Result {
         use opentelemetry::trace::TraceContextExt;
-        use std::fmt::Write as FmtWrite;
+        use serde_json::{Map, Value};
 
         let meta = event.metadata();
+        let mut log_object = Map::new();
 
-        write!(&mut writer, "{{")?;
-        write!(
-            &mut writer,
-            "\"timestamp\":\"{}\"",
-            chrono::Utc::now().to_rfc3339()
-        )?;
-        write!(&mut writer, ",\"log_level\":\"{}\"", meta.level())?;
-        write!(&mut writer, ",\"target\":\"{}\"", meta.target())?;
+        log_object.insert(
+            "timestamp".to_string(),
+            Value::String(chrono::Utc::now().to_rfc3339()),
+        );
+        log_object.insert(
+            "log_level".to_string(),
+            Value::String(meta.level().to_string()),
+        );
+        log_object.insert(
+            "target".to_string(),
+            Value::String(meta.target().to_string()),
+        );
 
         if let Some(file) = meta.file() {
-            write!(&mut writer, ",\"file\":\"{}\"", file)?;
+            log_object.insert("file".to_string(), Value::String(file.to_string()));
             let logger_name = logger_name_for_file(file);
-            write!(&mut writer, ",\"logger_name\":\"{}\"", logger_name)?;
+            log_object.insert("logger_name".to_string(), Value::String(logger_name));
         }
         if let Some(line) = meta.line() {
-            write!(&mut writer, ",\"line\":{}", line)?;
+            log_object.insert(
+                "line".to_string(),
+                Value::Number(serde_json::Number::from(line)),
+            );
         }
 
         let otel_context = opentelemetry::Context::current();
         let otel_span = otel_context.span();
         let span_context = otel_span.span_context();
         if span_context.is_valid() {
-            write!(
-                &mut writer,
-                ",\"trace_id\":\"{}\"",
-                span_context.trace_id()
-            )?;
-            write!(
-                &mut writer,
-                ",\"span_id\":\"{}\"",
-                span_context.span_id()
-            )?;
+            log_object.insert(
+                "trace_id".to_string(),
+                Value::String(span_context.trace_id().to_string()),
+            );
+            log_object.insert(
+                "span_id".to_string(),
+                Value::String(span_context.span_id().to_string()),
+            );
         }
 
         if let Some(span) = ctx.lookup_current() {
-            write!(&mut writer, ",\"span\":\"{}\"", span.name())?;
+            log_object.insert("span".to_string(), Value::String(span.name().to_string()));
         }
 
-        struct FieldVisitor<W> {
-            writer: W,
-            result: std::fmt::Result,
+        struct FieldVisitor<'a> {
+            map: &'a mut Map<String, Value>,
         }
-        impl<W: FmtWrite> tracing::field::Visit for FieldVisitor<W> {
+        impl tracing::field::Visit for FieldVisitor<'_> {
             fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-                if self.result.is_err() {
-                    return;
-                }
-                self.result = write!(
-                    &mut self.writer,
-                    ",\"{}\":\"{}\"",
-                    field.name(),
-                    value.replace('\\', "\\\\").replace('"', "\\\"")
+                self.map.insert(
+                    field.name().to_string(),
+                    Value::String(value.to_string()),
                 );
             }
             fn record_debug(
@@ -98,27 +98,20 @@ where
                 field: &tracing::field::Field,
                 value: &dyn std::fmt::Debug,
             ) {
-                if self.result.is_err() {
-                    return;
-                }
-                let s = format!("{:?}", value);
-                self.result = write!(
-                    &mut self.writer,
-                    ",\"{}\":\"{}\"",
-                    field.name(),
-                    s.replace('\\', "\\\\").replace('"', "\\\"")
+                self.map.insert(
+                    field.name().to_string(),
+                    Value::String(format!("{:?}", value)),
                 );
             }
         }
 
         let mut visitor = FieldVisitor {
-            writer: &mut writer,
-            result: Ok(()),
+            map: &mut log_object,
         };
         event.record(&mut visitor);
-        visitor.result?;
 
-        write!(&mut writer, "}}")?;
+        let serialized = serde_json::to_string(&log_object).map_err(|_| std::fmt::Error)?;
+        write!(&mut writer, "{serialized}")?;
         writeln!(&mut writer)
     }
 }
