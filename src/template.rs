@@ -4,28 +4,41 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+/// Categorises errors encountered while loading test data.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LoadErrorKind {
+    /// Failed to traverse the data directory.
     WalkDir,
+    /// File path did not match the expected `<app>/<template>.json` structure.
     InvalidPath,
+    /// Failed to read a JSON file from disk.
     ReadFile,
+    /// File content could not be parsed as valid JSON.
     InvalidJson,
 }
 
+/// Describes a single data-loading failure with location and classification.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoadDiagnostic {
+    /// Path for the file or directory entry that failed.
     pub path: PathBuf,
+    /// High-level category of the loading failure.
     pub kind: LoadErrorKind,
+    /// Underlying error details for troubleshooting.
     pub message: String,
 }
 
+/// Result of loading development test data from disk.
 #[derive(Debug, Default)]
 pub struct TestDataLoadResult {
+    /// Successfully parsed values keyed by `(app_name, template_name)`.
     pub data: HashMap<(String, String), Value>,
+    /// All non-fatal loading issues encountered during traversal and parsing.
     pub diagnostics: Vec<LoadDiagnostic>,
 }
 
 impl TestDataLoadResult {
+    /// Returns the number of diagnostics grouped by error kind.
     pub fn error_summary(&self) -> HashMap<LoadErrorKind, usize> {
         let mut summary = HashMap::new();
         for diagnostic in &self.diagnostics {
