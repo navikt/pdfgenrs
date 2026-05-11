@@ -91,33 +91,33 @@ async fn main() {
 
     let cfg = config::Config::default();
 
-    info!("Loading templates from '{}'", cfg.templates_dir.display());
+    info!(path = %cfg.templates_dir.display(), "Loading templates");
     let templates = Arc::new(
         template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_else(|e| {
-            tracing::warn!("Failed to load templates: {e}");
+            tracing::warn!(error = %e, "Failed to load templates");
             HashMap::new()
         }),
     );
-    info!("Loaded {} templates", templates.len());
+    info!(count = templates.len(), "Loaded templates");
 
     let data = if cfg.dev_mode {
-        info!("Loading test data from '{}'", cfg.data_dir.display());
+        info!(path = %cfg.data_dir.display(), "Loading test data");
         let data = template::load_test_data(&cfg.data_dir);
-        info!("Loaded {} test data entries", data.len());
+        info!(count = data.len(), "Loaded test data entries");
         data
     } else {
         info!("Dev mode disabled, skipping test data loading");
         HashMap::new()
     };
 
-    info!("Loading fonts from '{}'", cfg.fonts_dir.display());
+    info!(path = %cfg.fonts_dir.display(), "Loading fonts");
     let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir).unwrap_or_else(|e| {
         panic!(
             "Failed to load fonts from '{}': {e}",
             cfg.fonts_dir.display()
         )
     }));
-    info!("Loaded {} fonts", fonts.fonts.len());
+    info!(count = fonts.fonts.len(), "Loaded fonts");
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
@@ -133,7 +133,7 @@ async fn main() {
     let app = build_router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
-    info!("Starting pdfgenrs server on {addr}");
+    info!(address = %addr, "Starting pdfgenrs server");
 
     aliveness_clone.set_alive(true);
     aliveness_clone.set_ready(true);
@@ -149,7 +149,7 @@ async fn main() {
 
     // Flush and export any remaining spans buffered by the batch processor.
     if let Err(e) = tracer_provider.shutdown() {
-        tracing::warn!("OpenTelemetry tracer provider shutdown error: {e}");
+        tracing::warn!(error = %e, "OpenTelemetry tracer provider shutdown error");
     }
 }
 
