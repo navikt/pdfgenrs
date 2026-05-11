@@ -10,6 +10,7 @@ mod typst_world;
 #[cfg(test)]
 mod performance_test;
 
+use anyhow::{Context, Result};
 use axum::{
     body::Body,
     routing::{get, post},
@@ -85,9 +86,11 @@ pub struct AppState {
 }
 
 #[tokio::main]
-async fn main() {
-    let tracer_provider =
-        tracing_setup::setup_tracing().expect("Failed to initialise tracing");
+async fn main() -> Result<()> {
+    let tracer_provider = tracing_setup::setup_tracing().map_err(|e| {
+        eprintln!("Failed to initialise tracing: {e}");
+        e
+    })?;
 
     let cfg = config::Config::default();
 
@@ -111,12 +114,14 @@ async fn main() {
     };
 
     info!(path = %cfg.fonts_dir.display(), "Loading fonts");
-    let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir).unwrap_or_else(|e| {
-        panic!(
-            "Failed to load fonts from '{}': {e}",
-            cfg.fonts_dir.display()
-        )
-    }));
+    let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir).map_err(|e| {
+        tracing::error!(
+            error = %e,
+            path = %cfg.fonts_dir.display(),
+            "Failed to load fonts"
+        );
+        e
+    })?);
     info!(count = fonts.fonts.len(), "Loaded fonts");
 
     let aliveness = AppAliveness::new();
@@ -138,19 +143,32 @@ async fn main() {
     aliveness_clone.set_alive(true);
     aliveness_clone.set_ready(true);
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("Failed to bind TCP listener");
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
+        tracing::error!(error = %e, address = %addr, "Failed to bind TCP listener");
+        e
+    })?;
 
+    let aliveness_for_shutdown = aliveness_clone.clone();
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal(aliveness_clone))
+        .with_graceful_shutdown(async move {
+            if let Err(e) = shutdown_signal(aliveness_for_shutdown.clone()).await {
+                tracing::error!(error = %e, "Shutdown signal handler failed");
+                aliveness_for_shutdown.set_ready(false);
+                aliveness_for_shutdown.set_alive(false);
+            }
+        })
         .await
-        .expect("Server error");
+        .map_err(|e| {
+            tracing::error!(error = %e, "Server error");
+            e
+        })?;
 
     // Flush and export any remaining spans buffered by the batch processor.
     if let Err(e) = tracer_provider.shutdown() {
         tracing::warn!(error = %e, "OpenTelemetry tracer provider shutdown error");
     }
+
+    Ok(())
 }
 
 fn build_router(state: AppState) -> Router {
@@ -186,32 +204,35 @@ fn build_router(state: AppState) -> Router {
         )
 }
 
-async fn shutdown_signal(aliveness: AppAliveness) {
+async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
-            .expect("Failed to install Ctrl+C handler");
+            .context("Failed to install Ctrl+C handler")?;
+        Ok::<(), anyhow::Error>(())
     };
 
     #[cfg(unix)]
     let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("Failed to install SIGTERM handler")
-            .recv()
-            .await;
+        let mut sigterm =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .context("Failed to install SIGTERM handler")?;
+        sigterm.recv().await;
+        Ok::<(), anyhow::Error>(())
     };
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
+    let terminate = std::future::pending::<Result<()>>();
 
     tokio::select! {
-        () = ctrl_c => {},
-        () = terminate => {},
+        result = ctrl_c => result?,
+        result = terminate => result?,
     }
 
     info!("Shutdown signal received, stopping server...");
     aliveness.set_ready(false);
     aliveness.set_alive(false);
+    Ok(())
 }
 
 #[cfg(test)]
