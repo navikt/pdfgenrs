@@ -20,10 +20,10 @@ typst-html = "0.14.2"
 typst-pdf = "0.14.2"
 typst-library = "0.14.2"
 typst-syntax = "0.14.2"
-tracing = "0.1"
+tracing = "0.1.0"
 tracing-subscriber = { version = "0.3.0", features = ["env-filter", "fmt", "tracing-log"] }
-tracing-opentelemetry = "0.32"
-tracing-log = "0.2"
+tracing-opentelemetry = "0.32.0"
+tracing-log = "0.2.0"
 opentelemetry = { version = "0.31.0", features = ["trace"] }
 opentelemetry-otlp = { version = "0.31.0", features = ["grpc-tonic", "trace"] }
 opentelemetry_sdk = { version = "0.31.0", features = ["trace", "rt-tokio"] }
