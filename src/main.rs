@@ -23,7 +23,7 @@ use state::AppAliveness;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
-use tracing::{info, warn, Level};
+use tracing::{info, warn};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use typst_world::Fonts;
 
@@ -214,9 +214,6 @@ fn build_router(state: AppState) -> Router {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(make_otel_span)
-                .on_response(
-                    tower_http::trace::DefaultOnResponse::new().level(Level::INFO),
-                ),
         )
 }
 
