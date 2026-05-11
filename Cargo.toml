@@ -2,6 +2,8 @@
 name = "pdfgenrs"
 version = "0.1.0"
 edition = "2021"
+description = "Libary written in Rust used to create PDFs through an API"
+license = "MIT"
 
 [[bin]]
 name = "pdfgenrs"
