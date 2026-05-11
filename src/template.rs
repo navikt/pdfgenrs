@@ -1,8 +1,39 @@
 use anyhow::Context;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LoadErrorKind {
+    WalkDir,
+    InvalidPath,
+    ReadFile,
+    InvalidJson,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoadDiagnostic {
+    pub path: PathBuf,
+    pub kind: LoadErrorKind,
+    pub message: String,
+}
+
+#[derive(Debug, Default)]
+pub struct TestDataLoadResult {
+    pub data: HashMap<(String, String), Value>,
+    pub diagnostics: Vec<LoadDiagnostic>,
+}
+
+impl TestDataLoadResult {
+    pub fn error_summary(&self) -> HashMap<LoadErrorKind, usize> {
+        let mut summary = HashMap::new();
+        for diagnostic in &self.diagnostics {
+            *summary.entry(diagnostic.kind.clone()).or_insert(0) += 1;
+        }
+        summary
+    }
+}
 
 /// Recursively loads all `*.typ` template files from `templates_dir`.
 ///
@@ -15,11 +46,8 @@ use walkdir::WalkDir;
 pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<String, String>> {
     let mut templates = HashMap::new();
 
-    for entry in WalkDir::new(templates_dir)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(Result::ok)
-    {
+    for entry in WalkDir::new(templates_dir).follow_links(true).into_iter() {
+        let entry = entry.context("Failed to read template directory entry")?;
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
@@ -47,43 +75,102 @@ pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<S
 /// The returned map is keyed by `(app_name, template_name)` tuples where
 /// `template_name` has the `.json` extension removed.
 ///
-/// Files that cannot be read or contain invalid JSON are silently ignored.
-pub fn load_test_data(data_dir: &Path) -> HashMap<(String, String), Value> {
-    let mut data = HashMap::new();
+/// Files that fail to load are returned as structured diagnostics.
+pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
+    let mut result = TestDataLoadResult::default();
 
-    for entry in WalkDir::new(data_dir)
-        .min_depth(2)
-        .max_depth(2)
-        .into_iter()
-        .filter_map(Result::ok)
-    {
-        let path = entry.path();
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext == "json" {
-                    if let (Ok(relative), Ok(content)) =
-                        (path.strip_prefix(data_dir), std::fs::read_to_string(path))
-                    {
-                        if let Ok(value) = serde_json::from_str::<Value>(&content) {
-                            let parts: Vec<&str> = relative
-                                .components()
-                                .map(|c| c.as_os_str().to_str().unwrap_or(""))
-                                .collect();
-                            if parts.len() == 2 {
-                                let app = parts[0].to_string();
-                                let template = Path::new(parts[1])
-                                    .with_extension("")
-                                    .to_string_lossy()
-                                    .to_string();
-                                data.insert((app, template), value);
-                            }
-                        }
-                    }
-                }
+    for entry in WalkDir::new(data_dir).min_depth(2).max_depth(2).into_iter() {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => {
+                result.diagnostics.push(LoadDiagnostic {
+                    path: error.path().unwrap_or(data_dir).to_path_buf(),
+                    kind: LoadErrorKind::WalkDir,
+                    message: error.to_string(),
+                });
+                continue;
             }
+        };
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
         }
+        if path.extension().map_or(true, |ext| ext != "json") {
+            continue;
+        }
+
+        let relative = match path.strip_prefix(data_dir) {
+            Ok(relative) => relative,
+            Err(error) => {
+                result.diagnostics.push(LoadDiagnostic {
+                    path: path.to_path_buf(),
+                    kind: LoadErrorKind::InvalidPath,
+                    message: error.to_string(),
+                });
+                continue;
+            }
+        };
+
+        let app_name = match relative
+            .parent()
+            .and_then(Path::file_name)
+            .and_then(|part| part.to_str())
+        {
+            Some(app_name) => app_name,
+            None => {
+                result.diagnostics.push(LoadDiagnostic {
+                    path: path.to_path_buf(),
+                    kind: LoadErrorKind::InvalidPath,
+                    message:
+                        "Expected file path format '<app_name>/<template_name>.json'".to_string(),
+                });
+                continue;
+            }
+        };
+
+        let template_name = match relative.file_stem().and_then(|part| part.to_str()) {
+            Some(template_name) => template_name,
+            None => {
+                result.diagnostics.push(LoadDiagnostic {
+                    path: path.to_path_buf(),
+                    kind: LoadErrorKind::InvalidPath,
+                    message: "Template file name is missing or not valid UTF-8".to_string(),
+                });
+                continue;
+            }
+        };
+
+        let content = match std::fs::read_to_string(path) {
+            Ok(content) => content,
+            Err(error) => {
+                result.diagnostics.push(LoadDiagnostic {
+                    path: path.to_path_buf(),
+                    kind: LoadErrorKind::ReadFile,
+                    message: error.to_string(),
+                });
+                continue;
+            }
+        };
+
+        let value = match serde_json::from_str::<Value>(&content) {
+            Ok(value) => value,
+            Err(error) => {
+                result.diagnostics.push(LoadDiagnostic {
+                    path: path.to_path_buf(),
+                    kind: LoadErrorKind::InvalidJson,
+                    message: error.to_string(),
+                });
+                continue;
+            }
+        };
+
+        result.data.insert(
+            (app_name.to_string(), template_name.to_string()),
+            value,
+        );
     }
-    data
+
+    result
 }
 
 #[cfg(test)]
@@ -163,26 +250,32 @@ mod tests {
         fs::create_dir_all(&app_dir).unwrap();
         fs::write(app_dir.join("mytemplate.json"), r#"{"key": "value"}"#).unwrap();
 
-        let data = load_test_data(dir.path());
+        let result = load_test_data(dir.path());
 
-        assert_eq!(data.len(), 1);
+        assert_eq!(result.data.len(), 1);
+        assert!(result.diagnostics.is_empty());
         let key = ("myapp".to_string(), "mytemplate".to_string());
-        assert!(data.contains_key(&key));
-        assert_eq!(data[&key]["key"], "value");
+        assert!(result.data.contains_key(&key));
+        assert_eq!(result.data[&key]["key"], "value");
     }
 
     #[test]
-    fn test_load_test_data_ignores_invalid_json() {
+    fn test_load_test_data_reports_invalid_json() {
         let dir = TempDir::new().unwrap();
         let app_dir = dir.path().join("myapp");
         fs::create_dir_all(&app_dir).unwrap();
         fs::write(app_dir.join("valid.json"), r#"{"key": "value"}"#).unwrap();
         fs::write(app_dir.join("invalid.json"), "not valid json").unwrap();
 
-        let data = load_test_data(dir.path());
+        let result = load_test_data(dir.path());
 
-        assert_eq!(data.len(), 1);
-        assert!(data.contains_key(&("myapp".to_string(), "valid".to_string())));
+        assert_eq!(result.data.len(), 1);
+        assert!(result.data.contains_key(&("myapp".to_string(), "valid".to_string())));
+        assert_eq!(result.diagnostics.len(), 1);
+        assert_eq!(result.diagnostics[0].kind, LoadErrorKind::InvalidJson);
+
+        let summary = result.error_summary();
+        assert_eq!(summary.get(&LoadErrorKind::InvalidJson), Some(&1));
     }
 
     #[test]
@@ -193,10 +286,13 @@ mod tests {
         fs::write(app_dir.join("template.json"), r#"{"a": 1}"#).unwrap();
         fs::write(app_dir.join("template.typ"), "typst").unwrap();
 
-        let data = load_test_data(dir.path());
+        let result = load_test_data(dir.path());
 
-        assert_eq!(data.len(), 1);
-        assert!(data.contains_key(&("myapp".to_string(), "template".to_string())));
+        assert_eq!(result.data.len(), 1);
+        assert!(result.diagnostics.is_empty());
+        assert!(result
+            .data
+            .contains_key(&("myapp".to_string(), "template".to_string())));
     }
 
     #[test]
@@ -207,17 +303,19 @@ mod tests {
         fs::create_dir_all(&deep).unwrap();
         fs::write(deep.join("deep.json"), r#"{"a": 1}"#).unwrap();
 
-        let data = load_test_data(dir.path());
+        let result = load_test_data(dir.path());
 
-        assert!(data.is_empty());
+        assert!(result.data.is_empty());
+        assert!(result.diagnostics.is_empty());
     }
 
     #[test]
     fn test_load_test_data_empty_dir() {
         let dir = TempDir::new().unwrap();
 
-        let data = load_test_data(dir.path());
+        let result = load_test_data(dir.path());
 
-        assert!(data.is_empty());
+        assert!(result.data.is_empty());
+        assert!(result.diagnostics.is_empty());
     }
 }
