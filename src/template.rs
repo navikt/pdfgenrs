@@ -108,7 +108,7 @@ pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
         if !path.is_file() {
             continue;
         }
-        if path.extension().map_or(true, |ext| ext != "json") {
+        if path.extension().is_none_or(|ext| ext != "json") {
             continue;
         }
 
