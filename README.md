@@ -78,6 +78,11 @@ Format the code
 cargo fmt
 ```
 
+### Lint
+Run linter
+```bash script
+cargo clippy --all-targets -- -D warnings
+```
 ### Build
 Build the code without running it
 ```bash script
