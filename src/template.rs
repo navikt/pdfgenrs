@@ -345,4 +345,34 @@ mod tests {
         assert!(result.diagnostics.is_empty());
         Ok(())
     }
+
+    #[test]
+    fn test_error_summary_groups_multiple_error_kinds() {
+        let result = TestDataLoadResult {
+            data: HashMap::new(),
+            diagnostics: vec![
+                LoadDiagnostic {
+                    path: PathBuf::from("data/app/invalid.json"),
+                    kind: LoadErrorKind::InvalidJson,
+                    message: "invalid json".to_string(),
+                },
+                LoadDiagnostic {
+                    path: PathBuf::from("data/app/missing.json"),
+                    kind: LoadErrorKind::ReadFile,
+                    message: "permission denied".to_string(),
+                },
+                LoadDiagnostic {
+                    path: PathBuf::from("data/app/another-invalid.json"),
+                    kind: LoadErrorKind::InvalidJson,
+                    message: "invalid json".to_string(),
+                },
+            ],
+        };
+
+        let summary = result.error_summary();
+
+        assert_eq!(summary.get(&LoadErrorKind::InvalidJson), Some(&2));
+        assert_eq!(summary.get(&LoadErrorKind::ReadFile), Some(&1));
+        assert_eq!(summary.len(), 2);
+    }
 }
