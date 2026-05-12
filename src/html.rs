@@ -49,58 +49,53 @@ mod tests {
     }
 
     #[test]
-    fn typst_to_html_simple_template_returns_html_string() {
+    fn typst_to_html_simple_template_returns_html_string() -> anyhow::Result<()> {
         let source = "Hello, world!\n";
         let data = serde_json::json!({});
-        let result = typst_to_html(
+        let html = typst_to_html(
             source,
             &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
-        );
-        assert!(result.is_ok(), "typst_to_html failed: {:?}", result.err());
-        let html = result.unwrap();
+        )?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
             "Expected HTML document"
         );
         assert!(html.contains("Hello, world!"));
+        Ok(())
     }
 
     #[test]
-    fn typst_to_html_with_json_data_returns_html_with_data() {
+    fn typst_to_html_with_json_data_returns_html_with_data() -> anyhow::Result<()> {
         let source = r#"#let data = json("/data.json")
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let result = typst_to_html(
+        let html = typst_to_html(
             source,
             &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
-        );
-        assert!(
-            result.is_ok(),
-            "typst_to_html with JSON data failed: {:?}",
-            result.err()
-        );
-        let html = result.unwrap();
+        )?;
         assert!(html.contains("Test User"));
+        Ok(())
     }
 
     #[test]
-    fn typst_to_html_invalid_source_returns_error() {
+    fn typst_to_html_invalid_source_returns_error() -> anyhow::Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_html(
             source,
             &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
+            Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
         );
         assert!(
             result.is_err(),
             "Expected an error for invalid Typst source"
         );
+        Ok(())
     }
 }
