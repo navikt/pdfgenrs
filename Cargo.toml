@@ -36,3 +36,10 @@ ironpress = "1.4.3"
 axum-test = "20.0.0"
 reqwest = { version = "0.13.3", features = ["json"] }
 tempfile = "3.27.0"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
