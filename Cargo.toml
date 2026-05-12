@@ -39,7 +39,3 @@ tempfile = "3.27.0"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
-
-[lints.clippy]
-unwrap_used = "warn"
-expect_used = "warn"
