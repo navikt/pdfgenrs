@@ -51,10 +51,10 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
+    use super::nais_router;
     use crate::config::Config;
     use crate::state::AppAliveness;
     use crate::{typst_world, AppState};
-    use super::nais_router;
 
     fn test_state(alive: bool, ready: bool) -> AppState {
         let aliveness = AppAliveness::new();

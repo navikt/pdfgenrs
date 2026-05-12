@@ -33,21 +33,15 @@ impl Default for Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(8080),
-            root_dir: PathBuf::from(
-                env::var("ROOT_DIR").unwrap_or_else(|_| ".".to_string()),
-            ),
+            root_dir: PathBuf::from(env::var("ROOT_DIR").unwrap_or_else(|_| ".".to_string())),
             templates_dir: PathBuf::from(
                 env::var("TEMPLATES_DIR").unwrap_or_else(|_| "templates".to_string()),
             ),
             resources_dir: PathBuf::from(
                 env::var("RESOURCES_DIR").unwrap_or_else(|_| "resources".to_string()),
             ),
-            data_dir: PathBuf::from(
-                env::var("DATA_DIR").unwrap_or_else(|_| "data".to_string()),
-            ),
-            fonts_dir: PathBuf::from(
-                env::var("FONTS_DIR").unwrap_or_else(|_| "fonts".to_string()),
-            ),
+            data_dir: PathBuf::from(env::var("DATA_DIR").unwrap_or_else(|_| "data".to_string())),
+            fonts_dir: PathBuf::from(env::var("FONTS_DIR").unwrap_or_else(|_| "fonts".to_string())),
             dev_mode: env::var("DEV_MODE")
                 .map(|v| v.eq_ignore_ascii_case("true"))
                 .unwrap_or(false),

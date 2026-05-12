@@ -11,13 +11,13 @@ mod typst_world;
 mod performance_test;
 
 use anyhow::{Context, Result};
+use axum::http::{HeaderMap, Request};
 use axum::{
     body::Body,
     routing::{get, post},
     Router,
 };
 use opentelemetry::{global, propagation::Extractor};
-use axum::http::{HeaderMap, Request};
 use serde_json::Value;
 use state::AppAliveness;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
@@ -211,10 +211,7 @@ fn build_router(state: AppState) -> Router {
         // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
         // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
         // spans into OpenTelemetry spans forwarded to the OTLP exporter.
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(make_otel_span)
-        )
+        .layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
@@ -227,9 +224,8 @@ async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
 
     #[cfg(unix)]
     let terminate = async {
-        let mut sigterm =
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .context("Failed to install SIGTERM handler")?;
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .context("Failed to install SIGTERM handler")?;
         sigterm.recv().await;
         Ok::<(), anyhow::Error>(())
     };

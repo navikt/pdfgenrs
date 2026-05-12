@@ -6,8 +6,8 @@ use anyhow::{Context, Result};
 use chrono::Datelike;
 use chrono::Timelike;
 use typst::foundations::Bytes;
-use typst::{Feature, Features, Library, LibraryExt};
 use typst::utils::LazyHash;
+use typst::{Feature, Features, Library, LibraryExt};
 use typst_library::diag::{FileError, FileResult};
 use typst_library::text::{Font, FontBook};
 use typst_library::World;
@@ -58,7 +58,10 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
     }
 
     let book = FontBook::from_fonts(&fonts);
-    Ok(Fonts { fonts, book: LazyHash::new(book) })
+    Ok(Fonts {
+        fonts,
+        book: LazyHash::new(book),
+    })
 }
 
 /// Recursively walks `dir` and appends all supported font files to `files`.
@@ -166,8 +169,8 @@ impl World for PdfgenWorld {
         }
         let vpath = id.vpath();
         let physical = self.root.join(vpath.as_rootless_path());
-        let text = std::fs::read_to_string(&physical)
-            .map_err(|e| FileError::from_io(e, &physical))?;
+        let text =
+            std::fs::read_to_string(&physical).map_err(|e| FileError::from_io(e, &physical))?;
         Ok(Source::new(id, text))
     }
 
@@ -177,8 +180,7 @@ impl World for PdfgenWorld {
         }
         let vpath = id.vpath();
         let physical = self.root.join(vpath.as_rootless_path());
-        let bytes = std::fs::read(&physical)
-            .map_err(|e| FileError::from_io(e, &physical))?;
+        let bytes = std::fs::read(&physical).map_err(|e| FileError::from_io(e, &physical))?;
         Ok(Bytes::new(bytes))
     }
 
@@ -218,24 +220,30 @@ pub fn compile_to_pdf(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
-    let world = PdfgenWorld::new(fonts, root, main_path, main_source, virtual_files, Features::default());
+    let world = PdfgenWorld::new(
+        fonts,
+        root,
+        main_path,
+        main_source,
+        virtual_files,
+        Features::default(),
+    );
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
     comemo::evict(15);
 
-    let document = result
-        .output
-        .map_err(|errors| {
-            let msgs: Vec<String> = errors
-                .iter()
-                .map(|e| e.message.to_string())
-                .collect();
-            anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
-        })?;
+    let document = result.output.map_err(|errors| {
+        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+        anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
+    })?;
 
     if !result.warnings.is_empty() {
-        let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
+        let warns: Vec<String> = result
+            .warnings
+            .iter()
+            .map(|w| w.message.to_string())
+            .collect();
         tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
 
@@ -248,11 +256,10 @@ pub fn compile_to_pdf(
         timestamp,
         ..typst_pdf::PdfOptions::default()
     };
-    let pdf_bytes = typst_pdf::pdf(&document, &options)
-        .map_err(|errors| {
-            let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-            anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
-        })?;
+    let pdf_bytes = typst_pdf::pdf(&document, &options).map_err(|errors| {
+        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+        anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
+    })?;
 
     Ok(pdf_bytes)
 }
@@ -284,26 +291,24 @@ pub fn compile_to_html(
 
     comemo::evict(15);
 
-    let document = result
-        .output
-        .map_err(|errors| {
-            let msgs: Vec<String> = errors
-                .iter()
-                .map(|e| e.message.to_string())
-                .collect();
-            anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
-        })?;
+    let document = result.output.map_err(|errors| {
+        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+        anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
+    })?;
 
     if !result.warnings.is_empty() {
-        let warns: Vec<String> = result.warnings.iter().map(|w| w.message.to_string()).collect();
+        let warns: Vec<String> = result
+            .warnings
+            .iter()
+            .map(|w| w.message.to_string())
+            .collect();
         tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
 
-    typst_html::html(&document)
-        .map_err(|errors| {
-            let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-            anyhow::anyhow!("Typst HTML export failed: {}", msgs.join("; "))
-        })
+    typst_html::html(&document).map_err(|errors| {
+        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+        anyhow::anyhow!("Typst HTML export failed: {}", msgs.join("; "))
+    })
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
@@ -343,7 +348,8 @@ mod tests {
 
     #[test]
     fn fonts_load_from_directory() {
-        let fonts = load_fonts(&root_dir().join("fonts")).expect("fonts should load from directory");
+        let fonts =
+            load_fonts(&root_dir().join("fonts")).expect("fonts should load from directory");
         assert!(
             !fonts.fonts.is_empty(),
             "Expected at least one font face loaded from fonts directory"
@@ -366,7 +372,11 @@ Hello, world!
             source.to_string(),
             HashMap::new(),
         );
-        assert!(result1.is_ok(), "First compilation failed: {:?}", result1.err());
+        assert!(
+            result1.is_ok(),
+            "First compilation failed: {:?}",
+            result1.err()
+        );
         let pdf1 = result1.unwrap();
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
@@ -377,7 +387,11 @@ Hello, world!
             source.to_string(),
             HashMap::new(),
         );
-        assert!(result2.is_ok(), "Second compilation failed: {:?}", result2.err());
+        assert!(
+            result2.is_ok(),
+            "Second compilation failed: {:?}",
+            result2.err()
+        );
         let pdf2 = result2.unwrap();
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
     }
@@ -396,7 +410,10 @@ Hello, world!
             "Compilation after full cache eviction failed: {:?}",
             result.err()
         );
-        assert!(is_pdf(&result.unwrap()), "Result after cache eviction is not a valid PDF");
+        assert!(
+            is_pdf(&result.unwrap()),
+            "Result after cache eviction is not a valid PDF"
+        );
     }
 
     #[test]
@@ -407,8 +424,14 @@ Hello, world!
 
         for i in 0..10 {
             let source = format!("#set page(margin: 1cm)\nWarmup {i}.");
-            compile_to_pdf(Arc::clone(&fonts), &root, "/main.typ", source, HashMap::new())
-                .expect("warmup compilation should succeed");
+            compile_to_pdf(
+                Arc::clone(&fonts),
+                &root,
+                "/main.typ",
+                source,
+                HashMap::new(),
+            )
+            .expect("warmup compilation should succeed");
         }
 
         let Some(rss_before) = rss_kb() else {
@@ -417,8 +440,13 @@ Hello, world!
 
         for i in 0..200 {
             let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
-            let result =
-                compile_to_pdf(Arc::clone(&fonts), &root, "/main.typ", source, HashMap::new());
+            let result = compile_to_pdf(
+                Arc::clone(&fonts),
+                &root,
+                "/main.typ",
+                source,
+                HashMap::new(),
+            );
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }
 
