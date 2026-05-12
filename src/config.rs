@@ -95,7 +95,9 @@ mod tests {
 
     #[test]
     fn default_uses_fallback_values_when_env_is_missing() {
-        let _guard = env_lock().lock().unwrap();
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let _env = EnvGuard::set(&[
             ("SERVER_PORT", None),
             ("ROOT_DIR", None),
@@ -119,7 +121,9 @@ mod tests {
 
     #[test]
     fn default_reads_values_from_env() {
-        let _guard = env_lock().lock().unwrap();
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let _env = EnvGuard::set(&[
             ("SERVER_PORT", Some("9090")),
             ("ROOT_DIR", Some("/tmp/root")),
@@ -143,7 +147,9 @@ mod tests {
 
     #[test]
     fn default_falls_back_to_default_port_for_invalid_env_value() {
-        let _guard = env_lock().lock().unwrap();
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let _env = EnvGuard::set(&[("SERVER_PORT", Some("not-a-port"))]);
 
         let config = Config::default();

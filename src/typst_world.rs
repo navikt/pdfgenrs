@@ -327,7 +327,11 @@ fn build_timestamp() -> Option<typst_pdf::Timestamp> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::path::PathBuf;
+    use tempfile::TempDir;
+    use typst_library::World;
+    use typst_syntax::VirtualPath;
 
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -399,6 +403,81 @@ Hello, world!
             is_pdf(&pdf),
             "Result after cache eviction is not a valid PDF"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn load_fonts_returns_error_for_empty_directory() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+
+        let result = load_fonts(dir.path());
+
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn is_supported_font_file_accepts_uppercase_extensions() {
+        assert!(is_supported_font_file(Path::new("font.TTF")));
+        assert!(is_supported_font_file(Path::new("font.OTF")));
+        assert!(is_supported_font_file(Path::new("font.TTC")));
+        assert!(!is_supported_font_file(Path::new("font.txt")));
+    }
+
+    #[test]
+    fn source_returns_invalid_utf8_for_virtual_non_utf8_file() -> anyhow::Result<()> {
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            &root_dir(),
+            "/main.typ",
+            "Hello".to_string(),
+            HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
+            Features::default(),
+        );
+
+        let file_id = FileId::new(None, VirtualPath::new("/data.json"));
+        let result = world.source(file_id);
+
+        assert!(matches!(result, Err(FileError::InvalidUtf8)));
+        Ok(())
+    }
+
+    #[test]
+    fn source_reads_physical_files_from_root() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+        fs::write(dir.path().join("snippet.typ"), "File system content")?;
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            dir.path(),
+            "/main.typ",
+            "Main".to_string(),
+            HashMap::new(),
+            Features::default(),
+        );
+
+        let file_id = FileId::new(None, VirtualPath::new("/snippet.typ"));
+        let source = world.source(file_id)?;
+
+        assert_eq!(source.text(), "File system content");
+        Ok(())
+    }
+
+    #[test]
+    fn today_supports_offset_argument() -> anyhow::Result<()> {
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            &root_dir(),
+            "/main.typ",
+            "Hello".to_string(),
+            HashMap::new(),
+            Features::default(),
+        );
+
+        assert!(world.today(None).is_some());
+        assert!(world.today(Some(2)).is_some());
         Ok(())
     }
 
