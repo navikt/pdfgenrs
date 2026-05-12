@@ -213,9 +213,9 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(
-                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))?,
-            ),
+            fonts: Arc::new(typst_world::load_fonts(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )?),
         })
     }
 
@@ -358,13 +358,11 @@ mod tests {
         let response = server
             .post("/image/myapp")
             .content_type("image/png")
-            .bytes(Bytes::from(
-                std::fs::read(
-                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("resources")
-                        .join("NAVLogoRed.png"),
-                )?,
-            ))
+            .bytes(Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("NAVLogoRed.png"),
+            )?))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);

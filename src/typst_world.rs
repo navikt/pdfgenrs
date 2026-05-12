@@ -395,7 +395,10 @@ Hello, world!
         comemo::evict(0);
 
         let pdf = compile_to_pdf(fonts, &root, "/main.typ", source, HashMap::new())?;
-        assert!(is_pdf(&pdf), "Result after cache eviction is not a valid PDF");
+        assert!(
+            is_pdf(&pdf),
+            "Result after cache eviction is not a valid PDF"
+        );
         Ok(())
     }
 

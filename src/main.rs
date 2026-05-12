@@ -201,17 +201,24 @@ fn build_router(state: AppState) -> Router {
         html_router = html_router.route("/{app_name}/{template}", get(routes::html::get_html));
     }
 
-    Router::new()
+    let app = Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router())
-        .with_state(state)
-        // Creates a tracing::Span for every HTTP request.  The custom make_span_with function
-        // also extracts W3C traceparent/baggage headers and sets the remote span as the OTel
-        // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
-        // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
-        // spans into OpenTelemetry spans forwarded to the OTLP exporter.
-        .layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
+        .with_state(state);
+
+    // Creates a tracing::Span for every HTTP request.  The custom make_span_with function
+    // also extracts W3C traceparent/baggage headers and sets the remote span as the OTel
+    // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
+    // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
+    // spans into OpenTelemetry spans forwarded to the OTLP exporter.
+    //
+    // The layer is excluded during tests to avoid OpenTelemetry side-effects that make
+    // tests non-deterministic (the global propagator state is not initialised in tests).
+    #[cfg(not(test))]
+    let app = app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span));
+
+    app
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
@@ -270,9 +277,9 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(
-                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))?,
-            ),
+            fonts: Arc::new(typst_world::load_fonts(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )?),
         })
     }
 
@@ -327,13 +334,11 @@ mod tests {
         let response = server
             .post("/api/v1/genpdf/image/myapp")
             .content_type("image/png")
-            .bytes(axum::body::Bytes::from(
-                std::fs::read(
-                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("resources")
-                        .join("NAVLogoRed.png"),
-                )?,
-            ))
+            .bytes(axum::body::Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("NAVLogoRed.png"),
+            )?))
             .await;
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
