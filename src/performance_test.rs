@@ -5,6 +5,7 @@ mod tests {
 
     use axum_test::TestServer;
     use tokio::task::JoinSet;
+    use tracing::info;
 
     use crate::{build_router, config, state, template, typst_world, AppState};
     use tokio::sync::RwLock;
@@ -75,9 +76,11 @@ mod tests {
                 task_result??;
             }
 
-            println!(
-                "Multi-thread performance testing {template_name} for {app_name} took {}ms",
-                start.elapsed().as_millis()
+            info!(
+                template = %template_name,
+                app = %app_name,
+                duration_ms = start.elapsed().as_millis(),
+                "Multi-thread performance test completed"
             );
         }
 
@@ -117,9 +120,11 @@ mod tests {
                 assert!(!response.as_bytes().is_empty());
             }
 
-            println!(
-                "Single-thread performance testing {template_name} for {app_name} took {}ms",
-                start.elapsed().as_millis()
+            info!(
+                template = %template_name,
+                app = %app_name,
+                duration_ms = start.elapsed().as_millis(),
+                "Single-thread performance test completed"
             );
         }
 
