@@ -11,19 +11,24 @@ mod typst_world;
 mod performance_test;
 
 use anyhow::{Context, Result};
+#[cfg(not(test))]
+use axum::body::Body;
+#[cfg(not(test))]
 use axum::http::{HeaderMap, Request};
 use axum::{
-    body::Body,
     routing::{get, post},
     Router,
 };
+#[cfg(not(test))]
 use opentelemetry::{global, propagation::Extractor};
 use serde_json::Value;
 use state::AppAliveness;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
+#[cfg(not(test))]
 use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
+#[cfg(not(test))]
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use typst_world::Fonts;
 
@@ -36,8 +41,10 @@ pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
 /// Implements [`opentelemetry::propagation::Extractor`] for an Axum [`HeaderMap`] so that
 /// the global W3C TraceContext + Baggage propagators can extract an incoming parent trace context
 /// from request headers.
+#[cfg(not(test))]
 struct HeaderExtractor<'a>(&'a HeaderMap);
 
+#[cfg(not(test))]
 impl<'a> Extractor for HeaderExtractor<'a> {
     fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).and_then(|v| v.to_str().ok())
@@ -54,6 +61,7 @@ impl<'a> Extractor for HeaderExtractor<'a> {
 /// [`OpenTelemetrySpanExt::set_parent`] here (synchronously, before any `.await`) avoids the
 /// `!Send` constraint of [`opentelemetry::ContextGuard`] and correctly parents the new span to
 /// the caller's distributed trace when a `traceparent` header is present.
+#[cfg(not(test))]
 fn make_otel_span(request: &Request<Body>) -> tracing::Span {
     let span = tracing::info_span!(
         "HTTP request",

@@ -119,8 +119,8 @@ mod tests {
         templates: HashMap<String, String>,
         data: HashMap<(String, String), serde_json::Value>,
         dev_mode: bool,
-    ) -> AppState {
-        AppState {
+    ) -> anyhow::Result<AppState> {
+        Ok(AppState {
             templates: Arc::new(templates),
             data: Arc::new(RwLock::new(data)),
             aliveness: state::AppAliveness::new(),
@@ -133,11 +133,10 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(
-                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))
-                    .expect("test fonts should load"),
-            ),
-        }
+            fonts: Arc::new(typst_world::load_fonts(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )?),
+        })
     }
 
     fn make_router(state: AppState, dev_mode: bool) -> Router {
@@ -153,11 +152,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_html_returns_html_for_valid_template() {
+    async fn post_html_returns_html_for_valid_template() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), false),
+            make_state(templates, HashMap::new(), false)?,
             false,
         ));
 
@@ -170,17 +169,17 @@ mod tests {
         assert!(response
             .headers()
             .get("content-type")
-            .unwrap()
-            .to_str()
-            .unwrap()
+            .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+            .to_str()?
             .starts_with("text/html"));
         assert!(is_html(response.text().as_str()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_html_returns_404_when_template_missing() {
+    async fn post_html_returns_404_when_template_missing() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false),
+            make_state(HashMap::new(), HashMap::new(), false)?,
             false,
         ));
 
@@ -190,14 +189,15 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_html_returns_500_for_invalid_template() {
+    async fn post_html_returns_500_for_invalid_template() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), INVALID_TEMPLATE.to_string());
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), false),
+            make_state(templates, HashMap::new(), false)?,
             false,
         ));
 
@@ -207,10 +207,11 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_html_returns_html_when_template_and_data_exist() {
+    async fn get_html_returns_html_when_template_and_data_exist() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
         let mut data = HashMap::new();
@@ -218,7 +219,7 @@ mod tests {
             ("myapp".to_string(), "mytemplate".to_string()),
             serde_json::json!({}),
         );
-        let server = TestServer::new(make_router(make_state(templates, data, true), true));
+        let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
 
         let response = server.get("/myapp/mytemplate").await;
 
@@ -226,38 +227,40 @@ mod tests {
         assert!(response
             .headers()
             .get("content-type")
-            .unwrap()
-            .to_str()
-            .unwrap()
+            .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+            .to_str()?
             .starts_with("text/html"));
         assert!(is_html(response.text().as_str()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_html_returns_404_when_data_missing() {
+    async fn get_html_returns_404_when_data_missing() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), true),
+            make_state(templates, HashMap::new(), true)?,
             true,
         ));
 
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_html_returns_404_when_template_missing() {
+    async fn get_html_returns_404_when_template_missing() -> anyhow::Result<()> {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
             serde_json::json!({}),
         );
-        let server = TestServer::new(make_router(make_state(HashMap::new(), data, true), true));
+        let server = TestServer::new(make_router(make_state(HashMap::new(), data, true)?, true));
 
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 }
