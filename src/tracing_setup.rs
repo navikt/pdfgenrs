@@ -258,8 +258,9 @@ mod tests {
     }
 
     #[test]
-    fn nais_otlp_exporter_is_none_without_endpoint() {
-        let exporter = nais_otlp_exporter(None).expect("exporter setup should not fail");
+    fn nais_otlp_exporter_is_none_without_endpoint() -> anyhow::Result<()> {
+        let exporter = nais_otlp_exporter(None)?;
         assert!(exporter.is_none());
+        Ok(())
     }
 }

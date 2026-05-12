@@ -347,79 +347,65 @@ mod tests {
     }
 
     #[test]
-    fn fonts_load_from_directory() {
-        let fonts =
-            load_fonts(&root_dir().join("fonts")).expect("fonts should load from directory");
+    fn fonts_load_from_directory() -> anyhow::Result<()> {
+        let fonts = load_fonts(&root_dir().join("fonts"))?;
         assert!(
             !fonts.fonts.is_empty(),
             "Expected at least one font face loaded from fonts directory"
         );
+        Ok(())
     }
 
     #[test]
-    fn fonts_clone_can_be_reused_across_multiple_compilations() {
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts")).expect("fonts should load"));
+    fn fonts_clone_can_be_reused_across_multiple_compilations() -> anyhow::Result<()> {
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
 
         let source = r"#set document(date: auto)
 #set page(margin: 1cm)
 Hello, world!
 ";
 
-        let result1 = compile_to_pdf(
+        let pdf1 = compile_to_pdf(
             Arc::clone(&fonts),
             &root_dir(),
             "/main.typ",
             source.to_string(),
             HashMap::new(),
-        );
-        assert!(
-            result1.is_ok(),
-            "First compilation failed: {:?}",
-            result1.err()
-        );
-        let pdf1 = result1.unwrap();
+        )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
-        let result2 = compile_to_pdf(
+        let pdf2 = compile_to_pdf(
             Arc::clone(&fonts),
             &root_dir(),
             "/main.typ",
             source.to_string(),
             HashMap::new(),
-        );
-        assert!(
-            result2.is_ok(),
-            "Second compilation failed: {:?}",
-            result2.err()
-        );
-        let pdf2 = result2.unwrap();
+        )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
+
+        Ok(())
     }
 
     #[test]
-    fn compilation_succeeds_after_full_cache_eviction() {
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts")).expect("fonts should load"));
+    fn compilation_succeeds_after_full_cache_eviction() -> anyhow::Result<()> {
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
         let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
 
         comemo::evict(0);
 
-        let result = compile_to_pdf(fonts, &root, "/main.typ", source, HashMap::new());
+        let pdf = compile_to_pdf(fonts, &root, "/main.typ", source, HashMap::new())?;
         assert!(
-            result.is_ok(),
-            "Compilation after full cache eviction failed: {:?}",
-            result.err()
-        );
-        assert!(
-            is_pdf(&result.unwrap()),
+            is_pdf(&pdf),
             "Result after cache eviction is not a valid PDF"
         );
+        Ok(())
     }
 
     #[test]
-    fn repeated_compilations_do_not_grow_memory_unboundedly() {
-        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts")).expect("fonts should load"));
+    fn repeated_compilations_do_not_grow_memory_unboundedly() -> anyhow::Result<()> {
+        let _guard = crate::memory_sensitive_test_lock().blocking_lock();
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
 
         for i in 0..10 {
@@ -430,12 +416,11 @@ Hello, world!
                 "/main.typ",
                 source,
                 HashMap::new(),
-            )
-            .expect("warmup compilation should succeed");
+            )?;
         }
 
         let Some(rss_before) = rss_kb() else {
-            return;
+            return Ok(());
         };
 
         for i in 0..200 {
@@ -458,5 +443,7 @@ Hello, world!
             "RSS grew by {growth_kb} KB after 200 compilations – possible memory leak. \
              Ensure comemo::evict() is called after each compilation in compile_to_pdf."
         );
+
+        Ok(())
     }
 }

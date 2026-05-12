@@ -28,9 +28,9 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 use typst_world::Fonts;
 
 #[cfg(test)]
-pub(crate) fn memory_sensitive_test_lock() -> &'static std::sync::Mutex<()> {
-    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
 }
 
 /// Implements [`opentelemetry::propagation::Extractor`] for an Axum [`HeaderMap`] so that
@@ -201,17 +201,24 @@ fn build_router(state: AppState) -> Router {
         html_router = html_router.route("/{app_name}/{template}", get(routes::html::get_html));
     }
 
-    Router::new()
+    let app = Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router())
-        .with_state(state)
-        // Creates a tracing::Span for every HTTP request.  The custom make_span_with function
-        // also extracts W3C traceparent/baggage headers and sets the remote span as the OTel
-        // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
-        // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
-        // spans into OpenTelemetry spans forwarded to the OTLP exporter.
-        .layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
+        .with_state(state);
+
+    // Creates a tracing::Span for every HTTP request.  The custom make_span_with function
+    // also extracts W3C traceparent/baggage headers and sets the remote span as the OTel
+    // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
+    // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
+    // spans into OpenTelemetry spans forwarded to the OTLP exporter.
+    //
+    // The layer is excluded during tests to avoid OpenTelemetry side-effects that make
+    // tests non-deterministic (the global propagator state is not initialised in tests).
+    #[cfg(not(test))]
+    let app = app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span));
+
+    app
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
@@ -256,8 +263,8 @@ mod tests {
 
     use crate::{build_router, config, state, typst_world, AppState};
 
-    fn make_state(dev_mode: bool) -> AppState {
-        AppState {
+    fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
+        Ok(AppState {
             templates: Arc::new(HashMap::new()),
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness: state::AppAliveness::new(),
@@ -270,108 +277,120 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(
-                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))
-                    .expect("test fonts should load"),
-            ),
-        }
+            fonts: Arc::new(typst_world::load_fonts(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )?),
+        })
     }
 
     #[tokio::test]
-    async fn build_router_is_alive_route_exists() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_is_alive_route_exists() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_is_ready_route_exists() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_is_ready_route_exists() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_post_pdf_returns_404_for_missing_template() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_post_pdf_returns_404_for_missing_template() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server
             .post("/api/v1/genpdf/myapp/mytemplate")
             .json(&serde_json::json!({}))
             .await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_post_pdf_from_html_returns_pdf() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_post_pdf_from_html_returns_pdf() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server
             .post("/api/v1/genpdf/html/myapp")
             .text("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>")
             .await;
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_post_pdf_from_image_returns_pdf() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_post_pdf_from_image_returns_pdf() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server
             .post("/api/v1/genpdf/image/myapp")
             .content_type("image/png")
-            .bytes(axum::body::Bytes::from(
-                std::fs::read(
-                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("resources")
-                        .join("NAVLogoRed.png"),
-                )
-                .unwrap(),
-            ))
+            .bytes(axum::body::Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("NAVLogoRed.png"),
+            )?))
             .await;
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_get_pdf_returns_405_when_dev_mode_disabled() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_get_pdf_returns_405_when_dev_mode_disabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::METHOD_NOT_ALLOWED);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_get_pdf_returns_404_when_dev_mode_enabled() {
-        let server = TestServer::new(build_router(make_state(true)));
+    async fn build_router_get_pdf_returns_404_when_dev_mode_enabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(true)?));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_post_html_returns_404_for_missing_template() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_post_html_returns_404_for_missing_template() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server
             .post("/api/v1/genhtml/myapp/mytemplate")
             .json(&serde_json::json!({}))
             .await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_get_html_returns_405_when_dev_mode_disabled() {
-        let server = TestServer::new(build_router(make_state(false)));
+    async fn build_router_get_html_returns_405_when_dev_mode_disabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
         let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::METHOD_NOT_ALLOWED);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn build_router_get_html_returns_404_when_dev_mode_enabled() {
-        let server = TestServer::new(build_router(make_state(true)));
+    async fn build_router_get_html_returns_404_when_dev_mode_enabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(true)?));
         let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 }
