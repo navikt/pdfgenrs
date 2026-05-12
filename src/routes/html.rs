@@ -109,8 +109,8 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use crate::{config, state, typst_world, AppState};
     use super::{get_html, post_html};
+    use crate::{config, state, typst_world, AppState};
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
@@ -133,13 +133,15 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
             },
-            fonts: Arc::new(typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts")).expect("test fonts should load")),
+            fonts: Arc::new(
+                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))
+                    .expect("test fonts should load"),
+            ),
         }
     }
 
     fn make_router(state: AppState, dev_mode: bool) -> Router {
-        let mut router = Router::new()
-            .route("/{app_name}/{template}", post(post_html));
+        let mut router = Router::new().route("/{app_name}/{template}", post(post_html));
         if dev_mode {
             router = router.route("/{app_name}/{template}", get(get_html));
         }
@@ -154,7 +156,10 @@ mod tests {
     async fn post_html_returns_html_for_valid_template() {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -162,16 +167,22 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(
-            response.headers().get("content-type").unwrap().to_str().unwrap()
-                .starts_with("text/html")
-        );
+        assert!(response
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("text/html"));
         assert!(is_html(response.text().as_str()));
     }
 
     #[tokio::test]
     async fn post_html_returns_404_when_template_missing() {
-        let server = TestServer::new(make_router(make_state(HashMap::new(), HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -185,7 +196,10 @@ mod tests {
     async fn post_html_returns_500_for_invalid_template() {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), INVALID_TEMPLATE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), false), false));
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false),
+            false,
+        ));
 
         let response = server
             .post("/myapp/mytemplate")
@@ -209,10 +223,13 @@ mod tests {
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(
-            response.headers().get("content-type").unwrap().to_str().unwrap()
-                .starts_with("text/html")
-        );
+        assert!(response
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("text/html"));
         assert!(is_html(response.text().as_str()));
     }
 
@@ -220,7 +237,10 @@ mod tests {
     async fn get_html_returns_404_when_data_missing() {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
-        let server = TestServer::new(make_router(make_state(templates, HashMap::new(), true), true));
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), true),
+            true,
+        ));
 
         let response = server.get("/myapp/mytemplate").await;
 

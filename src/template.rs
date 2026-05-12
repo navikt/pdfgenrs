@@ -72,8 +72,8 @@ pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<S
                         .with_extension("")
                         .to_string_lossy()
                         .replace('\\', "/");
-                    let source = std::fs::read_to_string(path)
-                        .context("Failed to read template file")?;
+                    let source =
+                        std::fs::read_to_string(path).context("Failed to read template file")?;
                     templates.insert(name, source);
                 }
             }
@@ -108,7 +108,7 @@ pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
         if !path.is_file() {
             continue;
         }
-        if path.extension().map_or(true, |ext| ext != "json") {
+        if path.extension().is_none_or(|ext| ext != "json") {
             continue;
         }
 
@@ -134,8 +134,8 @@ pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
                 result.diagnostics.push(LoadDiagnostic {
                     path: path.to_path_buf(),
                     kind: LoadErrorKind::InvalidPath,
-                    message:
-                        "Expected file path format '<app_name>/<template_name>.json'".to_string(),
+                    message: "Expected file path format '<app_name>/<template_name>.json'"
+                        .to_string(),
                 });
                 continue;
             }
@@ -177,10 +177,9 @@ pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
             }
         };
 
-        result.data.insert(
-            (app_name.to_string(), template_name.to_string()),
-            value,
-        );
+        result
+            .data
+            .insert((app_name.to_string(), template_name.to_string()), value);
     }
 
     result
@@ -213,7 +212,10 @@ mod tests {
         let templates = load_templates_from_dir(dir.path()).unwrap();
 
         assert_eq!(templates.len(), 1);
-        assert!(templates.contains_key("myapp/report"), "key should use forward slash");
+        assert!(
+            templates.contains_key("myapp/report"),
+            "key should use forward slash"
+        );
         assert_eq!(templates["myapp/report"], "Report content");
     }
 
@@ -283,7 +285,9 @@ mod tests {
         let result = load_test_data(dir.path());
 
         assert_eq!(result.data.len(), 1);
-        assert!(result.data.contains_key(&("myapp".to_string(), "valid".to_string())));
+        assert!(result
+            .data
+            .contains_key(&("myapp".to_string(), "valid".to_string())));
         assert_eq!(result.diagnostics.len(), 1);
         assert_eq!(result.diagnostics[0].kind, LoadErrorKind::InvalidJson);
 

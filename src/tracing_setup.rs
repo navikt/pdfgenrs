@@ -1,8 +1,8 @@
 use anyhow::Result;
+use opentelemetry::propagation::TextMapCompositePropagator;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
-use opentelemetry::propagation::TextMapCompositePropagator;
 use opentelemetry_sdk::{
     propagation::{BaggagePropagator, TraceContextPropagator},
     trace::Sampler,
@@ -88,16 +88,10 @@ where
         }
         impl tracing::field::Visit for FieldVisitor<'_> {
             fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-                self.map.insert(
-                    field.name().to_string(),
-                    Value::String(value.to_string()),
-                );
+                self.map
+                    .insert(field.name().to_string(), Value::String(value.to_string()));
             }
-            fn record_debug(
-                &mut self,
-                field: &tracing::field::Field,
-                value: &dyn std::fmt::Debug,
-            ) {
+            fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
                 self.map.insert(
                     field.name().to_string(),
                     Value::String(format!("{:?}", value)),
@@ -164,7 +158,8 @@ fn resolve_service_name(name: Option<&str>) -> String {
 /// Returns the `SdkTracerProvider` so the caller can call `.shutdown()` for a
 /// graceful flush before the process exits.
 pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
-    let exporter = nais_otlp_exporter(std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().as_deref())?;
+    let exporter =
+        nais_otlp_exporter(std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().as_deref())?;
     let exporter_active = exporter.is_some();
 
     let builder = opentelemetry_sdk::trace::SdkTracerProvider::builder();
@@ -202,9 +197,7 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
         Box::new(BaggagePropagator::new()),
     ]));
 
-    let fmt_layer = fmt::layer()
-        .event_format(NaisJsonFormat)
-        .with_ansi(false);
+    let fmt_layer = fmt::layer().event_format(NaisJsonFormat).with_ansi(false);
 
     let tracer = tracer_provider.tracer("pdfgenrs");
     // Keep a clone for the caller to shut down gracefully before exit.
@@ -213,10 +206,7 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
     global::set_tracer_provider(tracer_provider);
 
     tracing_subscriber::registry()
-        .with(
-            EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
+        .with(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
         .with(OpenTelemetryLayer::new(tracer))
         .with(fmt_layer)
         .init();
@@ -247,12 +237,18 @@ mod tests {
 
     #[test]
     fn logger_name_for_file_keeps_non_rs_suffix() {
-        assert_eq!(logger_name_for_file("src/tracing_setup"), "src.tracing_setup");
+        assert_eq!(
+            logger_name_for_file("src/tracing_setup"),
+            "src.tracing_setup"
+        );
     }
 
     #[test]
     fn resolve_service_name_uses_env_value() {
-        assert_eq!(resolve_service_name(Some("custom-service")), "custom-service");
+        assert_eq!(
+            resolve_service_name(Some("custom-service")),
+            "custom-service"
+        );
     }
 
     #[test]

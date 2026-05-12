@@ -11,9 +11,8 @@ mod tests {
 
     fn create_test_state() -> AppState {
         let cfg = config::Config::default();
-        let templates = Arc::new(
-            template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default(),
-        );
+        let templates =
+            Arc::new(template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default());
         let data = template::load_test_data(&cfg.data_dir).data;
         let fonts = Arc::new(
             typst_world::load_fonts(&cfg.fonts_dir).expect("performance test fonts should load"),
@@ -32,9 +31,7 @@ mod tests {
         let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
         let app_state = create_test_state();
 
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let base_url = format!("http://127.0.0.1:{port}");
 
