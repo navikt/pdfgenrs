@@ -154,4 +154,16 @@ mod tests {
 
         assert_eq!(config.port, 8080);
     }
+
+    #[test]
+    fn default_treats_non_true_dev_mode_values_as_false() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _env = EnvGuard::set(&[("DEV_MODE", Some("FALSE"))]);
+
+        let config = Config::default();
+
+        assert!(!config.dev_mode);
+    }
 }
