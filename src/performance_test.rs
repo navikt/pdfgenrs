@@ -9,30 +9,28 @@ mod tests {
     use crate::{build_router, config, state, template, typst_world, AppState};
     use tokio::sync::RwLock;
 
-    fn create_test_state() -> AppState {
+    fn create_test_state() -> anyhow::Result<AppState> {
         let cfg = config::Config::default();
         let templates =
             Arc::new(template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default());
         let data = template::load_test_data(&cfg.data_dir).data;
-        let fonts = Arc::new(
-            typst_world::load_fonts(&cfg.fonts_dir).expect("performance test fonts should load"),
-        );
-        AppState {
+        let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir)?);
+        Ok(AppState {
             templates,
             data: Arc::new(RwLock::new(data)),
             aliveness: state::AppAliveness::new(),
             fonts,
             config: cfg,
-        }
+        })
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
-    async fn performance_test_multi_thread() {
-        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
-        let app_state = create_test_state();
+    async fn performance_test_multi_thread() -> anyhow::Result<()> {
+        let _guard = crate::memory_sensitive_test_lock().lock().await;
+        let app_state = create_test_state()?;
 
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let port = listener.local_addr().unwrap().port();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
         let base_url = format!("http://127.0.0.1:{port}");
 
         let server_handle =
@@ -64,15 +62,17 @@ mod tests {
                 let url = format!("{base_url}/api/v1/genpdf/{app_name}/{template_name}");
                 let data = json_data.clone();
                 join_set.spawn(async move {
-                    let response = client.post(&url).json(&data).send().await.unwrap();
+                    let response = client.post(&url).json(&data).send().await?;
                     assert!(response.status().is_success());
-                    let bytes = response.bytes().await.unwrap();
+                    let bytes = response.bytes().await?;
                     assert!(!bytes.is_empty());
+                    anyhow::Ok(())
                 });
             }
 
-            while let Some(result) = join_set.join_next().await {
-                result.unwrap();
+            while let Some(task_result) = join_set.join_next().await {
+                // First `?` propagates JoinError (task panicked); second `?` propagates the inner anyhow::Result.
+                task_result??;
             }
 
             println!(
@@ -82,12 +82,13 @@ mod tests {
         }
 
         server_handle.abort();
+        Ok(())
     }
 
     #[tokio::test]
-    async fn performance_test_single_thread() {
-        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
-        let app_state = create_test_state();
+    async fn performance_test_single_thread() -> anyhow::Result<()> {
+        let _guard = crate::memory_sensitive_test_lock().lock().await;
+        let app_state = create_test_state()?;
         let server = TestServer::new(build_router(app_state.clone()));
 
         let passes = 30;
@@ -121,5 +122,7 @@ mod tests {
                 start.elapsed().as_millis()
             );
         }
+
+        Ok(())
     }
 }

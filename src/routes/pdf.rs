@@ -199,8 +199,8 @@ mod tests {
         templates: HashMap<String, String>,
         data: HashMap<(String, String), serde_json::Value>,
         dev_mode: bool,
-    ) -> AppState {
-        AppState {
+    ) -> anyhow::Result<AppState> {
+        Ok(AppState {
             templates: Arc::new(templates),
             data: Arc::new(RwLock::new(data)),
             aliveness: state::AppAliveness::new(),
@@ -214,10 +214,9 @@ mod tests {
                 dev_mode,
             },
             fonts: Arc::new(
-                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))
-                    .expect("test fonts should load"),
+                typst_world::load_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))?,
             ),
-        }
+        })
     }
 
     fn make_router(state: AppState, dev_mode: bool) -> Router {
@@ -243,23 +242,22 @@ mod tests {
     const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
 
     #[cfg(target_os = "linux")]
-    fn rss_kb() -> u64 {
-        let status = std::fs::read_to_string("/proc/self/status")
-            .expect("Failed to read /proc/self/status for RSS measurement");
+    fn rss_kb() -> anyhow::Result<u64> {
+        let status = std::fs::read_to_string("/proc/self/status")?;
         status
             .lines()
             .find(|line| line.starts_with("VmRSS:"))
             .and_then(|line| line.split_whitespace().nth(1))
             .and_then(|value| value.parse().ok())
-            .expect("Failed to parse VmRSS from /proc/self/status")
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse VmRSS from /proc/self/status"))
     }
 
     #[tokio::test]
-    async fn post_pdf_returns_pdf_for_valid_template() {
+    async fn post_pdf_returns_pdf_for_valid_template() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), false),
+            make_state(templates, HashMap::new(), false)?,
             false,
         ));
 
@@ -270,16 +268,20 @@ mod tests {
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
         );
         assert!(is_pdf(response.as_bytes()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_returns_404_when_template_missing() {
+    async fn post_pdf_returns_404_when_template_missing() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false),
+            make_state(HashMap::new(), HashMap::new(), false)?,
             false,
         ));
 
@@ -289,14 +291,15 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_returns_500_for_invalid_template() {
+    async fn post_pdf_returns_500_for_invalid_template() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), INVALID_TEMPLATE.to_string());
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), false),
+            make_state(templates, HashMap::new(), false)?,
             false,
         ));
 
@@ -306,12 +309,13 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_from_html_returns_pdf() {
+    async fn post_pdf_from_html_returns_pdf() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false),
+            make_state(HashMap::new(), HashMap::new(), false)?,
             false,
         ));
 
@@ -334,16 +338,20 @@ mod tests {
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
         );
         assert!(is_pdf(response.as_bytes()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_from_image_returns_pdf_for_png() {
+    async fn post_pdf_from_image_returns_pdf_for_png() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false),
+            make_state(HashMap::new(), HashMap::new(), false)?,
             false,
         ));
 
@@ -355,23 +363,26 @@ mod tests {
                     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                         .join("resources")
                         .join("NAVLogoRed.png"),
-                )
-                .unwrap(),
+                )?,
             ))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
         );
         assert!(is_pdf(response.as_bytes()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_from_image_returns_415_for_unsupported_media_type() {
+    async fn post_pdf_from_image_returns_415_for_unsupported_media_type() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false),
+            make_state(HashMap::new(), HashMap::new(), false)?,
             false,
         ));
 
@@ -382,6 +393,7 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        Ok(())
     }
 
     #[test]
@@ -405,7 +417,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_pdf_returns_pdf_when_template_and_data_exist() {
+    async fn get_pdf_returns_pdf_when_template_and_data_exist() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
         let mut data = HashMap::new();
@@ -413,48 +425,54 @@ mod tests {
             ("myapp".to_string(), "mytemplate".to_string()),
             serde_json::json!({}),
         );
-        let server = TestServer::new(make_router(make_state(templates, data, true), true));
+        let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
 
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").unwrap(),
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
         );
         assert!(is_pdf(response.as_bytes()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_pdf_returns_404_when_data_missing() {
+    async fn get_pdf_returns_404_when_data_missing() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), true),
+            make_state(templates, HashMap::new(), true)?,
             true,
         ));
 
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_pdf_returns_404_when_template_missing() {
+    async fn get_pdf_returns_404_when_template_missing() -> anyhow::Result<()> {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
             serde_json::json!({}),
         );
-        let server = TestServer::new(make_router(make_state(HashMap::new(), data, true), true));
+        let server = TestServer::new(make_router(make_state(HashMap::new(), data, true)?, true));
 
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_can_reference_image_from_resources_folder() {
+    async fn post_pdf_can_reference_image_from_resources_folder() -> anyhow::Result<()> {
         const TEMPLATE_WITH_IMAGE: &str = r#"#set document(date: auto)
 #set page(margin: 1cm)
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
@@ -465,7 +483,7 @@ mod tests {
             TEMPLATE_WITH_IMAGE.to_string(),
         );
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), false),
+            make_state(templates, HashMap::new(), false)?,
             false,
         ));
 
@@ -476,12 +494,13 @@ mod tests {
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert!(is_pdf(response.as_bytes()));
+        Ok(())
     }
 
     #[cfg(target_os = "linux")]
     #[tokio::test]
-    async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
-        let _guard = crate::memory_sensitive_test_lock().lock().unwrap();
+    async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() -> anyhow::Result<()> {
+        let _guard = crate::memory_sensitive_test_lock().lock().await;
         const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto)
 #set page(margin: 1cm)
 #let data = json("/data.json")
@@ -494,7 +513,7 @@ mod tests {
             TEMPLATE_WITH_JSON.to_string(),
         );
         let server = TestServer::new(make_router(
-            make_state(templates, HashMap::new(), false),
+            make_state(templates, HashMap::new(), false)?,
             false,
         ));
 
@@ -507,7 +526,7 @@ mod tests {
             assert!(is_pdf(response.as_bytes()));
         }
 
-        let rss_before = rss_kb();
+        let rss_before = rss_kb()?;
 
         for _ in 0..MEMORY_REGRESSION_REQUEST_COUNT {
             let response = server
@@ -518,13 +537,15 @@ mod tests {
             assert!(is_pdf(response.as_bytes()));
         }
 
-        let rss_after = rss_kb();
+        let rss_after = rss_kb()?;
         let growth_kb = rss_after.saturating_sub(rss_before);
 
         assert!(
             growth_kb < MAX_REQUEST_RSS_GROWTH_KB,
             "RSS grew by {growth_kb} KB after {MEMORY_REGRESSION_REQUEST_COUNT} requests – possible memory leak."
         );
+
+        Ok(())
     }
 
     #[cfg(not(target_os = "linux"))]
