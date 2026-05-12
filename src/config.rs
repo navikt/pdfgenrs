@@ -1,6 +1,21 @@
 use std::env;
 use std::path::PathBuf;
 
+const SERVER_PORT_ENV: &str = "SERVER_PORT";
+const ROOT_DIR_ENV: &str = "ROOT_DIR";
+const TEMPLATES_DIR_ENV: &str = "TEMPLATES_DIR";
+const RESOURCES_DIR_ENV: &str = "RESOURCES_DIR";
+const DATA_DIR_ENV: &str = "DATA_DIR";
+const FONTS_DIR_ENV: &str = "FONTS_DIR";
+const DEV_MODE_ENV: &str = "DEV_MODE";
+
+const DEFAULT_PORT: u16 = 8080;
+const DEFAULT_ROOT_DIR: &str = ".";
+const DEFAULT_TEMPLATES_DIR: &str = "templates";
+const DEFAULT_RESOURCES_DIR: &str = "resources";
+const DEFAULT_DATA_DIR: &str = "data";
+const DEFAULT_FONTS_DIR: &str = "fonts";
+
 /// Runtime configuration for the pdfgenrs server.
 ///
 /// All fields are populated from environment variables when `Config::default()` is
@@ -29,24 +44,29 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            port: env::var("SERVER_PORT")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(8080),
-            root_dir: PathBuf::from(env::var("ROOT_DIR").unwrap_or_else(|_| ".".to_string())),
-            templates_dir: PathBuf::from(
-                env::var("TEMPLATES_DIR").unwrap_or_else(|_| "templates".to_string()),
-            ),
-            resources_dir: PathBuf::from(
-                env::var("RESOURCES_DIR").unwrap_or_else(|_| "resources".to_string()),
-            ),
-            data_dir: PathBuf::from(env::var("DATA_DIR").unwrap_or_else(|_| "data".to_string())),
-            fonts_dir: PathBuf::from(env::var("FONTS_DIR").unwrap_or_else(|_| "fonts".to_string())),
-            dev_mode: env::var("DEV_MODE")
-                .map(|v| v.eq_ignore_ascii_case("true"))
-                .unwrap_or(false),
+            port: env_u16(SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
+            root_dir: env_path(ROOT_DIR_ENV, DEFAULT_ROOT_DIR),
+            templates_dir: env_path(TEMPLATES_DIR_ENV, DEFAULT_TEMPLATES_DIR),
+            resources_dir: env_path(RESOURCES_DIR_ENV, DEFAULT_RESOURCES_DIR),
+            data_dir: env_path(DATA_DIR_ENV, DEFAULT_DATA_DIR),
+            fonts_dir: env_path(FONTS_DIR_ENV, DEFAULT_FONTS_DIR),
+            dev_mode: env_bool(DEV_MODE_ENV),
         }
     }
+}
+
+fn env_path(key: &str, default: &str) -> PathBuf {
+    PathBuf::from(env::var(key).unwrap_or_else(|_| default.to_owned()))
+}
+
+fn env_u16(key: &str) -> Option<u16> {
+    env::var(key).ok()?.parse().ok()
+}
+
+fn env_bool(key: &str) -> bool {
+    env::var(key)
+        .map(|value| value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -97,23 +117,23 @@ mod tests {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let _env = EnvGuard::set(&[
-            ("SERVER_PORT", None),
-            ("ROOT_DIR", None),
-            ("TEMPLATES_DIR", None),
-            ("RESOURCES_DIR", None),
-            ("DATA_DIR", None),
-            ("FONTS_DIR", None),
-            ("DEV_MODE", None),
+            (SERVER_PORT_ENV, None),
+            (ROOT_DIR_ENV, None),
+            (TEMPLATES_DIR_ENV, None),
+            (RESOURCES_DIR_ENV, None),
+            (DATA_DIR_ENV, None),
+            (FONTS_DIR_ENV, None),
+            (DEV_MODE_ENV, None),
         ]);
 
         let config = Config::default();
 
-        assert_eq!(config.port, 8080);
-        assert_eq!(config.root_dir, PathBuf::from("."));
-        assert_eq!(config.templates_dir, PathBuf::from("templates"));
-        assert_eq!(config.resources_dir, PathBuf::from("resources"));
-        assert_eq!(config.data_dir, PathBuf::from("data"));
-        assert_eq!(config.fonts_dir, PathBuf::from("fonts"));
+        assert_eq!(config.port, DEFAULT_PORT);
+        assert_eq!(config.root_dir, PathBuf::from(DEFAULT_ROOT_DIR));
+        assert_eq!(config.templates_dir, PathBuf::from(DEFAULT_TEMPLATES_DIR));
+        assert_eq!(config.resources_dir, PathBuf::from(DEFAULT_RESOURCES_DIR));
+        assert_eq!(config.data_dir, PathBuf::from(DEFAULT_DATA_DIR));
+        assert_eq!(config.fonts_dir, PathBuf::from(DEFAULT_FONTS_DIR));
         assert!(!config.dev_mode);
     }
 
@@ -123,13 +143,13 @@ mod tests {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let _env = EnvGuard::set(&[
-            ("SERVER_PORT", Some("9090")),
-            ("ROOT_DIR", Some("/tmp/root")),
-            ("TEMPLATES_DIR", Some("/tmp/templates")),
-            ("RESOURCES_DIR", Some("/tmp/resources")),
-            ("DATA_DIR", Some("/tmp/data")),
-            ("FONTS_DIR", Some("/tmp/fonts")),
-            ("DEV_MODE", Some("TrUe")),
+            (SERVER_PORT_ENV, Some("9090")),
+            (ROOT_DIR_ENV, Some("/tmp/root")),
+            (TEMPLATES_DIR_ENV, Some("/tmp/templates")),
+            (RESOURCES_DIR_ENV, Some("/tmp/resources")),
+            (DATA_DIR_ENV, Some("/tmp/data")),
+            (FONTS_DIR_ENV, Some("/tmp/fonts")),
+            (DEV_MODE_ENV, Some("TrUe")),
         ]);
 
         let config = Config::default();
@@ -148,11 +168,11 @@ mod tests {
         let _guard = env_lock()
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[("SERVER_PORT", Some("not-a-port"))]);
+        let _env = EnvGuard::set(&[(SERVER_PORT_ENV, Some("not-a-port"))]);
 
         let config = Config::default();
 
-        assert_eq!(config.port, 8080);
+        assert_eq!(config.port, DEFAULT_PORT);
     }
 
     #[test]
@@ -160,7 +180,7 @@ mod tests {
         let _guard = env_lock()
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[("DEV_MODE", Some("FALSE"))]);
+        let _env = EnvGuard::set(&[(DEV_MODE_ENV, Some("FALSE"))]);
 
         let config = Config::default();
 

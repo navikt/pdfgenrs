@@ -86,7 +86,11 @@ fn collect_font_files(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<(
 /// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
 fn is_supported_font_file(path: &Path) -> bool {
     match path.extension().and_then(|ext| ext.to_str()) {
-        Some(ext) => matches!(ext.to_ascii_lowercase().as_str(), "ttf" | "otf" | "ttc"),
+        Some(ext) => {
+            ext.eq_ignore_ascii_case("ttf")
+                || ext.eq_ignore_ascii_case("otf")
+                || ext.eq_ignore_ascii_case("ttc")
+        }
         None => false,
     }
 }
