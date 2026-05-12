@@ -72,6 +72,12 @@ Make sure you have cargo installed using this command:
 cargo --version
 ```
 
+### Format
+Format the code
+```bash script
+cargo fmt
+```
+
 ### Build
 Build the code without running it
 ```bash script
