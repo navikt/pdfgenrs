@@ -56,48 +56,50 @@ mod tests {
     use crate::state::AppAliveness;
     use crate::{typst_world, AppState};
 
-    fn test_state(alive: bool, ready: bool) -> AppState {
+    fn test_state(alive: bool, ready: bool) -> anyhow::Result<AppState> {
         let aliveness = AppAliveness::new();
         aliveness.set_alive(alive);
         aliveness.set_ready(ready);
         let cfg = Config::default();
-        let fonts = Arc::new(
-            typst_world::load_fonts(&cfg.fonts_dir).expect("health test fonts should load"),
-        );
-        AppState {
+        let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir)?);
+        Ok(AppState {
             templates: Arc::new(HashMap::new()),
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness,
             fonts,
             config: cfg,
-        }
+        })
     }
 
     #[tokio::test]
-    async fn is_alive_returns_200_when_alive() {
-        let server = TestServer::new(nais_router().with_state(test_state(true, false)));
+    async fn is_alive_returns_200_when_alive() -> anyhow::Result<()> {
+        let server = TestServer::new(nais_router().with_state(test_state(true, false)?));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::OK);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn is_alive_returns_500_when_not_alive() {
-        let server = TestServer::new(nais_router().with_state(test_state(false, false)));
+    async fn is_alive_returns_500_when_not_alive() -> anyhow::Result<()> {
+        let server = TestServer::new(nais_router().with_state(test_state(false, false)?));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn is_ready_returns_200_when_ready() {
-        let server = TestServer::new(nais_router().with_state(test_state(false, true)));
+    async fn is_ready_returns_200_when_ready() -> anyhow::Result<()> {
+        let server = TestServer::new(nais_router().with_state(test_state(false, true)?));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::OK);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn is_ready_returns_500_when_not_ready() {
-        let server = TestServer::new(nais_router().with_state(test_state(false, false)));
+    async fn is_ready_returns_500_when_not_ready() -> anyhow::Result<()> {
+        let server = TestServer::new(nais_router().with_state(test_state(false, false)?));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
     }
 }
