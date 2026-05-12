@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Categorises errors encountered while loading test data.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LoadErrorKind {
     /// Failed to traverse the data directory.
     WalkDir,
@@ -42,7 +42,7 @@ impl TestDataLoadResult {
     pub fn error_summary(&self) -> HashMap<LoadErrorKind, usize> {
         let mut summary = HashMap::new();
         for diagnostic in &self.diagnostics {
-            *summary.entry(diagnostic.kind.clone()).or_insert(0) += 1;
+            *summary.entry(diagnostic.kind).or_insert(0) += 1;
         }
         summary
     }
