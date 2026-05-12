@@ -109,77 +109,60 @@ mod tests {
         root_dir().join("fonts")
     }
 
+    fn test_fonts() -> anyhow::Result<Arc<Fonts>> {
+        Ok(Arc::new(load_fonts(&fonts_dir())?))
+    }
+
     fn is_pdf(bytes: &[u8]) -> bool {
         bytes.starts_with(b"%PDF")
     }
 
     #[test]
-    fn typst_to_pdf_simple_template_returns_pdf_bytes() {
+    fn typst_to_pdf_simple_template_returns_pdf_bytes() -> anyhow::Result<()> {
         let source = r"#set document(date: auto)
 #set page(margin: 1cm)
 Hello, world!
 ";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
-            &root_dir(),
-        );
-        assert!(result.is_ok(), "typst_to_pdf failed: {:?}", result.err());
-        let bytes = result.unwrap();
+        let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir())?;
         assert!(is_pdf(&bytes));
+        Ok(())
     }
 
     #[test]
-    fn typst_to_pdf_with_json_data_returns_pdf_bytes() {
+    fn typst_to_pdf_with_json_data_returns_pdf_bytes() -> anyhow::Result<()> {
         let source = r#"#set document(date: auto)
 #let data = json("/data.json")
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let result = typst_to_pdf(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
-            &root_dir(),
-        );
-        assert!(
-            result.is_ok(),
-            "typst_to_pdf with JSON data failed: {:?}",
-            result.err()
-        );
-        let bytes = result.unwrap();
+        let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir())?;
         assert!(is_pdf(&bytes));
+        Ok(())
     }
 
     #[test]
-    fn typst_to_pdf_invalid_source_returns_error() {
+    fn typst_to_pdf_invalid_source_returns_error() -> anyhow::Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
-            &root_dir(),
-        );
+        let result = typst_to_pdf(source, &data, test_fonts()?, &root_dir());
         assert!(
             result.is_err(),
             "Expected an error for invalid Typst source"
         );
+        Ok(())
     }
 
     #[test]
-    fn html_to_pdf_simple_document_returns_pdf_bytes() {
+    fn html_to_pdf_simple_document_returns_pdf_bytes() -> anyhow::Result<()> {
         let source = "<!DOCTYPE html><html><body><h1>Hello, world!</h1></body></html>";
-        let result = html_to_pdf(source, &root_dir(), &fonts_dir());
-        assert!(result.is_ok(), "html_to_pdf failed: {:?}", result.err());
-        let bytes = result.unwrap();
+        let bytes = html_to_pdf(source, &root_dir(), &fonts_dir())?;
         assert!(is_pdf(&bytes));
+        Ok(())
     }
 
     #[test]
-    fn html_to_pdf_with_source_sans_pro_alias_returns_pdf_bytes() {
+    fn html_to_pdf_with_source_sans_pro_alias_returns_pdf_bytes() -> anyhow::Result<()> {
         let source = r#"<!DOCTYPE html>
 <html>
 <head>
@@ -193,50 +176,28 @@ Hello, world!
     <h1>Hello, world!</h1>
 </body>
 </html>"#;
-        let result = html_to_pdf(source, &root_dir(), &fonts_dir());
-        assert!(
-            result.is_ok(),
-            "html_to_pdf with Source Sans Pro failed: {:?}",
-            result.err()
-        );
-        let bytes = result.unwrap();
+        let bytes = html_to_pdf(source, &root_dir(), &fonts_dir())?;
         assert!(is_pdf(&bytes));
+        Ok(())
     }
 
     #[test]
-    fn image_to_pdf_png_returns_pdf_bytes() {
-        let image_bytes =
-            std::fs::read(root_dir().join("resources").join("NAVLogoRed.png")).unwrap();
-        let result = image_to_pdf(
-            image_bytes,
-            "/image.png",
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
-            &root_dir(),
-        );
-        assert!(result.is_ok(), "image_to_pdf failed: {:?}", result.err());
-        let bytes = result.unwrap();
+    fn image_to_pdf_png_returns_pdf_bytes() -> anyhow::Result<()> {
+        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let bytes = image_to_pdf(image_bytes, "/image.png", test_fonts()?, &root_dir())?;
         assert!(is_pdf(&bytes));
+        Ok(())
     }
 
     #[test]
-    fn typst_to_pdf_with_resource_image_returns_pdf_bytes() {
+    fn typst_to_pdf_with_resource_image_returns_pdf_bytes() -> anyhow::Result<()> {
         let source = r#"#set document(date: auto)
 #set page(margin: 1cm)
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
         let data = serde_json::json!({});
-        let result = typst_to_pdf(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir()).expect("test fonts should load")),
-            &root_dir(),
-        );
-        assert!(
-            result.is_ok(),
-            "typst_to_pdf with image failed: {:?}",
-            result.err()
-        );
-        let bytes = result.unwrap();
+        let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir())?;
         assert!(is_pdf(&bytes));
+        Ok(())
     }
 }
