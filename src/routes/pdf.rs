@@ -9,7 +9,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use crate::{pdf as gen_pdf, AppState};
+use crate::pdf as gen_pdf;
+use crate::state::AppState;
 
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
@@ -38,8 +39,9 @@ pub async fn get_pdf(
         (Some(source), Some(data)) => {
             let fonts = Arc::clone(&state.fonts);
             let root = state.config.root_dir.clone();
+            let resources_dir = state.config.resource_root();
             match tokio::task::spawn_blocking(move || {
-                gen_pdf::typst_to_pdf(&source, &data, fonts, &root)
+                gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
             })
             .await
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -75,8 +77,9 @@ pub async fn post_pdf(
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root)
+        gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -135,8 +138,15 @@ pub async fn post_pdf_from_image(
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
-        gen_pdf::image_to_pdf(image_bytes.to_vec(), image_path, fonts, &root)
+        gen_pdf::image_to_pdf(
+            image_bytes.to_vec(),
+            image_path,
+            fonts,
+            &root,
+            &resources_dir,
+        )
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -190,7 +200,8 @@ mod tests {
     use axum::http::HeaderValue;
 
     use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
-    use crate::{config, state, typst_world, AppState};
+    use crate::state::AppState;
+    use crate::{config, state, typst_world};
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";

@@ -21,8 +21,8 @@ use axum::{
 };
 #[cfg(not(test))]
 use opentelemetry::{global, propagation::Extractor};
-use serde_json::Value;
 use state::AppAliveness;
+use state::AppState;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 #[cfg(not(test))]
@@ -30,7 +30,6 @@ use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
 #[cfg(not(test))]
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use typst_world::Fonts;
 
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
@@ -77,20 +76,6 @@ fn make_otel_span(request: &Request<Body>) -> tracing::Span {
     });
     span.set_parent(parent_cx).ok();
     span
-}
-
-#[derive(Clone)]
-pub struct AppState {
-    /// Pre-loaded Typst templates keyed by `"<app_name>/<template_name>"`.
-    pub templates: Arc<HashMap<String, String>>,
-    /// Test JSON data keyed by `(app_name, template_name)`, used in dev mode.
-    pub data: Arc<RwLock<HashMap<(String, String), Value>>>,
-    /// Liveness / readiness flags exposed via the NAIS health endpoints.
-    pub aliveness: AppAliveness,
-    /// Server configuration derived from environment variables.
-    pub config: config::Config,
-    /// Shared font data used by the Typst compiler.
-    pub fonts: Arc<Fonts>,
 }
 
 #[tokio::main]
@@ -269,7 +254,8 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use crate::{build_router, config, state, typst_world, AppState};
+    use crate::state::AppState;
+    use crate::{build_router, config, state, typst_world};
 
     fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
         Ok(AppState {

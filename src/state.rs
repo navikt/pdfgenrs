@@ -1,6 +1,26 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use serde_json::Value;
+use tokio::sync::RwLock;
+
+use crate::config;
+use crate::typst_world::Fonts;
+
+#[derive(Clone)]
+pub struct AppState {
+    /// Pre-loaded Typst templates keyed by `"<app_name>/<template_name>"`.
+    pub templates: Arc<std::collections::HashMap<String, String>>,
+    /// Test JSON data keyed by `(app_name, template_name)`, used in dev mode.
+    pub data: Arc<RwLock<std::collections::HashMap<(String, String), Value>>>,
+    /// Liveness / readiness flags exposed via the NAIS health endpoints.
+    pub aliveness: AppAliveness,
+    /// Server configuration derived from environment variables.
+    pub config: config::Config,
+    /// Shared font data used by the Typst compiler.
+    pub fonts: Arc<Fonts>,
+}
+
 /// Tracks the liveness and readiness state of the application.
 ///
 /// Both flags are stored as atomic booleans and can be shared across threads

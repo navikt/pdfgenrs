@@ -9,7 +9,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use crate::{html as gen_html, AppState};
+use crate::html as gen_html;
+use crate::state::AppState;
 
 /// Handles `GET /api/v1/genhtml/{app_name}/{template}` (dev mode only).
 ///
@@ -38,8 +39,9 @@ pub async fn get_html(
         (Some(source), Some(data)) => {
             let fonts = Arc::clone(&state.fonts);
             let root = state.config.root_dir.clone();
+            let resources_dir = state.config.resource_root();
             match tokio::task::spawn_blocking(move || {
-                gen_html::typst_to_html(&source, &data, fonts, &root)
+                gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
             })
             .await
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -76,8 +78,9 @@ pub async fn post_html(
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
-        gen_html::typst_to_html(&template_source, &json_data, fonts, &root)
+        gen_html::typst_to_html(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -114,7 +117,8 @@ mod tests {
     use tokio::sync::RwLock;
 
     use super::{get_html, post_html};
-    use crate::{config, state, typst_world, AppState};
+    use crate::state::AppState;
+    use crate::{config, state, typst_world};
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";

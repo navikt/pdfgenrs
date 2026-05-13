@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const SERVER_PORT_ENV: &str = "SERVER_PORT";
 const ROOT_DIR_ENV: &str = "ROOT_DIR";
@@ -55,8 +55,24 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    /// Returns the absolute resource directory used to resolve `/resources/...` Typst paths.
+    /// Relative paths in `resources_dir` are resolved from `root_dir`.
+    pub fn resource_root(&self) -> PathBuf {
+        resolve_from_root(&self.root_dir, &self.resources_dir)
+    }
+}
+
 fn env_path(key: &str, default: &str) -> PathBuf {
     PathBuf::from(env::var(key).unwrap_or_else(|_| default.to_owned()))
+}
+
+fn resolve_from_root(root: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    }
 }
 
 fn env_u16(key: &str) -> Option<u16> {
@@ -185,5 +201,38 @@ mod tests {
         let config = Config::default();
 
         assert!(!config.dev_mode);
+    }
+
+    #[test]
+    fn resource_root_joins_relative_resources_dir_to_root_dir() {
+        let config = Config {
+            port: DEFAULT_PORT,
+            root_dir: PathBuf::from("/tmp/root"),
+            templates_dir: PathBuf::from(DEFAULT_TEMPLATES_DIR),
+            resources_dir: PathBuf::from(DEFAULT_RESOURCES_DIR),
+            data_dir: PathBuf::from(DEFAULT_DATA_DIR),
+            fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
+            dev_mode: false,
+        };
+
+        assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
+    }
+
+    #[test]
+    fn resource_root_keeps_absolute_resources_dir() {
+        let config = Config {
+            port: DEFAULT_PORT,
+            root_dir: PathBuf::from("/tmp/root"),
+            templates_dir: PathBuf::from(DEFAULT_TEMPLATES_DIR),
+            resources_dir: PathBuf::from("/tmp/shared/resources"),
+            data_dir: PathBuf::from(DEFAULT_DATA_DIR),
+            fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
+            dev_mode: false,
+        };
+
+        assert_eq!(
+            config.resource_root(),
+            PathBuf::from("/tmp/shared/resources")
+        );
     }
 }
