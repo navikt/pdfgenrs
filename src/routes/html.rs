@@ -9,7 +9,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use crate::{html as gen_html, AppState};
+use crate::html as gen_html;
+use crate::state::AppState;
 
 /// Handles `GET /api/v1/genhtml/{app_name}/{template}` (dev mode only).
 ///
@@ -114,7 +115,8 @@ mod tests {
     use tokio::sync::RwLock;
 
     use super::{get_html, post_html};
-    use crate::{config, state, typst_world, AppState};
+    use crate::{config, state, typst_world};
+    use crate::state::AppState;
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";

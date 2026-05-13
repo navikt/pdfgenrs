@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 
-use crate::AppState;
+use crate::state::AppState;
 
 /// Builds the NAIS health-check router with `/internal/is_alive` and
 /// `/internal/is_ready` endpoints.
@@ -54,7 +54,8 @@ mod tests {
     use super::nais_router;
     use crate::config::Config;
     use crate::state::AppAliveness;
-    use crate::{typst_world, AppState};
+    use crate::typst_world;
+    use crate::state::AppState;
 
     fn test_state(alive: bool, ready: bool) -> anyhow::Result<AppState> {
         let aliveness = AppAliveness::new();

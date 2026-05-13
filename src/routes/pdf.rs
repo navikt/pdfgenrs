@@ -9,7 +9,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use crate::{pdf as gen_pdf, AppState};
+use crate::pdf as gen_pdf;
+use crate::state::AppState;
 
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
@@ -190,7 +191,8 @@ mod tests {
     use axum::http::HeaderValue;
 
     use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
-    use crate::{config, state, typst_world, AppState};
+    use crate::{config, state, typst_world};
+    use crate::state::AppState;
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
