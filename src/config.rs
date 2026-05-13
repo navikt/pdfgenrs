@@ -31,6 +31,7 @@ pub struct Config {
     /// Directory containing Typst template files. Defaults to `"templates"` (`TEMPLATES_DIR`).
     pub templates_dir: PathBuf,
     /// Directory containing static resource files. Defaults to `"resources"` (`RESOURCES_DIR`).
+    #[allow(dead_code)]
     pub resources_dir: PathBuf,
     /// Directory containing test JSON data used in dev mode. Defaults to `"data"` (`DATA_DIR`).
     pub data_dir: PathBuf,
