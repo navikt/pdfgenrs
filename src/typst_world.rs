@@ -102,6 +102,7 @@ pub struct PdfgenWorld {
     main_source: Source,
     virtual_files: HashMap<FileId, Bytes>,
     root: PathBuf,
+    resources_dir: PathBuf,
 }
 
 impl PdfgenWorld {
@@ -118,6 +119,7 @@ impl PdfgenWorld {
     pub fn new(
         fonts: Arc<Fonts>,
         root: &Path,
+        resources_dir: &Path,
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
@@ -140,6 +142,16 @@ impl PdfgenWorld {
             main_source: source,
             virtual_files: vfiles,
             root: root.to_path_buf(),
+            resources_dir: resources_dir.to_path_buf(),
+        }
+    }
+
+    fn physical_path(&self, vpath: &VirtualPath) -> PathBuf {
+        let rootless = vpath.as_rootless_path();
+        if let Ok(resource_relative) = rootless.strip_prefix("resources") {
+            self.resources_dir.join(resource_relative)
+        } else {
+            self.root.join(rootless)
         }
     }
 }
@@ -168,7 +180,7 @@ impl World for PdfgenWorld {
             return Ok(Source::new(id, text));
         }
         let vpath = id.vpath();
-        let physical = self.root.join(vpath.as_rootless_path());
+        let physical = self.physical_path(vpath);
         let text =
             std::fs::read_to_string(&physical).map_err(|e| FileError::from_io(e, &physical))?;
         Ok(Source::new(id, text))
@@ -179,7 +191,7 @@ impl World for PdfgenWorld {
             return Ok(bytes.clone());
         }
         let vpath = id.vpath();
-        let physical = self.root.join(vpath.as_rootless_path());
+        let physical = self.physical_path(vpath);
         let bytes = std::fs::read(&physical).map_err(|e| FileError::from_io(e, &physical))?;
         Ok(Bytes::new(bytes))
     }
@@ -216,6 +228,7 @@ impl World for PdfgenWorld {
 pub fn compile_to_pdf(
     fonts: Arc<Fonts>,
     root: &Path,
+    resources_dir: &Path,
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
@@ -223,6 +236,7 @@ pub fn compile_to_pdf(
     let world = PdfgenWorld::new(
         fonts,
         root,
+        resources_dir,
         main_path,
         main_source,
         virtual_files,
@@ -274,6 +288,7 @@ pub fn compile_to_pdf(
 pub fn compile_to_html(
     fonts: Arc<Fonts>,
     root: &Path,
+    resources_dir: &Path,
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
@@ -281,6 +296,7 @@ pub fn compile_to_html(
     let world = PdfgenWorld::new(
         fonts,
         root,
+        resources_dir,
         main_path,
         main_source,
         virtual_files,
@@ -337,6 +353,10 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
 
+    fn resources_dir() -> PathBuf {
+        root_dir().join("resources")
+    }
+
     fn is_pdf(bytes: &[u8]) -> bool {
         bytes.starts_with(b"%PDF")
     }
@@ -372,6 +392,7 @@ Hello, world!
         let pdf1 = compile_to_pdf(
             Arc::clone(&fonts),
             &root_dir(),
+            &resources_dir(),
             "/main.typ",
             source.to_string(),
             HashMap::new(),
@@ -381,6 +402,7 @@ Hello, world!
         let pdf2 = compile_to_pdf(
             Arc::clone(&fonts),
             &root_dir(),
+            &resources_dir(),
             "/main.typ",
             source.to_string(),
             HashMap::new(),
@@ -398,7 +420,14 @@ Hello, world!
 
         comemo::evict(0);
 
-        let pdf = compile_to_pdf(fonts, &root, "/main.typ", source, HashMap::new())?;
+        let pdf = compile_to_pdf(
+            fonts,
+            &root,
+            &resources_dir(),
+            "/main.typ",
+            source,
+            HashMap::new(),
+        )?;
         assert!(
             is_pdf(&pdf),
             "Result after cache eviction is not a valid PDF"
@@ -430,6 +459,7 @@ Hello, world!
         let world = PdfgenWorld::new(
             fonts,
             &root_dir(),
+            &resources_dir(),
             "/main.typ",
             "Hello".to_string(),
             HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
@@ -451,6 +481,7 @@ Hello, world!
         let world = PdfgenWorld::new(
             fonts,
             dir.path(),
+            &resources_dir(),
             "/main.typ",
             "Main".to_string(),
             HashMap::new(),
@@ -465,11 +496,35 @@ Hello, world!
     }
 
     #[test]
+    fn file_reads_resource_files_from_configured_resources_dir() -> anyhow::Result<()> {
+        let root = TempDir::new()?;
+        let resources = TempDir::new()?;
+        fs::write(resources.path().join("logo.txt"), b"resource content")?;
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            root.path(),
+            resources.path(),
+            "/main.typ",
+            "Main".to_string(),
+            HashMap::new(),
+            Features::default(),
+        );
+
+        let file_id = FileId::new(None, VirtualPath::new("/resources/logo.txt"));
+        let bytes = world.file(file_id)?;
+
+        assert_eq!(bytes.as_slice(), b"resource content");
+        Ok(())
+    }
+
+    #[test]
     fn today_supports_offset_argument() -> anyhow::Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let world = PdfgenWorld::new(
             fonts,
             &root_dir(),
+            &resources_dir(),
             "/main.typ",
             "Hello".to_string(),
             HashMap::new(),
@@ -492,6 +547,7 @@ Hello, world!
             compile_to_pdf(
                 Arc::clone(&fonts),
                 &root,
+                &resources_dir(),
                 "/main.typ",
                 source,
                 HashMap::new(),
@@ -507,6 +563,7 @@ Hello, world!
             let result = compile_to_pdf(
                 Arc::clone(&fonts),
                 &root,
+                &resources_dir(),
                 "/main.typ",
                 source,
                 HashMap::new(),

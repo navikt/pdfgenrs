@@ -19,6 +19,7 @@ pub fn typst_to_html(
     json_data: &serde_json::Value,
     fonts: Arc<Fonts>,
     root: &Path,
+    resources_dir: &Path,
 ) -> Result<String> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let mut vfiles = HashMap::new();
@@ -27,6 +28,7 @@ pub fn typst_to_html(
     typst_world::compile_to_html(
         fonts,
         root,
+        resources_dir,
         "/main.typ",
         template_source.to_string(),
         vfiles,
@@ -48,6 +50,10 @@ mod tests {
         root_dir().join("fonts")
     }
 
+    fn resources_dir() -> PathBuf {
+        root_dir().join("resources")
+    }
+
     #[test]
     fn typst_to_html_simple_template_returns_html_string() -> anyhow::Result<()> {
         let source = "Hello, world!\n";
@@ -57,6 +63,7 @@ mod tests {
             &data,
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
+            &resources_dir(),
         )?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -77,6 +84,7 @@ mod tests {
             &data,
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
+            &resources_dir(),
         )?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -91,6 +99,7 @@ mod tests {
             &data,
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
+            &resources_dir(),
         );
         assert!(
             result.is_err(),

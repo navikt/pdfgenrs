@@ -39,8 +39,9 @@ pub async fn get_html(
         (Some(source), Some(data)) => {
             let fonts = Arc::clone(&state.fonts);
             let root = state.config.root_dir.clone();
+            let resources_dir = state.config.resource_root();
             match tokio::task::spawn_blocking(move || {
-                gen_html::typst_to_html(&source, &data, fonts, &root)
+                gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
             })
             .await
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -77,8 +78,9 @@ pub async fn post_html(
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
-        gen_html::typst_to_html(&template_source, &json_data, fonts, &root)
+        gen_html::typst_to_html(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))

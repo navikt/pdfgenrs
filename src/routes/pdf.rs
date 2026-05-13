@@ -39,8 +39,9 @@ pub async fn get_pdf(
         (Some(source), Some(data)) => {
             let fonts = Arc::clone(&state.fonts);
             let root = state.config.root_dir.clone();
+            let resources_dir = state.config.resource_root();
             match tokio::task::spawn_blocking(move || {
-                gen_pdf::typst_to_pdf(&source, &data, fonts, &root)
+                gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
             })
             .await
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
@@ -76,8 +77,9 @@ pub async fn post_pdf(
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root)
+        gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
