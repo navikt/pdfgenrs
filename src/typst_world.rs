@@ -12,6 +12,7 @@ use typst_library::diag::{FileError, FileResult};
 use typst_library::text::{Font, FontBook};
 use typst_library::World;
 use typst_syntax::{FileId, Source, VirtualPath};
+use walkdir::WalkDir;
 
 /// Holds the loaded fonts and the font book used by the Typst compiler.
 #[derive(Clone)]
@@ -24,8 +25,7 @@ pub struct Fonts {
 
 /// Loads fonts from the provided directory and returns a [`Fonts`] instance.
 pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
-    let mut font_paths = Vec::new();
-    collect_font_files(fonts_dir, &mut font_paths)
+    let font_paths = collect_font_files(fonts_dir)
         .with_context(|| format!("Failed to read font directory '{}'", fonts_dir.display()))?;
 
     if font_paths.is_empty() {
@@ -64,23 +64,18 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
     })
 }
 
-/// Recursively walks `dir` and appends all supported font files to `files`.
-fn collect_font_files(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    for entry in std::fs::read_dir(dir)? {
-        let entry = entry?;
+/// Walks `dir` and collects all supported font files.
+fn collect_font_files(dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    for entry in WalkDir::new(dir).follow_links(true).into_iter() {
+        let entry = entry
+            .with_context(|| format!("Failed to read font directory entry in '{}'", dir.display()))?;
         let path = entry.path();
-        let metadata = entry.metadata()?;
-
-        if metadata.is_dir() {
-            collect_font_files(&path, files)?;
-            continue;
-        }
-
-        if metadata.is_file() && is_supported_font_file(&path) {
-            files.push(path);
+        if entry.file_type().is_file() && is_supported_font_file(path) {
+            files.push(path.to_path_buf());
         }
     }
-    Ok(())
+    Ok(files)
 }
 
 /// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
