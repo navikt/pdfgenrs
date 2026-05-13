@@ -68,8 +68,9 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
 fn collect_font_files(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
     for entry in WalkDir::new(dir).follow_links(true).into_iter() {
-        let entry = entry
-            .with_context(|| format!("Failed to read font directory entry in '{}'", dir.display()))?;
+        let entry = entry.with_context(|| {
+            format!("Failed to read font directory entry in '{}'", dir.display())
+        })?;
         let path = entry.path();
         if entry.file_type().is_file() && is_supported_font_file(path) {
             files.push(path.to_path_buf());
