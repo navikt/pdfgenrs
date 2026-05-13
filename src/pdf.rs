@@ -82,6 +82,7 @@ pub fn image_to_pdf(
     image_path: &str,
     fonts: Arc<Fonts>,
     root: &Path,
+    resources_dir: &Path,
 ) -> Result<Vec<u8>> {
     let mut vfiles = HashMap::new();
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
@@ -93,7 +94,7 @@ pub fn image_to_pdf(
 "#
     );
 
-    typst_world::compile_to_pdf(fonts, root, root, "/main.typ", source, vfiles)
+    typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", source, vfiles)
 }
 
 #[cfg(test)]
@@ -190,7 +191,13 @@ Hello, world!
     #[test]
     fn image_to_pdf_png_returns_pdf_bytes() -> anyhow::Result<()> {
         let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
-        let bytes = image_to_pdf(image_bytes, "/image.png", test_fonts()?, &root_dir())?;
+        let bytes = image_to_pdf(
+            image_bytes,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+        )?;
         assert!(is_pdf(&bytes));
         Ok(())
     }

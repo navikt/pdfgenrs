@@ -138,8 +138,15 @@ pub async fn post_pdf_from_image(
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
-        gen_pdf::image_to_pdf(image_bytes.to_vec(), image_path, fonts, &root)
+        gen_pdf::image_to_pdf(
+            image_bytes.to_vec(),
+            image_path,
+            fonts,
+            &root,
+            &resources_dir,
+        )
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
