@@ -24,6 +24,7 @@ use opentelemetry::{global, propagation::Extractor};
 use state::AppAliveness;
 use state::AppState;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use tokio::sync::RwLock;
 #[cfg(not(test))]
 use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
@@ -253,8 +254,8 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use crate::{build_router, config, state, typst_world};
     use crate::state::AppState;
+    use crate::{build_router, config, state, typst_world};
 
     fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
         Ok(AppState {

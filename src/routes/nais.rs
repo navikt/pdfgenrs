@@ -54,8 +54,8 @@ mod tests {
     use super::nais_router;
     use crate::config::Config;
     use crate::state::AppAliveness;
-    use crate::typst_world;
     use crate::state::AppState;
+    use crate::typst_world;
 
     fn test_state(alive: bool, ready: bool) -> anyhow::Result<AppState> {
         let aliveness = AppAliveness::new();

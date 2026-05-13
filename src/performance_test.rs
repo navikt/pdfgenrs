@@ -7,8 +7,8 @@ mod tests {
     use tokio::task::JoinSet;
     use tracing::info;
 
-    use crate::{build_router, config, state, template, typst_world};
     use crate::state::AppState;
+    use crate::{build_router, config, state, template, typst_world};
     use tokio::sync::RwLock;
 
     fn create_test_state() -> anyhow::Result<AppState> {

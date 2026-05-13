@@ -191,8 +191,8 @@ mod tests {
     use axum::http::HeaderValue;
 
     use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
-    use crate::{config, state, typst_world};
     use crate::state::AppState;
+    use crate::{config, state, typst_world};
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";

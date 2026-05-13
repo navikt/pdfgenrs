@@ -115,8 +115,8 @@ mod tests {
     use tokio::sync::RwLock;
 
     use super::{get_html, post_html};
-    use crate::{config, state, typst_world};
     use crate::state::AppState;
+    use crate::{config, state, typst_world};
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
