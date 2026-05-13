@@ -20,6 +20,7 @@ pub async fn get_html(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Response {
+    let start = std::time::Instant::now();
     let tmpl_name = format!("{app_name}/{template_name}");
 
     let template_source = state.templates.get(&tmpl_name).cloned();
@@ -47,7 +48,10 @@ pub async fn get_html(
                     error!(template = %tmpl_name, error = %e, "HTML generation failed");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
-                Ok(html_string) => html_response(html_string),
+                Ok(html_string) => {
+                    info!(template = %tmpl_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+                    html_response(html_string)
+                }
             }
         }
     }
