@@ -1,32 +1,11 @@
-mod config;
-mod html;
-mod http_tracing;
-mod pdf;
-mod routes;
-mod state;
-mod template;
 mod tracing_setup;
-mod typst_world;
-
-#[cfg(test)]
-mod performance_test;
 
 use anyhow::{Context, Result};
-use axum::{
-    routing::{get, post},
-    Router,
-};
-use state::AppAliveness;
-use state::AppState;
+use pdfgenrs::state::{AppAliveness, AppState};
+use pdfgenrs::{build_router, config, template, typst_world};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
-
-#[cfg(test)]
-pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
-    static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
-    LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -130,29 +109,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn build_router(state: AppState) -> Router {
-    let mut pdf_router = Router::new()
-        .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
-        .route("/image/{app_name}", post(routes::pdf::post_pdf_from_image))
-        .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
-
-    let mut html_router =
-        Router::new().route("/{app_name}/{template}", post(routes::html::post_html));
-
-    if state.config.dev_mode {
-        pdf_router = pdf_router.route("/{app_name}/{template}", get(routes::pdf::get_pdf));
-        html_router = html_router.route("/{app_name}/{template}", get(routes::html::get_html));
-    }
-
-    let app = Router::new()
-        .nest("/api/v1/genpdf", pdf_router)
-        .nest("/api/v1/genhtml", html_router)
-        .merge(routes::nais::nais_router())
-        .with_state(state);
-
-    http_tracing::apply_http_tracing_layer(app)
-}
-
 async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
@@ -193,8 +149,8 @@ mod tests {
     use axum_test::TestServer;
     use tokio::sync::RwLock;
 
-    use crate::state::AppState;
-    use crate::{build_router, config, state, typst_world};
+    use pdfgenrs::state::AppState;
+    use pdfgenrs::{build_router, config, state, typst_world};
 
     fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
         Ok(AppState {

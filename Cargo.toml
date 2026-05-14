@@ -9,6 +9,11 @@ license = "MIT"
 name = "pdfgenrs"
 path = "src/main.rs"
 
+[[bench]]
+name = "performance"
+path = "benches/performance.rs"
+harness = false
+
 [dependencies]
 tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
 axum = "0.8.9"
