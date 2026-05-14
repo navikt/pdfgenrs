@@ -52,6 +52,10 @@ mod imp {
     }
 }
 
+pub(crate) fn apply_http_tracing_layer(app: Router) -> Router {
+    imp::apply_http_tracing_layer(app)
+}
+
 #[cfg(test)]
 mod imp {
     use axum::Router;
@@ -59,8 +63,4 @@ mod imp {
     pub(super) fn apply_http_tracing_layer(app: Router) -> Router {
         app
     }
-}
-
-pub(crate) fn apply_http_tracing_layer(app: Router) -> Router {
-    imp::apply_http_tracing_layer(app)
 }
