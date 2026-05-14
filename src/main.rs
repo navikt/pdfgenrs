@@ -1,5 +1,6 @@
 mod config;
 mod html;
+mod http_tracing;
 mod pdf;
 mod routes;
 mod state;
@@ -11,71 +12,20 @@ mod typst_world;
 mod performance_test;
 
 use anyhow::{Context, Result};
-#[cfg(not(test))]
-use axum::body::Body;
-#[cfg(not(test))]
-use axum::http::{HeaderMap, Request};
 use axum::{
     routing::{get, post},
     Router,
 };
-#[cfg(not(test))]
-use opentelemetry::{global, propagation::Extractor};
 use state::AppAliveness;
 use state::AppState;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
-#[cfg(not(test))]
-use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
-#[cfg(not(test))]
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
     static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
     LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
-}
-
-/// Implements [`opentelemetry::propagation::Extractor`] for an Axum [`HeaderMap`] so that
-/// the global W3C TraceContext + Baggage propagators can extract an incoming parent trace context
-/// from request headers.
-#[cfg(not(test))]
-struct HeaderExtractor<'a>(&'a HeaderMap);
-
-#[cfg(not(test))]
-impl<'a> Extractor for HeaderExtractor<'a> {
-    fn get(&self, key: &str) -> Option<&str> {
-        self.0.get(key).and_then(|v| v.to_str().ok())
-    }
-
-    fn keys(&self) -> Vec<&str> {
-        self.0.keys().map(|k| k.as_str()).collect()
-    }
-}
-
-/// Creates a tracing span for an HTTP request and sets the remote span as OTel parent.
-///
-/// This is passed to [`TraceLayer::make_span_with`].  Extracting the trace context and calling
-/// [`OpenTelemetrySpanExt::set_parent`] here (synchronously, before any `.await`) avoids the
-/// `!Send` constraint of [`opentelemetry::ContextGuard`] and correctly parents the new span to
-/// the caller's distributed trace when a `traceparent` header is present.
-#[cfg(not(test))]
-fn make_otel_span(request: &Request<Body>) -> tracing::Span {
-    let span = tracing::info_span!(
-        "HTTP request",
-        http.method = %request.method(),
-        http.uri = %request.uri(),
-        http.version = ?request.version(),
-        otel.kind = "server",
-        otel.status_code = tracing::field::Empty,
-        http.status_code = tracing::field::Empty,
-    );
-    let parent_cx = global::get_text_map_propagator(|propagator| {
-        propagator.extract(&HeaderExtractor(request.headers()))
-    });
-    span.set_parent(parent_cx).ok();
-    span
 }
 
 #[tokio::main]
@@ -200,18 +150,7 @@ fn build_router(state: AppState) -> Router {
         .merge(routes::nais::nais_router())
         .with_state(state);
 
-    // Creates a tracing::Span for every HTTP request.  The custom make_span_with function
-    // also extracts W3C traceparent/baggage headers and sets the remote span as the OTel
-    // parent so that pdfgenrs spans are correctly nested inside the caller's distributed
-    // trace.  The OpenTelemetryLayer (registered in setup_tracing) converts those tracing
-    // spans into OpenTelemetry spans forwarded to the OTLP exporter.
-    //
-    // The layer is excluded during tests to avoid OpenTelemetry side-effects that make
-    // tests non-deterministic (the global propagator state is not initialised in tests).
-    #[cfg(not(test))]
-    let app = app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span));
-
-    app
+    http_tracing::apply_http_tracing_layer(app)
 }
 
 async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
