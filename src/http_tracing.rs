@@ -4,7 +4,6 @@ pub(crate) fn apply_http_tracing_layer(app: Router) -> Router {
     imp::apply_http_tracing_layer(app)
 }
 
-#[cfg(not(test))]
 mod imp {
     use axum::body::Body;
     use axum::http::{HeaderMap, Request};
@@ -52,15 +51,10 @@ mod imp {
     }
 
     pub(super) fn apply_http_tracing_layer(app: Router) -> Router {
-        app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
-    }
-}
-
-#[cfg(test)]
-mod imp {
-    use axum::Router;
-
-    pub(super) fn apply_http_tracing_layer(app: Router) -> Router {
-        app
+        if cfg!(test) {
+            app
+        } else {
+            app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
+        }
     }
 }
