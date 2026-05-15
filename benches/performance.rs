@@ -7,6 +7,7 @@ use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 
+#[derive(Clone, Debug)]
 struct BenchResult {
     app: String,
     template: String,
@@ -42,7 +43,11 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
     md.push_str("| App | Template | Total (ms) | Avg per request (ms) |\n");
     md.push_str("|-----|----------|-----------|----------------------|\n");
     for r in mt_results {
-        let avg = r.duration_ms as f64 / r.passes as f64;
+        let avg = if r.passes > 0 {
+            r.duration_ms as f64 / r.passes as f64
+        } else {
+            0.0
+        };
         md.push_str(&format!(
             "| {} | {} | {} | {:.1} |\n",
             r.app, r.template, r.duration_ms, avg
@@ -54,7 +59,11 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
     md.push_str("| App | Template | Total (ms) | Avg per request (ms) |\n");
     md.push_str("|-----|----------|-----------|----------------------|\n");
     for r in st_results {
-        let avg = r.duration_ms as f64 / r.passes as f64;
+        let avg = if r.passes > 0 {
+            r.duration_ms as f64 / r.passes as f64
+        } else {
+            0.0
+        };
         md.push_str(&format!(
             "| {} | {} | {} | {:.1} |\n",
             r.app, r.template, r.duration_ms, avg
