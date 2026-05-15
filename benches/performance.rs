@@ -79,7 +79,10 @@ fn read_max_total_ms(env_var: &str, default: u128) -> anyhow::Result<u128> {
     match std::env::var(env_var) {
         Ok(value) => value.parse::<u128>().map_err(|error| {
             anyhow::anyhow!(
-                "Invalid {env_var} value '{value}', expected an integer number of milliseconds: {error}"
+                "Invalid {} value '{}', expected an integer number of milliseconds: {}",
+                env_var,
+                value,
+                error
             )
         }),
         Err(_) => Ok(default),
@@ -109,7 +112,9 @@ fn fail_if_total_too_long(
     }
 
     anyhow::bail!(
-        "{mode} benchmark exceeded max Total (ms) threshold from {threshold_env_var}: {}",
+        "{} benchmark exceeded max Total (ms) threshold from {}: {}",
+        mode,
+        threshold_env_var,
         slow_results.join(", ")
     );
 }
