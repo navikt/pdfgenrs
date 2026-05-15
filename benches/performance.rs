@@ -7,6 +7,13 @@ use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 
+struct BenchResult {
+    app: String,
+    template: String,
+    passes: u32,
+    duration_ms: u128,
+}
+
 fn create_bench_state() -> anyhow::Result<pdfgenrs::state::AppState> {
     let cfg = config::Config::default();
     let templates =
@@ -22,6 +29,43 @@ fn create_bench_state() -> anyhow::Result<pdfgenrs::state::AppState> {
     })
 }
 
+fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) {
+    let summary_file = match std::env::var("GITHUB_STEP_SUMMARY") {
+        Ok(path) => path,
+        Err(_) => return,
+    };
+
+    let mut md = String::new();
+    md.push_str("## Performance benchmark results\n\n");
+
+    md.push_str("### Multi-thread (8 workers, 20 passes)\n\n");
+    md.push_str("| App | Template | Total (ms) | Avg per request (ms) |\n");
+    md.push_str("|-----|----------|-----------|----------------------|\n");
+    for r in mt_results {
+        let avg = r.duration_ms as f64 / r.passes as f64;
+        md.push_str(&format!(
+            "| {} | {} | {} | {:.1} |\n",
+            r.app, r.template, r.duration_ms, avg
+        ));
+    }
+
+    md.push('\n');
+    md.push_str("### Single-thread (30 passes)\n\n");
+    md.push_str("| App | Template | Total (ms) | Avg per request (ms) |\n");
+    md.push_str("|-----|----------|-----------|----------------------|\n");
+    for r in st_results {
+        let avg = r.duration_ms as f64 / r.passes as f64;
+        md.push_str(&format!(
+            "| {} | {} | {} | {:.1} |\n",
+            r.app, r.template, r.duration_ms, avg
+        ));
+    }
+
+    if let Err(e) = std::fs::write(&summary_file, &md) {
+        eprintln!("Failed to write GitHub step summary to {summary_file}: {e}");
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
@@ -29,17 +73,19 @@ fn main() -> anyhow::Result<()> {
         .worker_threads(8)
         .enable_all()
         .build()?;
-    mt_runtime.block_on(performance_multi_thread())?;
+    let mt_results = mt_runtime.block_on(performance_multi_thread())?;
 
     let st_runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    st_runtime.block_on(performance_single_thread())?;
+    let st_results = st_runtime.block_on(performance_single_thread())?;
+
+    write_github_summary(&mt_results, &st_results);
 
     Ok(())
 }
 
-async fn performance_multi_thread() -> anyhow::Result<()> {
+async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
     let app_state = create_bench_state()?;
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -51,6 +97,7 @@ async fn performance_multi_thread() -> anyhow::Result<()> {
 
     let client = Arc::new(reqwest::Client::new());
     let passes = 20;
+    let mut results = Vec::new();
 
     for template_path in app_state.templates.keys() {
         let parts: Vec<&str> = template_path.splitn(2, '/').collect();
@@ -87,23 +134,31 @@ async fn performance_multi_thread() -> anyhow::Result<()> {
             task_result??;
         }
 
+        let duration_ms = start.elapsed().as_millis();
         info!(
             template = %template_name,
             app = %app_name,
-            duration_ms = start.elapsed().as_millis(),
+            duration_ms,
             "Multi-thread performance benchmark completed"
         );
+        results.push(BenchResult {
+            app: app_name,
+            template: template_name,
+            passes,
+            duration_ms,
+        });
     }
 
     server_handle.abort();
-    Ok(())
+    Ok(results)
 }
 
-async fn performance_single_thread() -> anyhow::Result<()> {
+async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
     let app_state = create_bench_state()?;
     let server = TestServer::new(build_router(app_state.clone()));
 
     let passes = 30;
+    let mut results = Vec::new();
 
     for template_path in app_state.templates.keys() {
         let parts: Vec<&str> = template_path.splitn(2, '/').collect();
@@ -129,13 +184,20 @@ async fn performance_single_thread() -> anyhow::Result<()> {
             assert!(!response.as_bytes().is_empty());
         }
 
+        let duration_ms = start.elapsed().as_millis();
         info!(
             template = %template_name,
             app = %app_name,
-            duration_ms = start.elapsed().as_millis(),
+            duration_ms,
             "Single-thread performance benchmark completed"
         );
+        results.push(BenchResult {
+            app: app_name,
+            template: template_name,
+            passes,
+            duration_ms,
+        });
     }
 
-    Ok(())
+    Ok(results)
 }
