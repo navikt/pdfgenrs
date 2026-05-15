@@ -35,5 +35,7 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Run tests
         run: cargo test --release -- --nocapture
+      - name: Run Benchmark performance test
+        run: cargo bench --bench performance
       - name: Build
         run: cargo build --release
