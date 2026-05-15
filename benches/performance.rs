@@ -121,7 +121,11 @@ fn main() -> anyhow::Result<()> {
 
     write_github_summary(&mt_results, &st_results);
     fail_if_total_too_long(&mt_results, "Multi-thread", BENCH_MAX_TOTAL_MS_MULTI_THREAD)?;
-    fail_if_total_too_long(&st_results, "Single-thread", BENCH_MAX_TOTAL_MS_SINGLE_THREAD)?;
+    fail_if_total_too_long(
+        &st_results,
+        "Single-thread",
+        BENCH_MAX_TOTAL_MS_SINGLE_THREAD,
+    )?;
 
     Ok(())
 }
