@@ -7,6 +7,9 @@ use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 
+const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 900;
+const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 600;
+
 #[derive(Clone, Debug)]
 struct BenchResult {
     app: String,
@@ -75,27 +78,11 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
     }
 }
 
-fn read_max_total_ms(env_var: &str, default: u128) -> anyhow::Result<u128> {
-    match std::env::var(env_var) {
-        Ok(value) => value.parse::<u128>().map_err(|error| {
-            anyhow::anyhow!(
-                "Invalid {} value '{}', expected an integer number of milliseconds: {}",
-                env_var,
-                value,
-                error
-            )
-        }),
-        Err(_) => Ok(default),
-    }
-}
-
 fn fail_if_total_too_long(
     results: &[BenchResult],
     mode: &str,
-    threshold_env_var: &str,
-    default_threshold_ms: u128,
+    max_total_ms: u128,
 ) -> anyhow::Result<()> {
-    let max_total_ms = read_max_total_ms(threshold_env_var, default_threshold_ms)?;
     let slow_results: Vec<String> = results
         .iter()
         .filter(|result| result.duration_ms > max_total_ms)
@@ -112,9 +99,8 @@ fn fail_if_total_too_long(
     }
 
     anyhow::bail!(
-        "{} benchmark exceeded max Total (ms) threshold from {}: {}",
+        "{} benchmark exceeded max Total (ms) threshold: {}",
         mode,
-        threshold_env_var,
         slow_results.join(", ")
     );
 }
@@ -134,18 +120,8 @@ fn main() -> anyhow::Result<()> {
     let st_results = st_runtime.block_on(performance_single_thread())?;
 
     write_github_summary(&mt_results, &st_results);
-    fail_if_total_too_long(
-        &mt_results,
-        "Multi-thread",
-        "PDFGENRS_BENCH_MAX_TOTAL_MS_MULTI_THREAD",
-        1200,
-    )?;
-    fail_if_total_too_long(
-        &st_results,
-        "Single-thread",
-        "PDFGENRS_BENCH_MAX_TOTAL_MS_SINGLE_THREAD",
-        800,
-    )?;
+    fail_if_total_too_long(&mt_results, "Multi-thread", BENCH_MAX_TOTAL_MS_MULTI_THREAD)?;
+    fail_if_total_too_long(&st_results, "Single-thread", BENCH_MAX_TOTAL_MS_SINGLE_THREAD)?;
 
     Ok(())
 }
