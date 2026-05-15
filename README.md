@@ -53,9 +53,8 @@ mkdir {templates,data}/your_appname # your_appname can be anything, but it'll be
   
 
 ### Applications that uses pdfgenrs
-- https://github.com/navikt/pale-2-pdfgenrs
-- https://github.com/navikt/smarbeidsgiver-pdfgenrs
 - https://github.com/navikt/pdfgenrs-test
+- https://github.com/navikt/pale-2-pdfgenrs
 
 ## Developing pdfgenrs
 
@@ -83,6 +82,7 @@ Run linter
 ```bash script
 cargo clippy --all-targets -- -D warnings
 ```
+
 ### Build
 Build the code without running it
 ```bash script
@@ -95,7 +95,7 @@ Run the code
 cargo run
 ```
 
-Running the application with environment DEV_MODE = true will exposes a GET endpoint at `/api/v1/genpdf/<your_appname>/<template>`
+Running the application with environment DEV_MODE = true will expose a GET endpoint at `/api/v1/genpdf/<your_appname>/<template>`
 which looks for test data at `data/<your_appname>/<template>.json` and outputs a PDF to your browser.
 The template and data directory structure both follow the `<your_appname>/<template>` structure.
 
