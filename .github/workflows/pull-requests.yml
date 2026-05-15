@@ -37,8 +37,8 @@ jobs:
         run: cargo test --release -- --nocapture
       - name: Run Benchmark performance test
         env:
-          PDFGENRS_BENCH_MAX_TOTAL_MS_MULTI_THREAD: 1200
-          PDFGENRS_BENCH_MAX_TOTAL_MS_SINGLE_THREAD: 800
+          PDFGENRS_BENCH_MAX_TOTAL_MS_MULTI_THREAD: 900
+          PDFGENRS_BENCH_MAX_TOTAL_MS_SINGLE_THREAD: 600
         run: cargo bench --bench performance
       - name: Build
         run: cargo build --release
