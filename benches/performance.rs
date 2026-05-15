@@ -7,6 +7,16 @@ use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 
+fn compute_stats(passes: u32, duration_ms: u128) -> (f64, f64) {
+    let avg_ms = duration_ms as f64 / passes as f64;
+    let rps = if duration_ms > 0 {
+        passes as f64 * 1000.0 / duration_ms as f64
+    } else {
+        f64::INFINITY
+    };
+    (avg_ms, rps)
+}
+
 fn create_bench_state() -> anyhow::Result<pdfgenrs::state::AppState> {
     let cfg = config::Config::default();
     let templates =
@@ -87,10 +97,15 @@ async fn performance_multi_thread() -> anyhow::Result<()> {
             task_result??;
         }
 
+        let duration_ms = start.elapsed().as_millis();
+        let (avg_ms, rps) = compute_stats(passes, duration_ms);
         info!(
             template = %template_name,
             app = %app_name,
-            duration_ms = start.elapsed().as_millis(),
+            passes,
+            duration_ms,
+            avg_ms_per_request = %format!("{avg_ms:.2}"),
+            requests_per_second = %format!("{rps:.2}"),
             "Multi-thread performance benchmark completed"
         );
     }
@@ -129,10 +144,15 @@ async fn performance_single_thread() -> anyhow::Result<()> {
             assert!(!response.as_bytes().is_empty());
         }
 
+        let duration_ms = start.elapsed().as_millis();
+        let (avg_ms, rps) = compute_stats(passes, duration_ms);
         info!(
             template = %template_name,
             app = %app_name,
-            duration_ms = start.elapsed().as_millis(),
+            passes,
+            duration_ms,
+            avg_ms_per_request = %format!("{avg_ms:.2}"),
+            requests_per_second = %format!("{rps:.2}"),
             "Single-thread performance benchmark completed"
         );
     }
