@@ -71,14 +71,14 @@ Make sure you have cargo installed using this command:
 cargo --version
 ```
 
-### Format
+### Formating
 Format the code
 ```bash script
 cargo fmt
 ```
 
-### Lint
-Run linter
+### Linting
+Run the linter
 ```bash script
 cargo clippy --all-targets -- -D warnings
 ```
@@ -87,6 +87,12 @@ cargo clippy --all-targets -- -D warnings
 Build the code without running it
 ```bash script
 cargo build
+```
+
+### Tests
+To run the tests
+```bash script
+cargo test
 ```
 
 ### Run
