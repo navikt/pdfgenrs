@@ -282,4 +282,36 @@ mod tests {
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
         Ok(())
     }
+
+    #[tokio::test]
+    async fn build_router_swagger_ui_returns_200_when_dev_mode_enabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(true)?));
+        let response = server.get("/swagger-ui").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_swagger_ui_returns_404_when_dev_mode_disabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
+        let response = server.get("/swagger-ui").await;
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_openapi_spec_returns_200_when_dev_mode_enabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(true)?));
+        let response = server.get("/swagger-ui/openapi.json").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_openapi_spec_returns_404_when_dev_mode_disabled() -> anyhow::Result<()> {
+        let server = TestServer::new(build_router(make_state(false)?));
+        let response = server.get("/swagger-ui/openapi.json").await;
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        Ok(())
+    }
 }

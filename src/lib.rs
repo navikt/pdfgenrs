@@ -34,11 +34,16 @@ pub fn build_router(state: AppState) -> Router {
         html_router = html_router.route("/{app_name}/{template}", get(routes::html::get_html));
     }
 
-    let app = Router::new()
+    let mut app = Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
-        .merge(routes::nais::nais_router())
-        .with_state(state);
+        .merge(routes::nais::nais_router());
+
+    if state.config.dev_mode {
+        app = app.merge(routes::swagger::swagger_router());
+    }
+
+    let app = app.with_state(state);
 
     http_tracing::apply_http_tracing_layer(app)
 }
