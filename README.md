@@ -56,51 +56,6 @@ mkdir {templates,data}/your_appname # your_appname can be anything, but it'll be
 - https://github.com/navikt/pdfgenrs-test
 - https://github.com/navikt/pale-2-pdfgenrs
 
-## Developing pdfgenrs
-
-### Prerequisites
-Make sure you have the rust installed using this command:
-#### Rust
-```bash script
-rustc --version
-```
-
-#### Cargo
-Make sure you have cargo installed using this command:
-```bash script
-cargo --version
-```
-
-### Formating
-Format the code
-```bash script
-cargo fmt
-```
-
-### Linting
-Run the linter
-```bash script
-cargo clippy --all-targets -- -D warnings
-```
-
-### Build
-Build the code without running it
-```bash script
-cargo build
-```
-
-### Tests
-To run the tests
-```bash script
-cargo test
-```
-
-### Run
-Run the code
-```bash script
-cargo run
-```
-
 ## API
 
 Base URL (local): `http://localhost:8080`
@@ -220,6 +175,51 @@ When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Al
 
 By default, pdfgenrs will load all assets (`templates`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
+
+## Developing pdfgenrs
+
+### Prerequisites
+Make sure you have the rust installed using this command:
+#### Rust
+```bash script
+rustc --version
+```
+
+#### Cargo
+Make sure you have cargo installed using this command:
+```bash script
+cargo --version
+```
+
+### Formating
+Format the code
+```bash script
+cargo fmt
+```
+
+### Linting
+Run the linter
+```bash script
+cargo clippy --all-targets -- -D warnings
+```
+
+### Build
+Build the code without running it
+```bash script
+cargo build
+```
+
+### Tests
+To run the tests
+```bash script
+cargo test
+```
+
+### Run
+Run the code
+```bash script
+cargo run
+```
 
 ### Release
 We use default GitHub release. 
