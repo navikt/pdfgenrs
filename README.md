@@ -101,44 +101,122 @@ Run the code
 cargo run
 ```
 
-Running the application with environment DEV_MODE = true will expose a GET endpoint at `/api/v1/genpdf/<your_appname>/<template>`
-which looks for test data at `data/<your_appname>/<template>.json` and outputs a PDF to your browser.
-The template and data directory structure both follow the `<your_appname>/<template>` structure.
+## API
 
-To generate a PDF by posting JSON data directly, use the POST endpoint:
+Base URL (local): `http://localhost:8080`
+
+`<your_appname>` maps to a folder under `templates/`, and `<template>` maps to a `.typ` file name in that folder.
+
+Example:
+
+- Template file: `templates/pale-2/pale-2.typ`
+- Endpoint path: `/api/v1/genpdf/pale-2/pale-2`
+
+### 1) Generate PDF from Typst + JSON
+
+#### `POST /api/v1/genpdf/{your_appname}/{template}`
+
+Compiles a Typst template using JSON request data and returns a PDF.
+
+- Request Content-Type: `application/json`
+- Response Content-Type: `application/pdf`
+- Success: `200 OK`
+- Common errors:
+  - `404 Not Found` (template/app not found)
+  - `500 Internal Server Error` (rendering failed)
+
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/<your_appname>/<template> \
   -H "Content-Type: application/json" \
-  -d '{"key": "value"}' \
+  -d '{"key":"value"}' \
   --output output.pdf
 ```
 
-pdfgenrs also exposes a endpoint HTML-to-PDF route:
+### 2) Generate PDF from HTML
+
+#### `POST /api/v1/genpdf/html/{your_appname}`
+
+Converts HTML in the request body to a PDF.
+
+- Request Content-Type: typically `text/html`
+- Response Content-Type: `application/pdf`
+- Success: `200 OK`
+- Common errors:
+  - `500 Internal Server Error`
+
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
   -H "Content-Type: text/html" \
-  --data-binary '<html><body>Hello</body></html>'
+  --data-binary '<html><body><h1>Hello</h1></body></html>' \
+  --output output.pdf
 ```
-This endpoint converts the posted HTML into a PDF and returns it as `application/pdf`.
 
-pdfgenrs also exposes a endpoint image-to-PDF route:
+### 3) Generate PDF from Image
+
+#### `POST /api/v1/genpdf/image/{your_appname}`
+
+Converts an image to PDF.
+
+- Supported Request Content-Type:
+  - `image/png`
+  - `image/jpeg`
+- Response Content-Type: `application/pdf`
+- Success: `200 OK`
+- Common errors:
+  - `415 Unsupported Media Type` (if not PNG/JPEG)
+  - `500 Internal Server Error`
+
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/image/<your_appname> \
   -H "Content-Type: image/png" \
   --data-binary @image.png \
   --output output.pdf
 ```
-This endpoint accepts `image/png` and `image/jpeg` request bodies and returns `application/pdf`.
 
-Similarly, pdfgenrs exposes a `POST /api/v1/genhtml/<your_appname>/<template>` endpoint that compiles the Typst template with the provided JSON data and returns the result as HTML:
+### 4) Generate HTML from Typst + JSON
+
+#### `POST /api/v1/genhtml/{your_appname}/{template}`
+
+Compiles a Typst template using JSON request data and returns HTML.
+
+- Request Content-Type: `application/json`
+- Response Content-Type: `text/html; charset=utf-8`
+- Success: `200 OK`
+- Common errors:
+  - `404 Not Found` (template/app not found)
+  - `500 Internal Server Error` (rendering failed)
+
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genhtml/<your_appname>/<template> \
   -H "Content-Type: application/json" \
-  -d '{"key": "value"}'
+  -d '{"key":"value"}'
 ```
 
-Running with DEV_MODE = true also exposes a GET endpoint at `/api/v1/genhtml/<your_appname>/<template>`
-which looks for test data at `data/<your_appname>/<template>.json` and returns the rendered HTML in your browser.
+### Dev Mode only endpoints (`DEV_MODE=true`)
+
+When `DEV_MODE=true`, test data from `data/{your_appname}/{template}.json` is loaded and GET endpoints are enabled:
+
+- `GET /api/v1/genpdf/{your_appname}/{template}` → returns `application/pdf`
+- `GET /api/v1/genhtml/{your_appname}/{template}` → returns `text/html; charset=utf-8`
+
+These endpoints return:
+
+- `200 OK` on success
+- `404 Not Found` if template or test data is missing
+
+When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Allowed`).
+
+### Health endpoints
+
+#### `GET /internal/is_alive`
+
+- `200 OK` when alive
+- `500 Internal Server Error` otherwise
+
+#### `GET /internal/is_ready`
+
+- `200 OK` when ready
+- `500 Internal Server Error` otherwise
 
 By default, pdfgenrs will load all assets (`templates`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
