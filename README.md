@@ -1,71 +1,99 @@
 # pdfgenrs
 
 [![Build main](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml)
-
 ![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
-Repository for `pdfgenrs`, an application written in Rust used to create PDFs through an API
+`pdfgenrs` is a Rust application for generating PDFs through an API.
 
-## Technologies & Tools
+## Table of contents
 
-* [Rust](https://rust-lang.org/)
-* [Cargo](https://crates.io/)
-* [Axum](https://docs.rs/axum/latest/axum/)
-* [Docker](https://www.docker.com/)
-* [Typst](https://typst.app/#start)
-* [Json](https://www.json.org/json-en.html)
+- [Quick start](#quick-start)
+- [Technologies and tools](#technologies-and-tools)
+- [Folder structure](#folder-structure)
+- [API](#api)
+- [Applications that use pdfgenrs](#applications-that-use-pdfgenrs)
+- [Developing pdfgenrs](#developing-pdfgenrs)
+- [Release](#release)
+- [Contact](#contact)
+- [Contributing](#contributing)
 
+## Quick start
 
-## Getting started
+Most teams use `pdfgenrs` as a base image together with templates, fonts, resources, and test data.
 
-Most commonly, pdfgenrs is used as a base image alongside templates, fonts, additional resources, and potential test data to verify that valid PDFs get produced by the aforementioned templates.
-
-In your own repository, create a Dockerfile with the following contents
+1. Create a Dockerfile in your own repository:
 
 ```dockerfile
-# Dockerfile
 FROM ghcr.io/navikt/pdfgenrs:<release>
 
-COPY templates /app/templates # typst templates
-
-COPY fonts /app/fonts         # fonts to be embedded
-
-COPY resources /app/resources # additional resources
+COPY templates /app/templates
+COPY fonts /app/fonts
+COPY resources /app/resources
 ```
 
-Check [GitHub releases](https://github.com/navikt/pdfgenrs/releases) to find the latest `release` version
+Find the latest `<release>` in [GitHub releases](https://github.com/navikt/pdfgenrs/releases).
 
-Set up the basic folder structure
+2. Create the basic folder structure:
+
 ```bash
-mkdir {templates,resources,data,fonts}
+mkdir -p templates resources data fonts
+mkdir -p templates/your_appname data/your_appname
 ```
 
-Create subfolders in `templates` and `data`
+3. Add your template and test data, then run a request:
+
 ```bash
-mkdir {templates,data}/your_appname # your_appname can be anything, but it'll be a necessary part of the API later
+curl -s -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}' \
+  --output output.pdf
 ```
 
-* `templates/your_appname/` should then be populated with your `.typ` Typst templates. the names of these templates will also decide parts of the API paths. Templates receive JSON data via `#let data = json("/data.json")`.
-* `data/your_appname/` should be populated with json files with names corresponding to a target `.typ` template, this can be used to test your PDFs during development of templates.
-* `fonts/` should contain the `.ttf`, `.otf`, or `.ttc` files used by your templates.
+## Technologies and tools
 
-* For example typ templates see: [templates](templates)
-  
+- [Rust](https://rust-lang.org/)
+- [Cargo](https://crates.io/)
+- [Axum](https://docs.rs/axum/latest/axum/)
+- [Docker](https://www.docker.com/)
+- [Typst](https://typst.app/#start)
+- [JSON](https://www.json.org/json-en.html)
 
-### Applications that uses pdfgenrs
-- https://github.com/navikt/pdfgenrs-test
-- https://github.com/navikt/pale-2-pdfgenrs
+## Folder structure
+
+- `templates/your_appname/`
+  - Add `.typ` Typst templates.
+  - Template file names are part of API paths.
+  - Templates can read JSON with `#let data = json("/data.json")`.
+- `data/your_appname/`
+  - Add JSON files matching template names for local testing.
+- `fonts/`
+  - Add `.ttf`, `.otf`, or `.ttc` fonts used by templates.
+- `resources/`
+  - Add other assets your templates need.
+
+For template examples, see [templates](templates).
 
 ## API
 
 Base URL (local): `http://localhost:8080`
 
-`<your_appname>` maps to a folder under `templates/`, and `<template>` maps to a `.typ` file name in that folder.
+`<your_appname>` maps to a folder under `templates/`, and `<template>` maps to a `.typ` file in that folder.
 
 Example:
 
 - Template file: `templates/pale-2/pale-2.typ`
 - Endpoint path: `/api/v1/genpdf/pale-2/pale-2`
+
+### Endpoint overview
+
+| Endpoint | Method | Request Content-Type | Response Content-Type | Notes |
+|---|---|---|---|---|
+| `/api/v1/genpdf/{your_appname}/{template}` | `POST` | `application/json` | `application/pdf` | Typst + JSON to PDF |
+| `/api/v1/genpdf/html/{your_appname}` | `POST` | `text/html` | `application/pdf` | HTML to PDF |
+| `/api/v1/genpdf/image/{your_appname}` | `POST` | `image/png` or `image/jpeg` | `application/pdf` | Image to PDF |
+| `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json` | `text/html; charset=utf-8` | Typst + JSON to HTML |
+| `/internal/is_alive` | `GET` | - | - | Liveness |
+| `/internal/is_ready` | `GET` | - | - | Readiness |
 
 ### 1) Generate PDF from Typst + JSON
 
@@ -106,7 +134,7 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
   --output output.pdf
 ```
 
-### 3) Generate PDF from Image
+### 3) Generate PDF from image
 
 #### `POST /api/v1/genpdf/image/{your_appname}`
 
@@ -147,7 +175,7 @@ curl -s -X POST http://localhost:8080/api/v1/genhtml/<your_appname>/<template> \
   -d '{"key":"value"}'
 ```
 
-### Dev Mode only endpoints (`DEV_MODE=true`)
+### Dev mode only endpoints (`DEV_MODE=true`)
 
 When `DEV_MODE=true`, test data from `data/{your_appname}/{template}.json` is loaded and GET endpoints are enabled:
 
@@ -173,78 +201,60 @@ When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Al
 - `200 OK` when ready
 - `500 Internal Server Error` otherwise
 
-By default, pdfgenrs will load all assets (`templates`, `data`) to memory on startup. Any change on files inside these folders will not be loaded before a restart of the application.
+By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
+
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
+
+## Applications that use pdfgenrs
+
+- https://github.com/navikt/pdfgenrs-test
+- https://github.com/navikt/pale-2-pdfgenrs
 
 ## Developing pdfgenrs
 
 ### Prerequisites
-Make sure you have the rust installed using this command:
-#### Rust
-```bash script
-rustc --version
-```
 
-#### Cargo
-Make sure you have cargo installed using this command:
-```bash script
+Make sure Rust and Cargo are installed:
+
+```bash
+rustc --version
 cargo --version
 ```
 
-### Formating
-Format the code
-```bash script
+### Development commands
+
+```bash
 cargo fmt
-```
-
-### Linting
-Run the linter
-```bash script
 cargo clippy --all-targets -- -D warnings
-```
-
-### Build
-Build the code without running it
-```bash script
 cargo build
-```
-
-### Tests
-To run the tests
-```bash script
 cargo test
-```
-
-### Run
-Run the code
-```bash script
 cargo run
 ```
 
-### Release
-We use default GitHub release. 
-This project uses [semantic versioning](https://semver.org/) and does NOT prefix tags or release titles with `v` i.e. use `1.2.3` instead of `v1.2.3` 
+## Release
 
-See guide about how to release: [creating release github](
-https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release)
+We use default GitHub releases.
 
+This project follows [semantic versioning](https://semver.org/) and does **not** prefix tags or release titles with `v` (use `1.2.3`, not `v1.2.3`).
+
+For release steps, see [Creating a release on GitHub](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release).
 
 ## 👥 Contact
 
-This project is currently maintained by the organisation [@navikt](https://github.com/navikt).
+This project is currently maintained by [@navikt](https://github.com/navikt).
 
-If you need to raise an issue or question about this library, please create an issue here and tag it with the appropriate label.
+If you have questions, please create an issue and tag it with the appropriate label.
 
-For contact requests within the [@navikt](https://github.com/navikt) org, you can use the Slack channel #pdfgen
+For contact requests within the [@navikt](https://github.com/navikt) org, use the Slack channel `#pdfgen`.
 
-If you need to contact anyone directly, please see [CODEOWNERS](CODEOWNERS)
+If you need to contact anyone directly, see [CODEOWNERS](CODEOWNERS).
 
 ## ✏️ Contributing
 
-To get started, please fork the repo and checkout a new branch. You can then build the library
+To get started, fork the repository and create a new branch.
 
-```shell script
+```bash
 cargo build
 ```
 
-See more info in [CONTRIBUTING.md](CONTRIBUTING.md)
+See more info in [CONTRIBUTING.md](CONTRIBUTING.md).
