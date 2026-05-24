@@ -1,5 +1,7 @@
 # pdfgenrs
 
+![pdfgenrs logo](resources/pdfgenrs-logo.svg)
+
 [![Build main](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml)
 ![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
