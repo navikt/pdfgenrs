@@ -247,8 +247,6 @@ If you have questions, please create an issue and tag it with the appropriate la
 
 For contact requests within the [@navikt](https://github.com/navikt) org, use the Slack channel `#pdfgen`.
 
-If you need to contact anyone directly, see [CODEOWNERS](CODEOWNERS).
-
 ## ✏️ Contributing
 
 To get started, fork the repository and create a new branch.
