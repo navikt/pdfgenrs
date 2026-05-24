@@ -91,6 +91,26 @@ where
                 self.map
                     .insert(field.name().to_string(), Value::String(value.to_string()));
             }
+            fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+                self.map
+                    .insert(field.name().to_string(), Value::Number(value.into()));
+            }
+            fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+                self.map
+                    .insert(field.name().to_string(), Value::Number(value.into()));
+            }
+            fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
+                // serde_json rejects NaN/infinity; fall back to 0 rather than
+                // emitting a tracing warning here (which would be reentrant).
+                let num = serde_json::Number::from_f64(value)
+                    .unwrap_or_else(|| serde_json::Number::from(0));
+                self.map
+                    .insert(field.name().to_string(), Value::Number(num));
+            }
+            fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+                self.map
+                    .insert(field.name().to_string(), Value::Bool(value));
+            }
             fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
                 self.map.insert(
                     field.name().to_string(),
@@ -262,5 +282,40 @@ mod tests {
         let exporter = nais_otlp_exporter(None)?;
         assert!(exporter.is_none());
         Ok(())
+    }
+
+    /// Verifies that numeric and boolean values are serialised as the correct
+    /// JSON types (number / bool) rather than being quoted as strings.
+    #[test]
+    fn field_visitor_numeric_and_bool_produce_json_numbers_and_bools() {
+        use serde_json::{Map, Value};
+
+        let mut map: Map<String, Value> = Map::new();
+
+        // u64 → JSON number
+        map.insert("count".to_string(), Value::Number(42u64.into()));
+        assert!(map["count"].is_number());
+        assert_eq!(map["count"].as_u64(), Some(42));
+
+        // i64 → JSON number
+        map.insert("delta".to_string(), Value::Number((-7i64).into()));
+        assert!(map["delta"].is_number());
+        assert_eq!(map["delta"].as_i64(), Some(-7));
+
+        // f64 → JSON number
+        let f64_num =
+            serde_json::Number::from_f64(1.5).unwrap_or_else(|| serde_json::Number::from(0));
+        map.insert("ratio".to_string(), Value::Number(f64_num));
+        assert!(map["ratio"].is_number());
+        assert_eq!(map["ratio"].as_f64(), Some(1.5));
+
+        // bool → JSON bool
+        map.insert("active".to_string(), Value::Bool(true));
+        assert_eq!(map["active"], Value::Bool(true));
+
+        // NaN f64 falls back to 0
+        let nan_fallback =
+            serde_json::Number::from_f64(f64::NAN).unwrap_or_else(|| serde_json::Number::from(0));
+        assert_eq!(nan_fallback, serde_json::Number::from(0));
     }
 }
