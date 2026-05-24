@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320" role="img" aria-labelledby="title desc">
+  <title id="title">pdfgenrs logo</title>
+  <desc id="desc">A Rust-inspired fast PDF logo with speed lines and the text pdfgenrs.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#fb923c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="320" rx="36" fill="url(#bg)"/>
+
+  <g opacity="0.85">
+    <rect x="40" y="84" width="120" height="14" rx="7" fill="#475569"/>
+    <rect x="56" y="126" width="136" height="14" rx="7" fill="#64748b"/>
+    <rect x="32" y="168" width="148" height="14" rx="7" fill="#475569"/>
+    <rect x="52" y="210" width="110" height="14" rx="7" fill="#334155"/>
+  </g>
+
+  <circle cx="266" cy="160" r="86" fill="none" stroke="#f8fafc" stroke-width="18"/>
+  <circle cx="266" cy="160" r="54" fill="#f97316"/>
+  <path d="M238 104h56l22 24v84h-100v-108h22z" fill="#f8fafc"/>
+  <path d="M294 104v24h22" fill="none" stroke="#cbd5e1" stroke-width="5" stroke-linecap="round"/>
+  <path d="M230 156h52M230 176h60" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+
+  <path d="M346 160h86" stroke="url(#accent)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M366 132l74 28-74 28z" fill="#fb923c"/>
+
+  <g fill="#f8fafc" font-family="Inter, Segoe UI, Arial, sans-serif">
+    <text x="468" y="142" font-size="74" font-weight="800" letter-spacing="1">pdfgenrs</text>
+    <text x="470" y="188" font-size="30" font-weight="500" fill="#cbd5e1">Rust-powered PDF generation at speed</text>
+  </g>
+</svg>
