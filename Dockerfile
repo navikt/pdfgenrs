@@ -1,4 +1,4 @@
-FROM clux/muslrust:stable as builder
+FROM clux/muslrust:stable AS builder
 
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
