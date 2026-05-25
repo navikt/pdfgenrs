@@ -18,10 +18,14 @@ async fn main() -> Result<()> {
 
     info!(path = %cfg.templates_dir.display(), "Loading templates");
     let templates = Arc::new(
-        template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_else(|e| {
-            tracing::warn!(error = %e, "Failed to load templates");
-            HashMap::new()
-        }),
+        template::load_templates_from_dir(&cfg.templates_dir).map_err(|e| {
+            tracing::error!(
+                error = %e,
+                path = %cfg.templates_dir.display(),
+                "Failed to load templates"
+            );
+            e
+        })?,
     );
     info!(count = templates.len(), "Loaded templates");
 
