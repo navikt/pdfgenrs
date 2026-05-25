@@ -21,7 +21,7 @@ and also run the linter
 cargo clippy --all-targets -- -D warnings
 ```
 
-If this change can affect performance, you have run
+If this change can affect performance, you have run this command
 ```shell script
 cargo bench --bench performance
 ```
