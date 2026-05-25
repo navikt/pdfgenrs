@@ -25,8 +25,6 @@ If this change can affect performance, you have run
 ```shell script
 cargo bench --bench performance
 ```
-and checked `Total (ms)` is as following
-ms for single thread is under 800 ms and for multi thread is under 1200 ms
 
 
 
