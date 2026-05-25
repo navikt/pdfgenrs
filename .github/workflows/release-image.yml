@@ -29,4 +29,6 @@ jobs:
         with:
           context: .
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ env.IMAGE }}:${{ env.NEW_VERSION }}
