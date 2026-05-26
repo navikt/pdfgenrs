@@ -192,11 +192,15 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
+    use axum::extract::{Path, State};
     use axum::http::StatusCode;
+    use axum::response::Response;
     use axum::routing::{get, post};
-    use axum::Router;
+    use axum::{Json, Router};
     use axum_test::TestServer;
+    use serde_json::Value;
     use tokio::sync::RwLock;
+    use tokio::time::{timeout, Duration};
 
     use axum::body::Bytes;
     use axum::http::HeaderValue;
@@ -207,6 +211,9 @@ mod tests {
 
     const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
+    const OVERSIZED_PAYLOAD_SIZE_BYTES: usize = 3 * 1024 * 1024;
+    const DELAYED_REQUEST_DURATION_MS: u64 = 200;
+    const CLIENT_TIMEOUT_DURATION_MS: u64 = 50;
 
     fn make_state(
         templates: HashMap<(String, String), String>,
@@ -244,6 +251,26 @@ mod tests {
             router = router.route("/{app_name}/{template}", get(get_pdf));
         }
         router.with_state(state)
+    }
+
+    async fn delayed_post_pdf(
+        State(state): State<AppState>,
+        Path((app_name, template_name)): Path<(String, String)>,
+        Json(json_data): Json<Value>,
+    ) -> Response {
+        tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
+        post_pdf(
+            State(state),
+            Path((app_name, template_name)),
+            Json(json_data),
+        )
+        .await
+    }
+
+    fn make_router_with_delayed_post(state: AppState) -> Router {
+        Router::new()
+            .route("/{app_name}/{template}", post(delayed_post_pdf))
+            .with_state(state)
     }
 
     fn is_pdf(bytes: &[u8]) -> bool {
@@ -331,6 +358,60 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_returns_413_for_oversized_json_body() -> anyhow::Result<()> {
+        let oversized_payload = format!(
+            r#"{{"data":"{}"}}"#,
+            "a".repeat(OVERSIZED_PAYLOAD_SIZE_BYTES)
+        );
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(Bytes::from(oversized_payload))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_client_timeout_cancels_request_and_followup_still_succeeds(
+    ) -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
+        let server = TestServer::new(make_router_with_delayed_post(make_state(
+            templates,
+            HashMap::new(),
+            false,
+        )?));
+
+        let timed_out = timeout(
+            Duration::from_millis(CLIENT_TIMEOUT_DURATION_MS),
+            server
+                .post("/myapp/mytemplate")
+                .json(&serde_json::json!({})),
+        )
+        .await;
+        assert!(timed_out.is_err());
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(is_pdf(response.as_bytes()));
         Ok(())
     }
 
