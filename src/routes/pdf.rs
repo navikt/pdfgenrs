@@ -143,7 +143,7 @@ pub async fn post_pdf_from_image(
     let resources_dir = state.config.resource_root();
     match tokio::task::spawn_blocking(move || {
         gen_pdf::image_to_pdf(
-            image_bytes.to_vec(),
+            image_bytes,
             image_path,
             fonts,
             &root,
