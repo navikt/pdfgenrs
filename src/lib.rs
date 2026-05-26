@@ -14,6 +14,8 @@ use axum::{
 };
 use state::AppState;
 
+pub use pdf::load_html_font_aliases;
+
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
     static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();

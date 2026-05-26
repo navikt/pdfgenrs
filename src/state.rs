@@ -19,6 +19,8 @@ pub struct AppState {
     pub config: config::Config,
     /// Shared font data used by the Typst compiler.
     pub fonts: Arc<Fonts>,
+    /// Pre-loaded HTML font aliases used by the HTML-to-PDF converter.
+    pub html_font_aliases: Arc<Vec<(String, Vec<u8>)>>,
 }
 
 /// Tracks the liveness and readiness state of the application.
