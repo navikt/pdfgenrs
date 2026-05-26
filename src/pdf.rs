@@ -93,13 +93,16 @@ pub fn html_to_pdf(
 }
 
 /// Converts a PNG or JPEG image into PDF bytes.
-pub fn image_to_pdf(
-    image_bytes: Vec<u8>,
+pub fn image_to_pdf<B>(
+    image_bytes: B,
     image_path: &str,
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>>
+where
+    B: AsRef<[u8]> + Send + Sync + 'static,
+{
     let mut vfiles = HashMap::new();
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
 
