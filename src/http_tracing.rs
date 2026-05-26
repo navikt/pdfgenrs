@@ -57,4 +57,62 @@ mod imp {
             app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use axum::http::{HeaderValue, Method, Uri, Version};
+
+        #[test]
+        fn header_extractor_reads_valid_headers_and_skips_non_utf8_values() {
+            let mut headers = HeaderMap::new();
+            let invalid_header = match HeaderValue::from_bytes(b"\xFF") {
+                Ok(value) => value,
+                Err(error) => panic!("expected opaque header value: {error}"),
+            };
+            headers.insert(
+                "traceparent",
+                HeaderValue::from_static("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"),
+            );
+            headers.insert("x-invalid", invalid_header);
+
+            let extractor = HeaderExtractor(&headers);
+
+            assert_eq!(
+                extractor.get("traceparent"),
+                Some("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+            );
+            assert_eq!(extractor.get("x-invalid"), None);
+
+            let keys = extractor.keys();
+            assert!(keys.contains(&"traceparent"));
+            assert!(keys.contains(&"x-invalid"));
+        }
+
+        #[test]
+        fn make_otel_span_creates_http_request_span() {
+            let request_result = Request::builder()
+                .method(Method::POST)
+                .uri(Uri::from_static("/api/v1/genpdf"))
+                .version(Version::HTTP_11)
+                .header(
+                    "traceparent",
+                    "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+                )
+                .body(Body::empty());
+            let request = match request_result {
+                Ok(request) => request,
+                Err(error) => panic!("expected valid request: {error}"),
+            };
+
+            let span = make_otel_span(&request);
+            let metadata = match span.metadata() {
+                Some(metadata) => metadata,
+                None => panic!("expected span metadata"),
+            };
+
+            assert_eq!(metadata.name(), "HTTP request");
+            assert_eq!(metadata.level(), &tracing::Level::INFO);
+        }
+    }
 }

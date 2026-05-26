@@ -246,6 +246,98 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
+    use std::io;
+    use std::sync::{Arc, Mutex, OnceLock};
+    use tracing_subscriber::{layer::SubscriberExt, registry::Registry};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    struct EnvGuard {
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl EnvGuard {
+        fn set(vars: &[(&'static str, Option<&str>)]) -> Self {
+            let saved = vars
+                .iter()
+                .map(|(key, value)| {
+                    let previous = std::env::var(key).ok();
+                    match value {
+                        Some(value) => std::env::set_var(key, value),
+                        None => std::env::remove_var(key),
+                    }
+                    (*key, previous)
+                })
+                .collect();
+            Self { saved }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (key, value) in &self.saved {
+                match value {
+                    Some(value) => std::env::set_var(key, value),
+                    None => std::env::remove_var(key),
+                }
+            }
+        }
+    }
+
+    #[derive(Clone, Default)]
+    struct SharedBuffer(Arc<Mutex<Vec<u8>>>);
+
+    impl SharedBuffer {
+        fn lines(&self) -> Vec<String> {
+            let bytes = self
+                .0
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .clone();
+            let output = match String::from_utf8(bytes) {
+                Ok(output) => output,
+                Err(error) => panic!("expected valid utf-8 log output: {error}"),
+            };
+            output.lines().map(str::to_string).collect()
+        }
+    }
+
+    struct SharedWriter(Arc<Mutex<Vec<u8>>>);
+
+    impl<'a> fmt::MakeWriter<'a> for SharedBuffer {
+        type Writer = SharedWriter;
+
+        fn make_writer(&'a self) -> Self::Writer {
+            SharedWriter(self.0.clone())
+        }
+    }
+
+    impl io::Write for SharedWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.0
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn parse_single_log_line(buffer: &SharedBuffer) -> Value {
+        let lines = buffer.lines();
+        assert_eq!(lines.len(), 1);
+        match serde_json::from_str(&lines[0]) {
+            Ok(value) => value,
+            Err(error) => panic!("expected JSON log line: {error}"),
+        }
+    }
 
     #[test]
     fn logger_name_for_file_rewrites_path_and_suffix() {
@@ -284,6 +376,18 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn nais_otlp_exporter_is_some_with_endpoint_env_present() -> anyhow::Result<()> {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _env = EnvGuard::set(&[("OTEL_EXPORTER_OTLP_ENDPOINT", Some("http://127.0.0.1:4317"))]);
+
+        let exporter = nais_otlp_exporter(Some("http://127.0.0.1:4317"))?;
+        assert!(exporter.is_some());
+        Ok(())
+    }
+
     /// Verifies that numeric and boolean values are serialised as the correct
     /// JSON types (number / bool) rather than being quoted as strings.
     #[test]
@@ -317,5 +421,103 @@ mod tests {
         let nan_fallback =
             serde_json::Number::from_f64(f64::NAN).unwrap_or_else(|| serde_json::Number::from(0));
         assert_eq!(nan_fallback, serde_json::Number::from(0));
+    }
+
+    #[test]
+    fn nais_json_format_serializes_span_and_event_fields() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            let span = tracing::info_span!("request-span");
+            let _entered = span.enter();
+            tracing::info!(
+                string_field = "value",
+                count = 42u64,
+                delta = -7i64,
+                ratio = 1.5f64,
+                active = true,
+                debug_field = ?vec![1, 2, 3],
+                "formatted log line"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        let file = match log_line["file"].as_str() {
+            Some(file) => file,
+            None => panic!("expected file field"),
+        };
+
+        assert!(log_line["timestamp"].as_str().is_some());
+        assert_eq!(log_line["log_level"], Value::String("INFO".to_string()));
+        assert_eq!(
+            log_line["target"],
+            Value::String(module_path!().to_string())
+        );
+        assert_eq!(log_line["file"], Value::String(file.to_string()));
+        assert_eq!(
+            log_line["logger_name"],
+            Value::String(logger_name_for_file(file))
+        );
+        assert!(log_line["line"].as_u64().is_some());
+        assert_eq!(log_line["span"], Value::String("request-span".to_string()));
+        assert_eq!(
+            log_line["message"],
+            Value::String("formatted log line".to_string())
+        );
+        assert_eq!(log_line["string_field"], Value::String("value".to_string()));
+        assert_eq!(log_line["count"], Value::Number(42u64.into()));
+        assert_eq!(log_line["delta"], Value::Number((-7i64).into()));
+        let ratio = match serde_json::Number::from_f64(1.5) {
+            Some(ratio) => ratio,
+            None => panic!("expected finite number"),
+        };
+        assert_eq!(log_line["ratio"], Value::Number(ratio));
+        assert_eq!(log_line["active"], Value::Bool(true));
+        assert_eq!(
+            log_line["debug_field"],
+            Value::String("[1, 2, 3]".to_string())
+        );
+    }
+
+    #[test]
+    fn nais_json_format_falls_back_for_nan_values() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!(ratio = f64::NAN, "nan value");
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["ratio"], Value::Number(0.into()));
+        assert!(log_line.get("span").is_none());
+    }
+
+    #[test]
+    fn setup_tracing_initializes_without_otlp_exporter() -> anyhow::Result<()> {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _env = EnvGuard::set(&[
+            ("OTEL_EXPORTER_OTLP_ENDPOINT", None),
+            ("OTEL_SERVICE_NAME", Some("pdfgenrs-test")),
+            ("RUST_LOG", Some("info")),
+        ]);
+
+        let provider = setup_tracing()?;
+        tracing::info!(test_case = "setup_tracing", "subscriber initialized");
+        provider.shutdown()?;
+        Ok(())
     }
 }
