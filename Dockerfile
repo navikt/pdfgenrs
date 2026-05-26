@@ -1,10 +1,10 @@
 FROM clux/muslrust:stable AS builder
-RUN cargo --version && cargo install cargo-auditable
+RUN cargo install cargo-auditable
 WORKDIR /build
+ENV RUSTFLAGS='-C target-feature=+crt-static'
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY fonts ./fonts
-ENV RUSTFLAGS='-C target-feature=+crt-static'
 RUN cargo auditable build --release
 
 FROM gcr.io/distroless/static-debian13:nonroot
