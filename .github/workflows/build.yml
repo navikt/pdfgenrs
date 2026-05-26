@@ -9,7 +9,10 @@ on:
       - '.gitignore'
       - 'LICENCE'
       - 'CODEOWNERS'
-
+      
+permissions:
+  checks: write
+  
 jobs:
   build:
     name: Test and build application
