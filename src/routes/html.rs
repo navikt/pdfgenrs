@@ -22,9 +22,9 @@ pub async fn get_html(
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Response {
     let start = std::time::Instant::now();
-    let tmpl_name = format!("{app_name}/{template_name}");
+    let template_key = (app_name.clone(), template_name.clone());
 
-    let template_source = state.templates.get(&tmpl_name).cloned();
+    let template_source = state.templates.get(&template_key).cloned();
     let json_data = {
         let data_map = state.data.read().await;
         data_map
@@ -47,11 +47,11 @@ pub async fn get_html(
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
             {
                 Err(e) => {
-                    error!(template = %tmpl_name, error = %e, "HTML generation failed");
+                    error!(app_name = %app_name, template_name = %template_name, error = %e, "HTML generation failed");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
                 Ok(html_string) => {
-                    info!(template = %tmpl_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+                    info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
                     html_response(html_string)
                 }
             }
@@ -70,9 +70,9 @@ pub async fn post_html(
     Json(json_data): Json<Value>,
 ) -> Response {
     let start = std::time::Instant::now();
-    let tmpl_name = format!("{app_name}/{template_name}");
+    let template_key = (app_name.clone(), template_name.clone());
 
-    let Some(template_source) = state.templates.get(&tmpl_name).cloned() else {
+    let Some(template_source) = state.templates.get(&template_key).cloned() else {
         return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
     };
 
@@ -86,11 +86,11 @@ pub async fn post_html(
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
-            error!(template = %tmpl_name, error = %e, "HTML generation failed");
+            error!(app_name = %app_name, template_name = %template_name, error = %e, "HTML generation failed");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(html_string) => {
-            info!(template = %tmpl_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+            info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
             html_response(html_string)
         }
     }
@@ -124,7 +124,7 @@ mod tests {
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
 
     fn make_state(
-        templates: HashMap<String, String>,
+        templates: HashMap<(String, String), String>,
         data: HashMap<(String, String), serde_json::Value>,
         dev_mode: bool,
     ) -> anyhow::Result<AppState> {
@@ -162,7 +162,10 @@ mod tests {
     #[tokio::test]
     async fn post_html_returns_html_for_valid_template() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
-        templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
         let server = TestServer::new(make_router(
             make_state(templates, HashMap::new(), false)?,
             false,
@@ -203,7 +206,10 @@ mod tests {
     #[tokio::test]
     async fn post_html_returns_500_for_invalid_template() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
-        templates.insert("myapp/mytemplate".to_string(), INVALID_TEMPLATE.to_string());
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            INVALID_TEMPLATE.to_string(),
+        );
         let server = TestServer::new(make_router(
             make_state(templates, HashMap::new(), false)?,
             false,
@@ -221,7 +227,10 @@ mod tests {
     #[tokio::test]
     async fn get_html_returns_html_when_template_and_data_exist() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
-        templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
@@ -245,7 +254,10 @@ mod tests {
     #[tokio::test]
     async fn get_html_returns_404_when_data_missing() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
-        templates.insert("myapp/mytemplate".to_string(), SIMPLE_TEMPLATE.to_string());
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
         let server = TestServer::new(make_router(
             make_state(templates, HashMap::new(), true)?,
             true,

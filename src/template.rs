@@ -50,13 +50,14 @@ impl TestDataLoadResult {
 
 /// Recursively loads all `*.typ` template files from `templates_dir`.
 ///
-/// Each template is keyed by its relative path with the `.typ` extension
-/// stripped and path separators normalised to `/`
-/// (e.g. `"myapp/invoice"` for `templates/myapp/invoice.typ`).
+/// Each template must be at path format `<app_name>/<template_name>.typ` and is
+/// keyed by `(app_name, template_name)`.
 ///
 /// # Errors
 /// Returns an error if any file cannot be read or a path cannot be processed.
-pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<String, String>> {
+pub fn load_templates_from_dir(
+    templates_dir: &Path,
+) -> anyhow::Result<HashMap<(String, String), String>> {
     let mut templates = HashMap::new();
 
     for entry in WalkDir::new(templates_dir).follow_links(true).into_iter() {
@@ -68,13 +69,23 @@ pub fn load_templates_from_dir(templates_dir: &Path) -> anyhow::Result<HashMap<S
                     let relative = path
                         .strip_prefix(templates_dir)
                         .context("Failed to strip prefix")?;
-                    let name = relative
-                        .with_extension("")
-                        .to_string_lossy()
-                        .replace('\\', "/");
+                    let relative_no_ext = relative.with_extension("");
+                    let mut parts = relative_no_ext.iter();
+                    let app_name = parts.next().and_then(|part| part.to_str()).context(
+                        "Template path must start with '<app_name>/' and use valid UTF-8",
+                    )?;
+                    let template_name = parts.next().and_then(|part| part.to_str()).context(
+                        "Template path must include '<template_name>.typ' under app_name and use valid UTF-8",
+                    )?;
+                    if parts.next().is_some() {
+                        return Err(anyhow::anyhow!(
+                            "Template path must be exactly '<app_name>/<template_name>.typ': {}",
+                            relative.display()
+                        ));
+                    }
                     let source =
                         std::fs::read_to_string(path).context("Failed to read template file")?;
-                    templates.insert(name, source);
+                    templates.insert((app_name.to_string(), template_name.to_string()), source);
                 }
             }
         }
@@ -194,12 +205,17 @@ mod tests {
     #[test]
     fn test_load_templates_single_file() -> anyhow::Result<()> {
         let dir = TempDir::new()?;
-        fs::write(dir.path().join("hello.typ"), "Hello Typst")?;
+        let app = dir.path().join("myapp");
+        fs::create_dir_all(&app)?;
+        fs::write(app.join("hello.typ"), "Hello Typst")?;
 
         let templates = load_templates_from_dir(dir.path())?;
 
         assert_eq!(templates.len(), 1);
-        assert_eq!(templates["hello"], "Hello Typst");
+        assert_eq!(
+            templates[&("myapp".to_string(), "hello".to_string())],
+            "Hello Typst"
+        );
         Ok(())
     }
 
@@ -213,25 +229,25 @@ mod tests {
         let templates = load_templates_from_dir(dir.path())?;
 
         assert_eq!(templates.len(), 1);
-        assert!(
-            templates.contains_key("myapp/report"),
-            "key should use forward slash"
-        );
-        assert_eq!(templates["myapp/report"], "Report content");
+        let key = ("myapp".to_string(), "report".to_string());
+        assert!(templates.contains_key(&key));
+        assert_eq!(templates[&key], "Report content");
         Ok(())
     }
 
     #[test]
     fn test_load_templates_ignores_non_typ_files() -> anyhow::Result<()> {
         let dir = TempDir::new()?;
-        fs::write(dir.path().join("template.typ"), "Typst source")?;
-        fs::write(dir.path().join("data.json"), "{}")?;
-        fs::write(dir.path().join("readme.txt"), "readme")?;
+        let app = dir.path().join("myapp");
+        fs::create_dir_all(&app)?;
+        fs::write(app.join("template.typ"), "Typst source")?;
+        fs::write(app.join("data.json"), "{}")?;
+        fs::write(app.join("readme.txt"), "readme")?;
 
         let templates = load_templates_from_dir(dir.path())?;
 
         assert_eq!(templates.len(), 1);
-        assert!(templates.contains_key("template"));
+        assert!(templates.contains_key(&("myapp".to_string(), "template".to_string())));
         Ok(())
     }
 
@@ -248,18 +264,18 @@ mod tests {
     #[test]
     fn test_load_templates_multiple_files() -> anyhow::Result<()> {
         let dir = TempDir::new()?;
-        let sub = dir.path().join("app");
-        fs::create_dir_all(&sub)?;
-        fs::write(dir.path().join("root.typ"), "root")?;
-        fs::write(sub.join("one.typ"), "one")?;
-        fs::write(sub.join("two.typ"), "two")?;
+        let app1 = dir.path().join("app1");
+        let app2 = dir.path().join("app2");
+        fs::create_dir_all(&app1)?;
+        fs::create_dir_all(&app2)?;
+        fs::write(app1.join("one.typ"), "one")?;
+        fs::write(app2.join("two.typ"), "two")?;
 
         let templates = load_templates_from_dir(dir.path())?;
 
-        assert_eq!(templates.len(), 3);
-        assert!(templates.contains_key("root"));
-        assert!(templates.contains_key("app/one"));
-        assert!(templates.contains_key("app/two"));
+        assert_eq!(templates.len(), 2);
+        assert!(templates.contains_key(&("app1".to_string(), "one".to_string())));
+        assert!(templates.contains_key(&("app2".to_string(), "two".to_string())));
         Ok(())
     }
 
