@@ -200,7 +200,7 @@ mod tests {
     use axum_test::TestServer;
     use serde_json::Value;
     use tokio::sync::RwLock;
-    use tokio::time::{Duration, timeout};
+    use tokio::time::{timeout, Duration};
 
     use axum::body::Bytes;
     use axum::http::HeaderValue;
@@ -369,7 +369,7 @@ mod tests {
         let response = server
             .post("/myapp/mytemplate")
             .content_type("application/json")
-            .text(oversized_payload)
+            .bytes(Bytes::from(oversized_payload))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
@@ -377,8 +377,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_client_timeout_cancels_request_and_followup_still_succeeds() -> anyhow::Result<()>
-    {
+    async fn post_pdf_client_timeout_cancels_request_and_followup_still_succeeds(
+    ) -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
@@ -392,7 +392,9 @@ mod tests {
 
         let timed_out = timeout(
             Duration::from_millis(50),
-            server.post("/myapp/mytemplate").json(&serde_json::json!({})),
+            server
+                .post("/myapp/mytemplate")
+                .json(&serde_json::json!({})),
         )
         .await;
         assert!(timed_out.is_err());
