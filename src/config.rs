@@ -61,6 +61,12 @@ impl Config {
     pub fn resource_root(&self) -> PathBuf {
         resolve_from_root(&self.root_dir, &self.resources_dir)
     }
+
+    /// Returns the absolute font directory.
+    /// Relative paths in `fonts_dir` are resolved from `root_dir`.
+    pub fn font_dir(&self) -> PathBuf {
+        resolve_from_root(&self.root_dir, &self.fonts_dir)
+    }
 }
 
 fn env_path(key: &str, default: &str) -> PathBuf {
@@ -201,6 +207,36 @@ mod tests {
         let config = Config::default();
 
         assert!(!config.dev_mode);
+    }
+
+    #[test]
+    fn font_dir_joins_relative_fonts_dir_to_root_dir() {
+        let config = Config {
+            port: DEFAULT_PORT,
+            root_dir: PathBuf::from("/tmp/root"),
+            templates_dir: PathBuf::from(DEFAULT_TEMPLATES_DIR),
+            resources_dir: PathBuf::from(DEFAULT_RESOURCES_DIR),
+            data_dir: PathBuf::from(DEFAULT_DATA_DIR),
+            fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
+            dev_mode: false,
+        };
+
+        assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
+    }
+
+    #[test]
+    fn font_dir_keeps_absolute_fonts_dir() {
+        let config = Config {
+            port: DEFAULT_PORT,
+            root_dir: PathBuf::from("/tmp/root"),
+            templates_dir: PathBuf::from(DEFAULT_TEMPLATES_DIR),
+            resources_dir: PathBuf::from(DEFAULT_RESOURCES_DIR),
+            data_dir: PathBuf::from(DEFAULT_DATA_DIR),
+            fonts_dir: PathBuf::from("/tmp/shared/fonts"),
+            dev_mode: false,
+        };
+
+        assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
     }
 
     #[test]

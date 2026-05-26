@@ -105,7 +105,7 @@ pub async fn post_pdf_from_html(
 ) -> Response {
     let start = std::time::Instant::now();
     let root = state.config.root_dir.clone();
-    let fonts_dir = root.join(&state.config.fonts_dir);
+    let fonts_dir = state.config.font_dir();
 
     match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &fonts_dir))
         .await
