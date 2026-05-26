@@ -127,6 +127,9 @@ mod tests {
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
+    const OVERSIZED_JSON_BODY_BYTES: usize = 3 * 1024 * 1024;
+    const DELAYED_REQUEST_DURATION_MS: u64 = 200;
+    const CLIENT_TIMEOUT_DURATION_MS: u64 = 50;
 
     fn make_state(
         templates: HashMap<(String, String), String>,
@@ -168,7 +171,7 @@ mod tests {
         Path((app_name, template_name)): Path<(String, String)>,
         Json(json_data): Json<Value>,
     ) -> Response {
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
         post_html(
             State(state),
             Path((app_name, template_name)),
@@ -254,7 +257,8 @@ mod tests {
 
     #[tokio::test]
     async fn post_html_returns_413_for_oversized_json_body() -> anyhow::Result<()> {
-        let oversized_payload = format!(r#"{{"data":"{}"}}"#, "a".repeat(3 * 1024 * 1024));
+        let oversized_payload =
+            format!(r#"{{"data":"{}"}}"#, "a".repeat(OVERSIZED_JSON_BODY_BYTES));
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
             false,
@@ -285,7 +289,7 @@ mod tests {
         )?));
 
         let timed_out = timeout(
-            Duration::from_millis(50),
+            Duration::from_millis(CLIENT_TIMEOUT_DURATION_MS),
             server
                 .post("/myapp/mytemplate")
                 .json(&serde_json::json!({})),
