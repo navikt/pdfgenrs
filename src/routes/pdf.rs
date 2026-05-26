@@ -105,9 +105,9 @@ pub async fn post_pdf_from_html(
 ) -> Response {
     let start = std::time::Instant::now();
     let root = state.config.root_dir.clone();
-    let fonts_dir = root.join(&state.config.fonts_dir);
+    let html_font_aliases = Arc::clone(&state.html_font_aliases);
 
-    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &fonts_dir))
+    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &html_font_aliases))
         .await
         .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
@@ -227,6 +227,9 @@ mod tests {
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
             )?),
+            html_font_aliases: Arc::new(crate::pdf::load_html_font_aliases(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )),
         })
     }
 

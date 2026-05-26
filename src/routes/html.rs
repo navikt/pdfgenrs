@@ -118,7 +118,7 @@ mod tests {
 
     use super::{get_html, post_html};
     use crate::state::AppState;
-    use crate::{config, state, typst_world};
+    use crate::{config, load_html_font_aliases, state, typst_world};
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
@@ -144,6 +144,9 @@ mod tests {
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
             )?),
+            html_font_aliases: Arc::new(load_html_font_aliases(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )),
         })
     }
 
