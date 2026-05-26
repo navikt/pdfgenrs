@@ -67,10 +67,7 @@ async fn main() -> Result<()> {
     info!(count = fonts.fonts.len(), "Loaded fonts");
 
     let html_font_aliases = Arc::new(load_html_font_aliases(&cfg.root_dir.join(&cfg.fonts_dir)));
-    info!(
-        count = html_font_aliases.len(),
-        "Loaded HTML font aliases"
-    );
+    info!(count = html_font_aliases.len(), "Loaded HTML font aliases");
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
