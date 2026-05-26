@@ -70,24 +70,14 @@ pub fn load_templates_from_dir(
                         .strip_prefix(templates_dir)
                         .context("Failed to strip prefix")?;
                     let relative_no_ext = relative.with_extension("");
-                    let app_name = relative_no_ext
-                        .parent()
-                        .and_then(Path::file_name)
-                        .and_then(|part| part.to_str())
-                        .context(
-                            "Template path must be '<app_name>/<template_name>.typ' with valid UTF-8",
-                        )?;
-                    let template_name = relative_no_ext
-                        .file_name()
-                        .and_then(|part| part.to_str())
-                        .context(
-                            "Template path must be '<app_name>/<template_name>.typ' with valid UTF-8",
-                        )?;
-                    if relative_no_ext
-                        .parent()
-                        .and_then(Path::parent)
-                        .is_some_and(|parent| !parent.as_os_str().is_empty())
-                    {
+                    let mut parts = relative_no_ext.iter();
+                    let app_name = parts.next().and_then(|part| part.to_str()).context(
+                        "Template path must include app_name and template_name and use valid UTF-8",
+                    )?;
+                    let template_name = parts.next().and_then(|part| part.to_str()).context(
+                        "Template path must include app_name and template_name and use valid UTF-8",
+                    )?;
+                    if parts.next().is_some() {
                         return Err(anyhow::anyhow!(
                             "Template path must be exactly '<app_name>/<template_name>.typ': {}",
                             relative.display()
