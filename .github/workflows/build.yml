@@ -7,8 +7,6 @@ on:
       - '**.md'
       - '**.MD'
       - '.gitignore'
-      - 'LICENCE'
-      - 'CODEOWNERS'
       
 permissions:
   checks: write
