@@ -22,6 +22,10 @@ const HTML_FONT_ALIASES: &[(&str, &str)] = &[
     ("Noto Emoji", "NotoColorEmoji-Regular.ttf"),
 ];
 
+/// Loads predefined HTML font aliases from `fonts_dir`.
+///
+/// Each returned tuple contains `(font_family_name, font_bytes)`.
+/// Files that cannot be read are skipped and logged as warnings.
 pub fn load_html_font_aliases(fonts_dir: &Path) -> Vec<(String, Vec<u8>)> {
     HTML_FONT_ALIASES
         .iter()
