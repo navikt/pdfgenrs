@@ -127,7 +127,7 @@ mod tests {
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
-    const OVERSIZED_JSON_BODY_BYTES: usize = 3 * 1024 * 1024;
+    const OVERSIZED_JSON_STRING_LENGTH: usize = 3 * 1024 * 1024;
     const DELAYED_REQUEST_DURATION_MS: u64 = 200;
     const CLIENT_TIMEOUT_DURATION_MS: u64 = 50;
 
@@ -258,7 +258,7 @@ mod tests {
     #[tokio::test]
     async fn post_html_returns_413_for_oversized_json_body() -> anyhow::Result<()> {
         let oversized_payload =
-            format!(r#"{{"data":"{}"}}"#, "a".repeat(OVERSIZED_JSON_BODY_BYTES));
+            format!(r#"{{"data":"{}"}}"#, "a".repeat(OVERSIZED_JSON_STRING_LENGTH));
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
             false,
