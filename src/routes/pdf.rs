@@ -107,9 +107,11 @@ pub async fn post_pdf_from_html(
     let root = state.config.root_dir.clone();
     let html_font_aliases = Arc::clone(&state.html_font_aliases);
 
-    match tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &html_font_aliases))
-        .await
-        .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+    match tokio::task::spawn_blocking(move || {
+        gen_pdf::html_to_pdf(&html, &root, &html_font_aliases)
+    })
+    .await
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
             error!(app_name = %app_name, error = %e, "HTML-to-PDF generation failed");

@@ -72,7 +72,11 @@ pub fn typst_to_pdf(
 }
 
 /// Converts an HTML document into PDF bytes.
-pub fn html_to_pdf(html: &str, root: &Path, html_font_aliases: &[(String, Vec<u8>)]) -> Result<Vec<u8>> {
+pub fn html_to_pdf(
+    html: &str,
+    root: &Path,
+    html_font_aliases: &[(String, Vec<u8>)],
+) -> Result<Vec<u8>> {
     let mut converter = HtmlConverter::new().base_path(root);
 
     for (family, font_bytes) in html_font_aliases {
