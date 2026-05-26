@@ -144,13 +144,9 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
     let passes = 20;
     let mut results = Vec::new();
 
-    for template_path in app_state.templates.keys() {
-        let parts: Vec<&str> = template_path.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            continue;
-        }
-        let app_name = parts[0].to_string();
-        let template_name = parts[1].to_string();
+    for (app_name, template_name) in app_state.templates.keys() {
+        let app_name = app_name.clone();
+        let template_name = template_name.clone();
 
         let json_data = {
             let data = app_state.data.read().await;
@@ -205,13 +201,9 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
     let passes = 30;
     let mut results = Vec::new();
 
-    for template_path in app_state.templates.keys() {
-        let parts: Vec<&str> = template_path.splitn(2, '/').collect();
-        if parts.len() != 2 {
-            continue;
-        }
-        let app_name = parts[0].to_string();
-        let template_name = parts[1].to_string();
+    for (app_name, template_name) in app_state.templates.keys() {
+        let app_name = app_name.clone();
+        let template_name = template_name.clone();
 
         let json_data = {
             let data = app_state.data.read().await;
