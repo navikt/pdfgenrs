@@ -55,7 +55,7 @@ mod tests {
     use crate::config::Config;
     use crate::state::AppAliveness;
     use crate::state::AppState;
-    use crate::typst_world;
+    use crate::{load_html_font_aliases, typst_world};
 
     fn test_state(alive: bool, ready: bool) -> anyhow::Result<AppState> {
         let aliveness = AppAliveness::new();
@@ -68,6 +68,7 @@ mod tests {
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness,
             fonts,
+            html_font_aliases: Arc::new(load_html_font_aliases(&cfg.fonts_dir)),
             config: cfg,
         })
     }

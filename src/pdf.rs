@@ -22,6 +22,26 @@ const HTML_FONT_ALIASES: &[(&str, &str)] = &[
     ("Noto Emoji", "NotoColorEmoji-Regular.ttf"),
 ];
 
+pub fn load_html_font_aliases(fonts_dir: &Path) -> Vec<(String, Vec<u8>)> {
+    HTML_FONT_ALIASES
+        .iter()
+        .filter_map(|(family, file_name)| {
+            let font_path = fonts_dir.join(file_name);
+            match std::fs::read(&font_path) {
+                Ok(font_bytes) => Some(((*family).to_string(), font_bytes)),
+                Err(error) => {
+                    warn!(
+                        font_path = %font_path.display(),
+                        font_family = family,
+                        "Failed to load HTML font alias: {error}"
+                    );
+                    None
+                }
+            }
+        })
+        .collect()
+}
+
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
 ///
 /// The JSON data is serialised and injected as a virtual file at `/data.json`,
@@ -52,23 +72,15 @@ pub fn typst_to_pdf(
 }
 
 /// Converts an HTML document into PDF bytes.
-pub fn html_to_pdf(html: &str, root: &Path, fonts_dir: &Path) -> Result<Vec<u8>> {
+pub fn html_to_pdf(
+    html: &str,
+    root: &Path,
+    html_font_aliases: &[(String, Vec<u8>)],
+) -> Result<Vec<u8>> {
     let mut converter = HtmlConverter::new().base_path(root);
 
-    for (family, file_name) in HTML_FONT_ALIASES {
-        let font_path = fonts_dir.join(file_name);
-        match std::fs::read(&font_path) {
-            Ok(font_bytes) => {
-                converter = converter.add_font(family, font_bytes);
-            }
-            Err(error) => {
-                warn!(
-                    font_path = %font_path.display(),
-                    font_family = family,
-                    "Failed to load HTML font alias: {error}"
-                );
-            }
-        }
+    for (family, font_bytes) in html_font_aliases {
+        converter = converter.add_font(family.as_str(), font_bytes.clone());
     }
 
     converter
@@ -163,7 +175,8 @@ Hello, world!
     #[test]
     fn html_to_pdf_simple_document_returns_pdf_bytes() -> anyhow::Result<()> {
         let source = "<!DOCTYPE html><html><body><h1>Hello, world!</h1></body></html>";
-        let bytes = html_to_pdf(source, &root_dir(), &fonts_dir())?;
+        let html_font_aliases = load_html_font_aliases(&fonts_dir());
+        let bytes = html_to_pdf(source, &root_dir(), &html_font_aliases)?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
@@ -183,7 +196,8 @@ Hello, world!
     <h1>Hello, world!</h1>
 </body>
 </html>"#;
-        let bytes = html_to_pdf(source, &root_dir(), &fonts_dir())?;
+        let html_font_aliases = load_html_font_aliases(&fonts_dir());
+        let bytes = html_to_pdf(source, &root_dir(), &html_font_aliases)?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
