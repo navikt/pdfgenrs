@@ -66,8 +66,15 @@ mod imp {
         #[test]
         fn header_extractor_reads_valid_headers_and_skips_non_utf8_values() {
             let mut headers = HeaderMap::new();
-            headers.insert("traceparent", HeaderValue::from_static("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"));
-            headers.insert("x-invalid", HeaderValue::from_bytes(b"\xFF").expect("opaque header value"));
+            let invalid_header = match HeaderValue::from_bytes(b"\xFF") {
+                Ok(value) => value,
+                Err(error) => panic!("expected opaque header value: {error}"),
+            };
+            headers.insert(
+                "traceparent",
+                HeaderValue::from_static("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"),
+            );
+            headers.insert("x-invalid", invalid_header);
 
             let extractor = HeaderExtractor(&headers);
 
@@ -84,7 +91,7 @@ mod imp {
 
         #[test]
         fn make_otel_span_creates_http_request_span() {
-            let request = Request::builder()
+            let request_result = Request::builder()
                 .method(Method::POST)
                 .uri(Uri::from_static("/api/v1/genpdf"))
                 .version(Version::HTTP_11)
@@ -92,11 +99,17 @@ mod imp {
                     "traceparent",
                     "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
                 )
-                .body(Body::empty())
-                .expect("request");
+                .body(Body::empty());
+            let request = match request_result {
+                Ok(request) => request,
+                Err(error) => panic!("expected valid request: {error}"),
+            };
 
             let span = make_otel_span(&request);
-            let metadata = span.metadata().expect("span metadata");
+            let metadata = match span.metadata() {
+                Some(metadata) => metadata,
+                None => panic!("expected span metadata"),
+            };
 
             assert_eq!(metadata.name(), "HTTP request");
             assert_eq!(metadata.level(), &tracing::Level::INFO);

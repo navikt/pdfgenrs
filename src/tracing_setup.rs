@@ -293,11 +293,16 @@ mod tests {
 
     impl SharedBuffer {
         fn lines(&self) -> Vec<String> {
-            String::from_utf8(self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone())
-                .expect("valid utf-8 log output")
-                .lines()
-                .map(str::to_string)
-                .collect()
+            let bytes = self
+                .0
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .clone();
+            let output = match String::from_utf8(bytes) {
+                Ok(output) => output,
+                Err(error) => panic!("expected valid utf-8 log output: {error}"),
+            };
+            output.lines().map(str::to_string).collect()
         }
     }
 
@@ -328,7 +333,10 @@ mod tests {
     fn parse_single_log_line(buffer: &SharedBuffer) -> Value {
         let lines = buffer.lines();
         assert_eq!(lines.len(), 1);
-        serde_json::from_str(&lines[0]).expect("JSON log line")
+        match serde_json::from_str(&lines[0]) {
+            Ok(value) => value,
+            Err(error) => panic!("expected JSON log line: {error}"),
+        }
     }
 
     #[test]
@@ -368,15 +376,12 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn nais_otlp_exporter_is_some_with_endpoint_env_present() -> anyhow::Result<()> {
+    #[tokio::test]
+    async fn nais_otlp_exporter_is_some_with_endpoint_env_present() -> anyhow::Result<()> {
         let _guard = env_lock()
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[(
-            "OTEL_EXPORTER_OTLP_ENDPOINT",
-            Some("http://127.0.0.1:4317"),
-        )]);
+        let _env = EnvGuard::set(&[("OTEL_EXPORTER_OTLP_ENDPOINT", Some("http://127.0.0.1:4317"))]);
 
         let exporter = nais_otlp_exporter(Some("http://127.0.0.1:4317"))?;
         assert!(exporter.is_some());
@@ -443,11 +448,17 @@ mod tests {
         });
 
         let log_line = parse_single_log_line(&buffer);
-        let file = log_line["file"].as_str().expect("file field");
+        let file = match log_line["file"].as_str() {
+            Some(file) => file,
+            None => panic!("expected file field"),
+        };
 
         assert!(log_line["timestamp"].as_str().is_some());
         assert_eq!(log_line["log_level"], Value::String("INFO".to_string()));
-        assert_eq!(log_line["target"], Value::String(module_path!().to_string()));
+        assert_eq!(
+            log_line["target"],
+            Value::String(module_path!().to_string())
+        );
         assert_eq!(log_line["file"], Value::String(file.to_string()));
         assert_eq!(
             log_line["logger_name"],
@@ -462,12 +473,16 @@ mod tests {
         assert_eq!(log_line["string_field"], Value::String("value".to_string()));
         assert_eq!(log_line["count"], Value::Number(42u64.into()));
         assert_eq!(log_line["delta"], Value::Number((-7i64).into()));
-        assert_eq!(
-            log_line["ratio"],
-            Value::Number(serde_json::Number::from_f64(1.5).expect("finite number"))
-        );
+        let ratio = match serde_json::Number::from_f64(1.5) {
+            Some(ratio) => ratio,
+            None => panic!("expected finite number"),
+        };
+        assert_eq!(log_line["ratio"], Value::Number(ratio));
         assert_eq!(log_line["active"], Value::Bool(true));
-        assert_eq!(log_line["debug_field"], Value::String("[1, 2, 3]".to_string()));
+        assert_eq!(
+            log_line["debug_field"],
+            Value::String("[1, 2, 3]".to_string())
+        );
     }
 
     #[test]
@@ -500,7 +515,6 @@ mod tests {
             ("RUST_LOG", Some("info")),
         ]);
 
-        let _ = tracing_log::LogTracer::init();
         let provider = setup_tracing()?;
         tracing::info!(test_case = "setup_tracing", "subscriber initialized");
         provider.shutdown()?;
