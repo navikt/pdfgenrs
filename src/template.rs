@@ -72,10 +72,10 @@ pub fn load_templates_from_dir(
                     let relative_no_ext = relative.with_extension("");
                     let mut parts = relative_no_ext.iter();
                     let app_name = parts.next().and_then(|part| part.to_str()).context(
-                        "Template path must include app_name and template_name and use valid UTF-8",
+                        "Template path must start with '<app_name>/' and use valid UTF-8",
                     )?;
                     let template_name = parts.next().and_then(|part| part.to_str()).context(
-                        "Template path must include app_name and template_name and use valid UTF-8",
+                        "Template path must include '<template_name>.typ' under app_name and use valid UTF-8",
                     )?;
                     if parts.next().is_some() {
                         return Err(anyhow::anyhow!(
