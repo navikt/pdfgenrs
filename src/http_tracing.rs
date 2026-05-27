@@ -46,7 +46,7 @@ mod imp {
         let parent_cx = global::get_text_map_propagator(|propagator| {
             propagator.extract(&HeaderExtractor(request.headers()))
         });
-        span.set_parent(parent_cx).ok();
+        let _ = span.set_parent(parent_cx);
         span
     }
 
