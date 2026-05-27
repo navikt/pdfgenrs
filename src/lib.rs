@@ -22,6 +22,7 @@ use axum::{
     Router,
 };
 use state::AppState;
+use tower_http::limit::RequestBodyLimitLayer;
 
 /// Loads optional HTML font aliases from `fonts_dir`.
 ///
@@ -36,6 +37,7 @@ pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
 
 /// Builds the full HTTP router for the PDF/HTML generation API.
 pub fn build_router(state: AppState) -> Router {
+    let request_body_limit_bytes = state.config.request_body_limit_bytes;
     let mut pdf_router = Router::new()
         .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
         .route("/image/{app_name}", post(routes::pdf::post_pdf_from_image))
@@ -53,6 +55,7 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router())
+        .layer(RequestBodyLimitLayer::new(request_body_limit_bytes))
         .with_state(state);
 
     http_tracing::apply_http_tracing_layer(app)

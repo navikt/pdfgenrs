@@ -8,6 +8,7 @@ const RESOURCES_DIR_ENV: &str = "RESOURCES_DIR";
 const DATA_DIR_ENV: &str = "DATA_DIR";
 const FONTS_DIR_ENV: &str = "FONTS_DIR";
 const DEV_MODE_ENV: &str = "DEV_MODE";
+const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -15,6 +16,7 @@ const DEFAULT_TEMPLATES_DIR: &str = "templates";
 const DEFAULT_RESOURCES_DIR: &str = "resources";
 const DEFAULT_DATA_DIR: &str = "data";
 const DEFAULT_FONTS_DIR: &str = "fonts";
+const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -39,6 +41,9 @@ pub struct Config {
     /// When `true`, the GET PDF endpoint is enabled and test data is pre-loaded.
     /// Defaults to `false` (`DEV_MODE`).
     pub dev_mode: bool,
+    /// Maximum accepted request body size in bytes. Defaults to `2097152` (2 MiB)
+    /// (`REQUEST_BODY_LIMIT_BYTES`).
+    pub request_body_limit_bytes: usize,
 }
 
 impl Default for Config {
@@ -51,6 +56,8 @@ impl Default for Config {
             data_dir: env_path(DATA_DIR_ENV, DEFAULT_DATA_DIR),
             fonts_dir: env_path(FONTS_DIR_ENV, DEFAULT_FONTS_DIR),
             dev_mode: env_bool(DEV_MODE_ENV),
+            request_body_limit_bytes: env_usize(REQUEST_BODY_LIMIT_BYTES_ENV)
+                .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
         }
     }
 }
@@ -89,6 +96,10 @@ fn env_bool(key: &str) -> bool {
     env::var(key)
         .map(|value| value.eq_ignore_ascii_case("true"))
         .unwrap_or(false)
+}
+
+fn env_usize(key: &str) -> Option<usize> {
+    env::var(key).ok()?.parse().ok()
 }
 
 #[cfg(test)]
@@ -146,6 +157,7 @@ mod tests {
             (DATA_DIR_ENV, None),
             (FONTS_DIR_ENV, None),
             (DEV_MODE_ENV, None),
+            (REQUEST_BODY_LIMIT_BYTES_ENV, None),
         ]);
 
         let config = Config::default();
@@ -157,6 +169,10 @@ mod tests {
         assert_eq!(config.data_dir, PathBuf::from(DEFAULT_DATA_DIR));
         assert_eq!(config.fonts_dir, PathBuf::from(DEFAULT_FONTS_DIR));
         assert!(!config.dev_mode);
+        assert_eq!(
+            config.request_body_limit_bytes,
+            DEFAULT_REQUEST_BODY_LIMIT_BYTES
+        );
     }
 
     #[test]
@@ -172,6 +188,7 @@ mod tests {
             (DATA_DIR_ENV, Some("/tmp/data")),
             (FONTS_DIR_ENV, Some("/tmp/fonts")),
             (DEV_MODE_ENV, Some("TrUe")),
+            (REQUEST_BODY_LIMIT_BYTES_ENV, Some("4194304")),
         ]);
 
         let config = Config::default();
@@ -183,6 +200,7 @@ mod tests {
         assert_eq!(config.data_dir, PathBuf::from("/tmp/data"));
         assert_eq!(config.fonts_dir, PathBuf::from("/tmp/fonts"));
         assert!(config.dev_mode);
+        assert_eq!(config.request_body_limit_bytes, 4 * 1024 * 1024);
     }
 
     #[test]
@@ -210,6 +228,21 @@ mod tests {
     }
 
     #[test]
+    fn default_falls_back_to_default_request_body_limit_for_invalid_env_value() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _env = EnvGuard::set(&[(REQUEST_BODY_LIMIT_BYTES_ENV, Some("not-a-number"))]);
+
+        let config = Config::default();
+
+        assert_eq!(
+            config.request_body_limit_bytes,
+            DEFAULT_REQUEST_BODY_LIMIT_BYTES
+        );
+    }
+
+    #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
         let config = Config {
             port: DEFAULT_PORT,
@@ -219,6 +252,7 @@ mod tests {
             data_dir: PathBuf::from(DEFAULT_DATA_DIR),
             fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
             dev_mode: false,
+            request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -234,6 +268,7 @@ mod tests {
             data_dir: PathBuf::from(DEFAULT_DATA_DIR),
             fonts_dir: PathBuf::from("/tmp/shared/fonts"),
             dev_mode: false,
+            request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -249,6 +284,7 @@ mod tests {
             data_dir: PathBuf::from(DEFAULT_DATA_DIR),
             fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
             dev_mode: false,
+            request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -264,6 +300,7 @@ mod tests {
             data_dir: PathBuf::from(DEFAULT_DATA_DIR),
             fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
             dev_mode: false,
+            request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
         };
 
         assert_eq!(

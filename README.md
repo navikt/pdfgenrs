@@ -97,6 +97,17 @@ Example:
 | `/internal/is_alive` | `GET` | - | - | Liveness |
 | `/internal/is_ready` | `GET` | - | - | Readiness |
 
+### Request body size limit
+
+All `POST` endpoints enforce a request body limit of `2097152` bytes (2 MiB), including:
+
+- `POST /api/v1/genpdf/html/{your_appname}`
+- `POST /api/v1/genpdf/image/{your_appname}`
+- `POST /api/v1/genpdf/{your_appname}/{template}`
+- `POST /api/v1/genhtml/{your_appname}/{template}`
+
+Set `REQUEST_BODY_LIMIT_BYTES` to tune this limit.
+
 ### 1) Generate PDF from Typst + JSON
 
 #### `POST /api/v1/genpdf/{your_appname}/{template}`

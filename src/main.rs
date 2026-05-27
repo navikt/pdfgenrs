@@ -173,6 +173,7 @@ mod tests {
                 data_dir: PathBuf::from("data"),
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
+                request_body_limit_bytes: 2 * 1024 * 1024,
             },
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
