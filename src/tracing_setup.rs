@@ -1,16 +1,16 @@
 use anyhow::Result;
 use opentelemetry::propagation::TextMapCompositePropagator;
 use opentelemetry::trace::TracerProvider as _;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::{
+    Resource,
     propagation::{BaggagePropagator, TraceContextPropagator},
     trace::Sampler,
-    Resource,
 };
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Custom JSON formatter that emits NAIS-compatible structured log lines.
 ///

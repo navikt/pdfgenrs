@@ -63,31 +63,30 @@ pub fn load_templates_from_dir(
     for entry in WalkDir::new(templates_dir).follow_links(true).into_iter() {
         let entry = entry.context("Failed to read template directory entry")?;
         let path = entry.path();
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext == "typ" {
-                    let relative = path
-                        .strip_prefix(templates_dir)
-                        .context("Failed to strip prefix")?;
-                    let relative_no_ext = relative.with_extension("");
-                    let mut parts = relative_no_ext.iter();
-                    let app_name = parts.next().and_then(|part| part.to_str()).context(
-                        "Template path must start with '<app_name>/' and use valid UTF-8",
-                    )?;
-                    let template_name = parts.next().and_then(|part| part.to_str()).context(
-                        "Template path must include '<template_name>.typ' under app_name and use valid UTF-8",
-                    )?;
-                    if parts.next().is_some() {
-                        return Err(anyhow::anyhow!(
-                            "Template path must be exactly '<app_name>/<template_name>.typ': {}",
-                            relative.display()
-                        ));
-                    }
-                    let source =
-                        std::fs::read_to_string(path).context("Failed to read template file")?;
-                    templates.insert((app_name.to_string(), template_name.to_string()), source);
-                }
+        if path.is_file()
+            && let Some(ext) = path.extension()
+            && ext == "typ"
+        {
+            let relative = path
+                .strip_prefix(templates_dir)
+                .context("Failed to strip prefix")?;
+            let relative_no_ext = relative.with_extension("");
+            let mut parts = relative_no_ext.iter();
+            let app_name = parts
+                .next()
+                .and_then(|part| part.to_str())
+                .context("Template path must start with '<app_name>/' and use valid UTF-8")?;
+            let template_name = parts.next().and_then(|part| part.to_str()).context(
+                "Template path must include '<template_name>.typ' under app_name and use valid UTF-8",
+            )?;
+            if parts.next().is_some() {
+                return Err(anyhow::anyhow!(
+                    "Template path must be exactly '<app_name>/<template_name>.typ': {}",
+                    relative.display()
+                ));
             }
+            let source = std::fs::read_to_string(path).context("Failed to read template file")?;
+            templates.insert((app_name.to_string(), template_name.to_string()), source);
         }
     }
     Ok(templates)
@@ -307,9 +306,11 @@ mod tests {
         let result = load_test_data(dir.path());
 
         assert_eq!(result.data.len(), 1);
-        assert!(result
-            .data
-            .contains_key(&("myapp".to_string(), "valid".to_string())));
+        assert!(
+            result
+                .data
+                .contains_key(&("myapp".to_string(), "valid".to_string()))
+        );
         assert_eq!(result.diagnostics.len(), 1);
         assert_eq!(result.diagnostics[0].kind, LoadErrorKind::InvalidJson);
 
@@ -330,9 +331,11 @@ mod tests {
 
         assert_eq!(result.data.len(), 1);
         assert!(result.diagnostics.is_empty());
-        assert!(result
-            .data
-            .contains_key(&("myapp".to_string(), "template".to_string())));
+        assert!(
+            result
+                .data
+                .contains_key(&("myapp".to_string(), "template".to_string()))
+        );
         Ok(())
     }
 
