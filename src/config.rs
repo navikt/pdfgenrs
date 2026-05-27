@@ -123,8 +123,10 @@ mod tests {
                 .map(|(key, value)| {
                     let previous = env::var(key).ok();
                     match value {
-                        Some(value) => env::set_var(key, value),
-                        None => env::remove_var(key),
+                        // TODO: Audit that the environment access only happens in single-threaded code.
+                        Some(value) => unsafe { env::set_var(key, value) },
+                        // TODO: Audit that the environment access only happens in single-threaded code.
+                        None => unsafe { env::remove_var(key) },
                     }
                     (*key, previous)
                 })
@@ -137,8 +139,10 @@ mod tests {
         fn drop(&mut self) {
             for (key, value) in &self.saved {
                 match value {
-                    Some(value) => env::set_var(key, value),
-                    None => env::remove_var(key),
+                    // TODO: Audit that the environment access only happens in single-threaded code.
+                    Some(value) => unsafe { env::set_var(key, value) },
+                    // TODO: Audit that the environment access only happens in single-threaded code.
+                    None => unsafe { env::remove_var(key) },
                 }
             }
         }

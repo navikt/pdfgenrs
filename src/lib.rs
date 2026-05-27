@@ -18,8 +18,8 @@ pub(crate) mod pdf;
 pub(crate) mod routes;
 
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 use state::AppState;
 use tower_http::limit::RequestBodyLimitLayer;

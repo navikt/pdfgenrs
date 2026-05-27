@@ -1,16 +1,16 @@
 use anyhow::Result;
 use opentelemetry::propagation::TextMapCompositePropagator;
 use opentelemetry::trace::TracerProvider as _;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::{
+    Resource,
     propagation::{BaggagePropagator, TraceContextPropagator},
     trace::Sampler,
-    Resource,
 };
 use std::time::Duration;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Custom JSON formatter that emits NAIS-compatible structured log lines.
 ///
@@ -267,8 +267,10 @@ mod tests {
                 .map(|(key, value)| {
                     let previous = std::env::var(key).ok();
                     match value {
-                        Some(value) => std::env::set_var(key, value),
-                        None => std::env::remove_var(key),
+                        // TODO: Audit that the environment access only happens in single-threaded code.
+                        Some(value) => unsafe { std::env::set_var(key, value) },
+                        // TODO: Audit that the environment access only happens in single-threaded code.
+                        None => unsafe { std::env::remove_var(key) },
                     }
                     (*key, previous)
                 })
@@ -281,8 +283,10 @@ mod tests {
         fn drop(&mut self) {
             for (key, value) in &self.saved {
                 match value {
-                    Some(value) => std::env::set_var(key, value),
-                    None => std::env::remove_var(key),
+                    // TODO: Audit that the environment access only happens in single-threaded code.
+                    Some(value) => unsafe { std::env::set_var(key, value) },
+                    // TODO: Audit that the environment access only happens in single-threaded code.
+                    None => unsafe { std::env::remove_var(key) },
                 }
             }
         }

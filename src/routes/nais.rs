@@ -1,9 +1,9 @@
 use axum::{
+    Router,
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
 };
 
 use crate::state::AppState;

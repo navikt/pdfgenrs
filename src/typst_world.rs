@@ -8,9 +8,9 @@ use chrono::Timelike;
 use typst::foundations::Bytes;
 use typst::utils::LazyHash;
 use typst::{Feature, Features, Library, LibraryExt};
+use typst_library::World;
 use typst_library::diag::{FileError, FileResult};
 use typst_library::text::{Font, FontBook};
-use typst_library::World;
 use typst_syntax::{FileId, Source, VirtualPath};
 use walkdir::WalkDir;
 

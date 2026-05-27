@@ -1,9 +1,9 @@
 use axum::{
+    Json,
     body::Bytes,
     extract::{Path, State},
-    http::{header, HeaderMap, HeaderValue, StatusCode},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::Value;
 use std::sync::Arc;
@@ -194,7 +194,7 @@ mod tests {
     use axum_test::TestServer;
     use serde_json::Value;
     use tokio::sync::RwLock;
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     use axum::body::Bytes;
     use axum::http::HeaderValue;
@@ -378,8 +378,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_client_timeout_cancels_request_and_followup_still_succeeds(
-    ) -> anyhow::Result<()> {
+    async fn post_pdf_client_timeout_cancels_request_and_followup_still_succeeds()
+    -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
