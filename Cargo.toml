@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Library written in Rust used to create PDFs through an API"
 license = "MIT"
+repository = "https://github.com/navikt/pdfgenrs"
+homepage = "https://github.com/navikt/pdfgenrs"
+keywords = ["pdf", "typst", "api"]
+categories = ["web-programming"]
 
 [[bin]]
 name = "pdfgenrs"
