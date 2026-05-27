@@ -1,9 +1,9 @@
 use axum::{
+    Json,
     body::Body,
     extract::{Path, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::Value;
 use std::sync::Arc;
@@ -119,7 +119,7 @@ mod tests {
     use axum_test::TestServer;
     use serde_json::Value;
     use tokio::sync::RwLock;
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     use super::{get_html, post_html};
     use crate::state::AppState;
@@ -209,12 +209,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(response
-            .headers()
-            .get("content-type")
-            .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
-            .to_str()?
-            .starts_with("text/html"));
+        assert!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?
+                .starts_with("text/html")
+        );
         assert!(is_html(response.text().as_str()));
         Ok(())
     }
@@ -278,8 +280,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_html_client_timeout_cancels_request_and_followup_still_succeeds(
-    ) -> anyhow::Result<()> {
+    async fn post_html_client_timeout_cancels_request_and_followup_still_succeeds()
+    -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
@@ -327,12 +329,14 @@ mod tests {
         let response = server.get("/myapp/mytemplate").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(response
-            .headers()
-            .get("content-type")
-            .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
-            .to_str()?
-            .starts_with("text/html"));
+        assert!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?
+                .starts_with("text/html")
+        );
         assert!(is_html(response.text().as_str()));
         Ok(())
     }

@@ -5,9 +5,9 @@ pub(crate) fn apply_http_tracing_layer(app: Router) -> Router {
 }
 
 mod imp {
+    use axum::Router;
     use axum::body::Body;
     use axum::http::{HeaderMap, Request};
-    use axum::Router;
     use opentelemetry::{global, propagation::Extractor};
     use tower_http::trace::TraceLayer;
     use tracing_opentelemetry::OpenTelemetrySpanExt;
