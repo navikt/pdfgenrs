@@ -21,9 +21,36 @@
 
 ## Quick start
 
-Most teams use `pdfgenrs` as a base image together with templates, fonts, resources, and test data.
+Most teams use `pdfgenrs` as a base image together with their own templates. The base image already includes default fonts.
 
 1. Create a Dockerfile in your own repository:
+
+```dockerfile
+FROM ghcr.io/navikt/pdfgenrs:<release>
+
+COPY templates /app/templates
+```
+
+Find the latest `<release>` in [GitHub releases](https://github.com/navikt/pdfgenrs/releases).
+
+2. Create the basic folder structure:
+
+```bash
+mkdir -p templates/your_appname
+```
+
+3. Add a Typst template (e.g., `templates/your_appname/your_template.typ`), then run a request:
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}' \
+  --output output.pdf
+```
+
+4. (Optional) Add custom fonts or resources:
+
+If your templates use custom fonts or reference resources (e.g., logos), add them to your Dockerfile:
 
 ```dockerfile
 FROM ghcr.io/navikt/pdfgenrs:<release>
@@ -33,22 +60,10 @@ COPY fonts /app/fonts
 COPY resources /app/resources
 ```
 
-Find the latest `<release>` in [GitHub releases](https://github.com/navikt/pdfgenrs/releases).
-
-2. Create the basic folder structure:
+Create the corresponding directories locally:
 
 ```bash
-mkdir -p templates resources data fonts
-mkdir -p templates/your_appname data/your_appname
-```
-
-3. Add your template and test data, then run a request:
-
-```bash
-curl -s -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
-  -H "Content-Type: application/json" \
-  -d '{"key":"value"}' \
-  --output output.pdf
+mkdir -p fonts resources
 ```
 
 ## Technologies and tools
