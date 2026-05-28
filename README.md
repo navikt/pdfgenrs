@@ -14,6 +14,7 @@
 - [Folder structure](#folder-structure)
 - [API](#api)
 - [Applications that use pdfgenrs](#applications-that-use-pdfgenrs)
+- [Running on arm64](#running-on-arm64)
 - [Developing pdfgenrs](#developing-pdfgenrs)
 - [Release](#release)
 - [Contact](#contact)
@@ -237,6 +238,16 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 
 - https://github.com/navikt/pdfgenrs-test
 - https://github.com/navikt/pale-2-pdfgenrs
+
+## Running on arm64
+
+The published Docker image supports both `linux/amd64` and `linux/arm64` architectures. If you are running on an arm64 host (e.g., Apple Silicon), Docker will automatically pull the correct image — no additional configuration is needed.
+
+When building locally on arm64, you can use Docker Buildx:
+
+```bash
+docker buildx build --platform linux/arm64 -t pdfgenrs .
+```
 
 ## Developing pdfgenrs
 
