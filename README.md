@@ -121,7 +121,18 @@ All `POST` endpoints enforce a request body limit of `2097152` bytes (2 MiB), in
 - `POST /api/v1/genpdf/{your_appname}/{template}`
 - `POST /api/v1/genhtml/{your_appname}/{template}`
 
-Set `REQUEST_BODY_LIMIT_BYTES` to tune this limit.
+Set enviroment variable `REQUEST_BODY_LIMIT_BYTES` to tune this limit. Example in Dockerfile for 3 MiB:
+
+```dockerfile
+FROM ghcr.io/navikt/pdfgenrs:<release>
+
+COPY templates /app/templates
+ENV REQUEST_BODY_LIMIT_BYTES=3145728
+
+```
+
+
+
 
 ### 1) Generate PDF from Typst + JSON
 
