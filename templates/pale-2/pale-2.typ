@@ -3,6 +3,8 @@
 #let validationResult = data.validationResult
 #let mottattDato = data.at("mottattDato", default: "")
 
+#set document(title: "Legeerklæring")
+
 #let iso_to_nor_date(date_str) = {
   if date_str == none { return "" }
   let s = str(date_str)

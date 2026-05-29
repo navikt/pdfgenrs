@@ -203,7 +203,8 @@ mod tests {
     use crate::state::AppState;
     use crate::{config, state, typst_world};
 
-    const SIMPLE_TEMPLATE: &str = "#set document(date: auto)\n#set page(margin: 1cm)\nHello!\n";
+    const SIMPLE_TEMPLATE: &str =
+        "#set document(date: auto, title: \"Test\")\n#set page(margin: 1cm)\nHello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
     const OVERSIZED_PAYLOAD_SIZE_BYTES: usize = 3 * 1024 * 1024;
     const DELAYED_REQUEST_DURATION_MS: u64 = 200;
@@ -604,7 +605,7 @@ mod tests {
 
     #[tokio::test]
     async fn post_pdf_can_reference_image_from_resources_folder() -> anyhow::Result<()> {
-        const TEMPLATE_WITH_IMAGE: &str = r#"#set document(date: auto)
+        const TEMPLATE_WITH_IMAGE: &str = r#"#set document(date: auto, title: "Test")
 #set page(margin: 1cm)
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
@@ -632,7 +633,7 @@ mod tests {
     #[tokio::test]
     async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() -> anyhow::Result<()> {
         let _guard = crate::memory_sensitive_test_lock().lock().await;
-        const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto)
+        const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto, title: "Test")
 #set page(margin: 1cm)
 #let data = json("/data.json")
 #data.at("message", default: "")

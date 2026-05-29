@@ -107,7 +107,7 @@ where
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
 
     let source = format!(
-        r#"#set document(date: auto)
+        r#"#set document(date: auto, title: "Image")
 #set page(margin: 0pt)
 #image("{image_path}", width: 100%, alt: "Uploaded image")
 "#
@@ -145,10 +145,10 @@ mod tests {
 
     #[test]
     fn typst_to_pdf_simple_template_returns_pdf_bytes() -> anyhow::Result<()> {
-        let source = r"#set document(date: auto)
+        let source = r#"#set document(date: auto, title: "Test")
 #set page(margin: 1cm)
 Hello, world!
-";
+"#;
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir(), &resources_dir())?;
         assert!(is_pdf(&bytes));
@@ -157,7 +157,7 @@ Hello, world!
 
     #[test]
     fn typst_to_pdf_with_json_data_returns_pdf_bytes() -> anyhow::Result<()> {
-        let source = r#"#set document(date: auto)
+        let source = r#"#set document(date: auto, title: "Test")
 #let data = json("/data.json")
 #data.at("name", default: "")
 "#;
@@ -225,7 +225,7 @@ Hello, world!
 
     #[test]
     fn typst_to_pdf_with_resource_image_returns_pdf_bytes() -> anyhow::Result<()> {
-        let source = r#"#set document(date: auto)
+        let source = r#"#set document(date: auto, title: "Test")
 #set page(margin: 1cm)
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;

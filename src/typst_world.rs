@@ -261,8 +261,8 @@ pub fn compile_to_pdf(
         tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
 
-    let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
-        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
+    let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::Ua_1])
+        .map_err(|e| anyhow::anyhow!("Failed to configure PDF standards: {e}"))?;
 
     let timestamp = build_timestamp();
     let options = typst_pdf::PdfOptions {
@@ -384,10 +384,10 @@ mod tests {
     fn fonts_clone_can_be_reused_across_multiple_compilations() -> anyhow::Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
 
-        let source = r"#set document(date: auto)
+        let source = r#"#set document(date: auto, title: "Test")
 #set page(margin: 1cm)
 Hello, world!
-";
+"#;
 
         let pdf1 = compile_to_pdf(
             Arc::clone(&fonts),
@@ -416,7 +416,8 @@ Hello, world!
     fn compilation_succeeds_after_full_cache_eviction() -> anyhow::Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
-        let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
+        let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test."
+            .to_string();
 
         comemo::evict(0);
 
@@ -543,7 +544,8 @@ Hello, world!
         let root = root_dir();
 
         for i in 0..10 {
-            let source = format!("#set page(margin: 1cm)\nWarmup {i}.");
+            let source =
+                format!("#set document(title: \"Test\")\n#set page(margin: 1cm)\nWarmup {i}.");
             compile_to_pdf(
                 Arc::clone(&fonts),
                 &root,
@@ -559,7 +561,9 @@ Hello, world!
         };
 
         for i in 0..200 {
-            let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
+            let source = format!(
+                "#set document(title: \"Test\")\n#set page(margin: 1cm)\nDocument {i} with unique content."
+            );
             let result = compile_to_pdf(
                 Arc::clone(&fonts),
                 &root,
