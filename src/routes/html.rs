@@ -15,7 +15,7 @@ use crate::state::AppState;
 
 /// Handles `GET /api/v1/genhtml/{app_name}/{template}` (dev mode only).
 ///
-/// Looks up the template source and pre-loaded test JSON data for the given
+/// Looks up the template source and preloaded test JSON data for the given
 /// `app_name` / `template` combination and returns an HTML response.
 /// Returns `404` if the template or its test data cannot be found.
 pub async fn get_html(
@@ -136,7 +136,7 @@ mod tests {
 
     fn make_state(
         templates: HashMap<(String, String), String>,
-        data: HashMap<(String, String), serde_json::Value>,
+        data: HashMap<(String, String), Value>,
         dev_mode: bool,
     ) -> anyhow::Result<AppState> {
         Ok(AppState {
