@@ -80,6 +80,7 @@ fn collect_font_files(dir: &Path) -> Result<Vec<PathBuf>> {
 }
 
 /// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
+#[must_use]
 fn is_supported_font_file(path: &Path) -> bool {
     match path.extension().and_then(|ext| ext.to_str()) {
         Some(ext) => {
