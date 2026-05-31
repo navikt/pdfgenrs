@@ -135,7 +135,7 @@ mod tests {
         root_dir().join("resources")
     }
 
-    fn test_fonts() -> anyhow::Result<Arc<Fonts>> {
+    fn test_fonts() -> Result<Arc<Fonts>> {
         Ok(Arc::new(load_fonts(&fonts_dir())?))
     }
 
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn typst_to_pdf_simple_template_returns_pdf_bytes() -> anyhow::Result<()> {
+    fn typst_to_pdf_simple_template_returns_pdf_bytes() -> Result<()> {
         let source = r"#set document(date: auto)
 #set page(margin: 1cm)
 Hello, world!
@@ -156,7 +156,7 @@ Hello, world!
     }
 
     #[test]
-    fn typst_to_pdf_with_json_data_returns_pdf_bytes() -> anyhow::Result<()> {
+    fn typst_to_pdf_with_json_data_returns_pdf_bytes() -> Result<()> {
         let source = r#"#set document(date: auto)
 #let data = json("/data.json")
 #data.at("name", default: "")
@@ -168,7 +168,7 @@ Hello, world!
     }
 
     #[test]
-    fn typst_to_pdf_invalid_source_returns_error() -> anyhow::Result<()> {
+    fn typst_to_pdf_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_pdf(source, &data, test_fonts()?, &root_dir(), &resources_dir());
@@ -180,7 +180,7 @@ Hello, world!
     }
 
     #[test]
-    fn html_to_pdf_simple_document_returns_pdf_bytes() -> anyhow::Result<()> {
+    fn html_to_pdf_simple_document_returns_pdf_bytes() -> Result<()> {
         let source = "<!DOCTYPE html><html><body><h1>Hello, world!</h1></body></html>";
         let html_font_aliases = load_html_font_aliases(&fonts_dir());
         let bytes = html_to_pdf(source, &root_dir(), &html_font_aliases)?;
@@ -189,7 +189,7 @@ Hello, world!
     }
 
     #[test]
-    fn html_to_pdf_with_source_sans_pro_alias_returns_pdf_bytes() -> anyhow::Result<()> {
+    fn html_to_pdf_with_source_sans_pro_alias_returns_pdf_bytes() -> Result<()> {
         let source = r#"<!DOCTYPE html>
 <html>
 <head>
@@ -210,7 +210,7 @@ Hello, world!
     }
 
     #[test]
-    fn image_to_pdf_png_returns_pdf_bytes() -> anyhow::Result<()> {
+    fn image_to_pdf_png_returns_pdf_bytes() -> Result<()> {
         let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
         let bytes = image_to_pdf(
             image_bytes,
@@ -224,7 +224,7 @@ Hello, world!
     }
 
     #[test]
-    fn typst_to_pdf_with_resource_image_returns_pdf_bytes() -> anyhow::Result<()> {
+    fn typst_to_pdf_with_resource_image_returns_pdf_bytes() -> Result<()> {
         let source = r#"#set document(date: auto)
 #set page(margin: 1cm)
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")

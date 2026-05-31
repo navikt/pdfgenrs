@@ -8,7 +8,7 @@ use axum::{
 
 use crate::state::AppState;
 
-/// Builds the NAIS health-check router with `/internal/is_alive` and
+/// Builds the NAIS health check router with `/internal/is_alive` and
 /// `/internal/is_ready` endpoints.
 pub fn nais_router() -> Router<AppState> {
     Router::new()

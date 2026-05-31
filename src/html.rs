@@ -55,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn typst_to_html_simple_template_returns_html_string() -> anyhow::Result<()> {
+    fn typst_to_html_simple_template_returns_html_string() -> Result<()> {
         let source = "Hello, world!\n";
         let data = serde_json::json!({});
         let html = typst_to_html(
@@ -74,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn typst_to_html_with_json_data_returns_html_with_data() -> anyhow::Result<()> {
+    fn typst_to_html_with_json_data_returns_html_with_data() -> Result<()> {
         let source = r#"#let data = json("/data.json")
 #data.at("name", default: "")
 "#;
@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn typst_to_html_invalid_source_returns_error() -> anyhow::Result<()> {
+    fn typst_to_html_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_html(

@@ -111,7 +111,7 @@ async fn main() -> Result<()> {
 
     // Flush and export any remaining spans buffered by the batch processor.
     if let Err(e) = tracer_provider.shutdown() {
-        tracing::warn!(error = %e, "OpenTelemetry tracer provider shutdown error");
+        warn!(error = %e, "OpenTelemetry tracer provider shutdown error");
     }
 
     Ok(())

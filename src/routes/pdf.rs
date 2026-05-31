@@ -210,7 +210,7 @@ mod tests {
 
     fn make_state(
         templates: HashMap<(String, String), String>,
-        data: HashMap<(String, String), serde_json::Value>,
+        data: HashMap<(String, String), Value>,
         dev_mode: bool,
     ) -> anyhow::Result<AppState> {
         Ok(AppState {
