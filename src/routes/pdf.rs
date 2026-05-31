@@ -27,9 +27,7 @@ pub async fn get_pdf(
     let template_source = state.templates.get(&template_key).cloned();
     let json_data = {
         let data_map = state.data.read().await;
-        data_map
-            .get(&(app_name.clone(), template_name.clone()))
-            .cloned()
+        data_map.get(&template_key).cloned()
     };
 
     match (template_source, json_data) {
