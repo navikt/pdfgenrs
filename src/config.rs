@@ -95,6 +95,7 @@ impl Config {
     }
 }
 
+#[must_use]
 fn resolve_from_root(root: &Path, path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()

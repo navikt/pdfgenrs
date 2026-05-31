@@ -166,6 +166,7 @@ fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
         .into_response()
 }
 
+#[must_use]
 fn image_virtual_path(content_type: Option<&HeaderValue>) -> Option<&'static str> {
     let content_type = content_type
         .and_then(|value| value.to_str().ok())?
