@@ -39,19 +39,23 @@ pub async fn get_pdf(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let pdf_bytes = tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    .map_err(|source| ApiError::GenerationFailed {
-        app_name: template_key.0.clone(),
-        template_name: Some(template_key.1.clone()),
-        source,
-    })?;
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
-    Ok(pdf_response(pdf_bytes))
+    match result {
+        Ok(pdf_bytes) => {
+            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+            Ok(pdf_response(pdf_bytes))
+        }
+        Err(source) => Err(ApiError::GenerationFailed {
+            app_name: template_key.0,
+            template_name: Some(template_key.1),
+            source,
+        }),
+    }
 }
 /// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
 ///
@@ -75,19 +79,23 @@ pub async fn post_pdf(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let pdf_bytes = tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    .map_err(|source| ApiError::GenerationFailed {
-        app_name: template_key.0.clone(),
-        template_name: Some(template_key.1.clone()),
-        source,
-    })?;
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
-    Ok(pdf_response(pdf_bytes))
+    match result {
+        Ok(pdf_bytes) => {
+            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+            Ok(pdf_response(pdf_bytes))
+        }
+        Err(source) => Err(ApiError::GenerationFailed {
+            app_name: template_key.0,
+            template_name: Some(template_key.1),
+            source,
+        }),
+    }
 }
 
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
