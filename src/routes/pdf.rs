@@ -2,13 +2,14 @@ use axum::{
     Json,
     body::Bytes,
     extract::{Path, State},
-    http::{HeaderMap, HeaderValue, StatusCode, header},
+    http::{HeaderMap, HeaderValue, header},
     response::{IntoResponse, Response},
 };
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::info;
 
+use super::error::ApiError;
 use crate::pdf as gen_pdf;
 use crate::state::AppState;
 
@@ -20,7 +21,7 @@ use crate::state::AppState;
 pub async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
-) -> Response {
+) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name, template_name);
 
@@ -30,31 +31,27 @@ pub async fn get_pdf(
         data_map.get(&template_key).cloned()
     };
 
-    match (template_source, json_data) {
-        (None, _) | (_, None) => {
-            (StatusCode::NOT_FOUND, "Template or application not found").into_response()
-        }
-        (Some(source), Some(data)) => {
-            let fonts = Arc::clone(&state.fonts);
-            let root = state.config.root_dir.clone();
-            let resources_dir = state.config.resource_root();
-            match tokio::task::spawn_blocking(move || {
-                gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
-            })
-            .await
-            .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-            {
-                Err(e) => {
-                    error!(app_name = %template_key.0, template_name = %template_key.1, error = %e, "PDF generation failed");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-                }
-                Ok(pdf_bytes) => {
-                    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
-                    pdf_response(pdf_bytes)
-                }
-            }
-        }
-    }
+    let (source, data) = match (template_source, json_data) {
+        (Some(s), Some(d)) => (s, d),
+        _ => return Err(ApiError::NotFound),
+    };
+
+    let fonts = Arc::clone(&state.fonts);
+    let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
+    let pdf_bytes = tokio::task::spawn_blocking(move || {
+        gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
+    })
+    .await
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+    .map_err(|source| ApiError::GenerationFailed {
+        app_name: template_key.0.clone(),
+        template_name: Some(template_key.1.clone()),
+        source,
+    })?;
+
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+    Ok(pdf_response(pdf_bytes))
 }
 /// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
 ///
@@ -65,32 +62,32 @@ pub async fn post_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
     Json(json_data): Json<Value>,
-) -> Response {
+) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name, template_name);
 
-    let Some(template_source) = state.templates.get(&template_key).cloned() else {
-        return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
-    };
+    let template_source = state
+        .templates
+        .get(&template_key)
+        .cloned()
+        .ok_or(ApiError::NotFound)?;
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    match tokio::task::spawn_blocking(move || {
+    let pdf_bytes = tokio::task::spawn_blocking(move || {
         gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    {
-        Err(e) => {
-            error!(app_name = %template_key.0, template_name = %template_key.1, error = %e, "PDF generation failed");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-        }
-        Ok(pdf_bytes) => {
-            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
-            pdf_response(pdf_bytes)
-        }
-    }
+    .map_err(|source| ApiError::GenerationFailed {
+        app_name: template_key.0.clone(),
+        template_name: Some(template_key.1.clone()),
+        source,
+    })?;
+
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+    Ok(pdf_response(pdf_bytes))
 }
 
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
@@ -100,26 +97,23 @@ pub async fn post_pdf_from_html(
     State(state): State<AppState>,
     Path(app_name): Path<String>,
     html: String,
-) -> Response {
+) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let root = state.config.root_dir.clone();
     let html_font_aliases = Arc::clone(&state.html_font_aliases);
 
-    match tokio::task::spawn_blocking(move || {
-        gen_pdf::html_to_pdf(&html, &root, &html_font_aliases)
-    })
-    .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    {
-        Err(e) => {
-            error!(app_name = %app_name, error = %e, "HTML-to-PDF generation failed");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-        }
-        Ok(pdf_bytes) => {
-            info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
-            pdf_response(pdf_bytes)
-        }
-    }
+    let pdf_bytes =
+        tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &html_font_aliases))
+            .await
+            .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+            .map_err(|source| ApiError::GenerationFailed {
+                app_name: app_name.clone(),
+                template_name: None,
+                source,
+            })?;
+
+    info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
+    Ok(pdf_response(pdf_bytes))
 }
 
 /// Handles `POST /api/v1/genpdf/image/{app_name}`.
@@ -130,30 +124,28 @@ pub async fn post_pdf_from_image(
     Path(app_name): Path<String>,
     headers: HeaderMap,
     image_bytes: Bytes,
-) -> Response {
+) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let Some(image_path) = image_virtual_path(headers.get(header::CONTENT_TYPE)) else {
-        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
+        return Err(ApiError::UnsupportedMediaType);
     };
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    match tokio::task::spawn_blocking(move || {
+    let pdf_bytes = tokio::task::spawn_blocking(move || {
         gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    {
-        Err(e) => {
-            error!(app_name = %app_name, error = %e, "Image-to-PDF generation failed");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-        }
-        Ok(pdf_bytes) => {
-            info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from image");
-            pdf_response(pdf_bytes)
-        }
-    }
+    .map_err(|source| ApiError::GenerationFailed {
+        app_name: app_name.clone(),
+        template_name: None,
+        source,
+    })?;
+
+    info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from image");
+    Ok(pdf_response(pdf_bytes))
 }
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
@@ -187,7 +179,7 @@ mod tests {
 
     use axum::extract::{Path, State};
     use axum::http::StatusCode;
-    use axum::response::Response;
+    use axum::response::{IntoResponse, Response};
     use axum::routing::{get, post};
     use axum::{Json, Router};
     use axum_test::TestServer;
@@ -259,6 +251,7 @@ mod tests {
             Json(json_data),
         )
         .await
+        .into_response()
     }
 
     fn make_router_with_delayed_post(state: AppState) -> Router {
