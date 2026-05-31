@@ -22,14 +22,12 @@ pub async fn get_html(
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Response {
     let start = std::time::Instant::now();
-    let template_key = (app_name.clone(), template_name.clone());
+    let template_key = (app_name, template_name);
 
     let template_source = state.templates.get(&template_key).cloned();
     let json_data = {
         let data_map = state.data.read().await;
-        data_map
-            .get(&(app_name.clone(), template_name.clone()))
-            .cloned()
+        data_map.get(&template_key).cloned()
     };
 
     match (template_source, json_data) {
@@ -47,11 +45,11 @@ pub async fn get_html(
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
             {
                 Err(e) => {
-                    error!(app_name = %app_name, template_name = %template_name, error = %e, "HTML generation failed");
+                    error!(app_name = %template_key.0, template_name = %template_key.1, error = %e, "HTML generation failed");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
                 }
                 Ok(html_string) => {
-                    info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+                    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
                     html_response(html_string)
                 }
             }
@@ -70,7 +68,7 @@ pub async fn post_html(
     Json(json_data): Json<Value>,
 ) -> Response {
     let start = std::time::Instant::now();
-    let template_key = (app_name.clone(), template_name.clone());
+    let template_key = (app_name, template_name);
 
     let Some(template_source) = state.templates.get(&template_key).cloned() else {
         return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
@@ -86,11 +84,11 @@ pub async fn post_html(
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
     {
         Err(e) => {
-            error!(app_name = %app_name, template_name = %template_name, error = %e, "HTML generation failed");
+            error!(app_name = %template_key.0, template_name = %template_key.1, error = %e, "HTML generation failed");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
         }
         Ok(html_string) => {
-            info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
             html_response(html_string)
         }
     }
