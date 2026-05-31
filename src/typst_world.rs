@@ -248,19 +248,11 @@ pub fn compile_to_pdf(
 
     comemo::evict(15);
 
-    let document = result.output.map_err(|errors| {
-        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-        anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
-    })?;
+    let document = result
+        .output
+        .map_err(|errors| format_typst_errors("compilation", &errors))?;
 
-    if !result.warnings.is_empty() {
-        let warns: Vec<String> = result
-            .warnings
-            .iter()
-            .map(|w| w.message.to_string())
-            .collect();
-        tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
-    }
+    log_typst_warnings(&result.warnings);
 
     let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
         .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
@@ -271,10 +263,8 @@ pub fn compile_to_pdf(
         timestamp,
         ..typst_pdf::PdfOptions::default()
     };
-    let pdf_bytes = typst_pdf::pdf(&document, &options).map_err(|errors| {
-        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-        anyhow::anyhow!("Typst PDF export failed: {}", msgs.join("; "))
-    })?;
+    let pdf_bytes = typst_pdf::pdf(&document, &options)
+        .map_err(|errors| format_typst_errors("PDF export", &errors))?;
 
     Ok(pdf_bytes)
 }
@@ -308,24 +298,27 @@ pub fn compile_to_html(
 
     comemo::evict(15);
 
-    let document = result.output.map_err(|errors| {
-        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-        anyhow::anyhow!("Typst compilation failed: {}", msgs.join("; "))
-    })?;
+    let document = result
+        .output
+        .map_err(|errors| format_typst_errors("compilation", &errors))?;
 
-    if !result.warnings.is_empty() {
-        let warns: Vec<String> = result
-            .warnings
-            .iter()
-            .map(|w| w.message.to_string())
-            .collect();
+    log_typst_warnings(&result.warnings);
+
+    typst_html::html(&document).map_err(|errors| format_typst_errors("HTML export", &errors))
+}
+
+/// Formats a slice of Typst diagnostics into a single semicolon-separated error message.
+fn format_typst_errors(context: &str, errors: &[typst_library::diag::SourceDiagnostic]) -> anyhow::Error {
+    let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+    anyhow::anyhow!("Typst {context} failed: {}", msgs.join("; "))
+}
+
+/// Logs Typst compilation warnings (if any) at the `warn` level.
+fn log_typst_warnings(warnings: &[typst_library::diag::SourceDiagnostic]) {
+    if !warnings.is_empty() {
+        let warns: Vec<String> = warnings.iter().map(|w| w.message.to_string()).collect();
         tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
-
-    typst_html::html(&document).map_err(|errors| {
-        let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-        anyhow::anyhow!("Typst HTML export failed: {}", msgs.join("; "))
-    })
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
