@@ -359,7 +359,7 @@ mod tests {
     }
 
     fn rss_kb() -> Option<u64> {
-        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        let status = fs::read_to_string("/proc/self/status").ok()?;
         status
             .lines()
             .find(|line| line.starts_with("VmRSS:"))
@@ -368,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn fonts_load_from_directory() -> anyhow::Result<()> {
+    fn fonts_load_from_directory() -> Result<()> {
         let fonts = load_fonts(&root_dir().join("fonts"))?;
         assert!(
             !fonts.fonts.is_empty(),
@@ -378,7 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn fonts_clone_can_be_reused_across_multiple_compilations() -> anyhow::Result<()> {
+    fn fonts_clone_can_be_reused_across_multiple_compilations() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
 
         let source = r"#set document(date: auto)
@@ -410,7 +410,7 @@ Hello, world!
     }
 
     #[test]
-    fn compilation_succeeds_after_full_cache_eviction() -> anyhow::Result<()> {
+    fn compilation_succeeds_after_full_cache_eviction() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
         let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
@@ -433,7 +433,7 @@ Hello, world!
     }
 
     #[test]
-    fn load_fonts_returns_error_for_empty_directory() -> anyhow::Result<()> {
+    fn load_fonts_returns_error_for_empty_directory() -> Result<()> {
         let dir = TempDir::new()?;
 
         let result = load_fonts(dir.path());
@@ -451,7 +451,7 @@ Hello, world!
     }
 
     #[test]
-    fn source_returns_invalid_utf8_for_virtual_non_utf8_file() -> anyhow::Result<()> {
+    fn source_returns_invalid_utf8_for_virtual_non_utf8_file() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let world = PdfgenWorld::new(
             fonts,
@@ -471,7 +471,7 @@ Hello, world!
     }
 
     #[test]
-    fn source_reads_physical_files_from_root() -> anyhow::Result<()> {
+    fn source_reads_physical_files_from_root() -> Result<()> {
         let dir = TempDir::new()?;
         fs::write(dir.path().join("snippet.typ"), "File system content")?;
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
@@ -493,7 +493,7 @@ Hello, world!
     }
 
     #[test]
-    fn file_reads_resource_files_from_configured_resources_dir() -> anyhow::Result<()> {
+    fn file_reads_resource_files_from_configured_resources_dir() -> Result<()> {
         let root = TempDir::new()?;
         let resources = TempDir::new()?;
         fs::write(resources.path().join("logo.txt"), b"resource content")?;
@@ -516,7 +516,7 @@ Hello, world!
     }
 
     #[test]
-    fn today_supports_offset_argument() -> anyhow::Result<()> {
+    fn today_supports_offset_argument() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let world = PdfgenWorld::new(
             fonts,
@@ -534,7 +534,7 @@ Hello, world!
     }
 
     #[test]
-    fn repeated_compilations_do_not_grow_memory_unboundedly() -> anyhow::Result<()> {
+    fn repeated_compilations_do_not_grow_memory_unboundedly() -> Result<()> {
         let _guard = crate::memory_sensitive_test_lock().blocking_lock();
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();

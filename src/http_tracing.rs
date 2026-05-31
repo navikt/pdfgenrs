@@ -12,7 +12,7 @@ mod imp {
     use tower_http::trace::TraceLayer;
     use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-    /// Implements [`opentelemetry::propagation::Extractor`] for an Axum [`HeaderMap`] so that
+    /// Implements [`Extractor`] for an Axum [`HeaderMap`] so that
     /// the global W3C TraceContext + Baggage propagators can extract an incoming parent trace context
     /// from request headers.
     struct HeaderExtractor<'a>(&'a HeaderMap);

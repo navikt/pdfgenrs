@@ -87,18 +87,6 @@ where
             map: &'a mut Map<String, Value>,
         }
         impl tracing::field::Visit for FieldVisitor<'_> {
-            fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-                self.map
-                    .insert(field.name().to_string(), Value::String(value.to_string()));
-            }
-            fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-                self.map
-                    .insert(field.name().to_string(), Value::Number(value.into()));
-            }
-            fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-                self.map
-                    .insert(field.name().to_string(), Value::Number(value.into()));
-            }
             fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
                 // serde_json rejects NaN/infinity; fall back to 0 rather than
                 // emitting a tracing warning here (which would be reentrant).
@@ -107,9 +95,21 @@ where
                 self.map
                     .insert(field.name().to_string(), Value::Number(num));
             }
+            fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+                self.map
+                    .insert(field.name().to_string(), Value::Number(value.into()));
+            }
+            fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+                self.map
+                    .insert(field.name().to_string(), Value::Number(value.into()));
+            }
             fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
                 self.map
                     .insert(field.name().to_string(), Value::Bool(value));
+            }
+            fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+                self.map
+                    .insert(field.name().to_string(), Value::String(value.to_string()));
             }
             fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
                 self.map.insert(
@@ -342,14 +342,14 @@ mod tests {
     }
 
     #[test]
-    fn nais_otlp_exporter_is_none_without_endpoint() -> anyhow::Result<()> {
+    fn nais_otlp_exporter_is_none_without_endpoint() -> Result<()> {
         let exporter = nais_otlp_exporter(None)?;
         assert!(exporter.is_none());
         Ok(())
     }
 
     #[tokio::test]
-    async fn nais_otlp_exporter_is_some_with_endpoint() -> anyhow::Result<()> {
+    async fn nais_otlp_exporter_is_some_with_endpoint() -> Result<()> {
         let exporter = nais_otlp_exporter(Some("http://127.0.0.1:4317"))?;
         assert!(exporter.is_some());
         Ok(())
@@ -472,7 +472,7 @@ mod tests {
     }
 
     #[test]
-    fn setup_tracing_initializes_without_otlp_exporter() -> anyhow::Result<()> {
+    fn setup_tracing_initializes_without_otlp_exporter() -> Result<()> {
         let provider = setup_tracing_with(None, Some("pdfgenrs-test"))?;
         tracing::info!(test_case = "setup_tracing", "subscriber initialized");
         provider.shutdown()?;
