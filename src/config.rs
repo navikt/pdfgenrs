@@ -84,12 +84,14 @@ impl Config {
 
     /// Returns the absolute resource directory used to resolve `/resources/...` Typst paths.
     /// Relative paths in `resources_dir` are resolved from `root_dir`.
+    #[must_use]
     pub fn resource_root(&self) -> PathBuf {
         resolve_from_root(&self.root_dir, &self.resources_dir)
     }
 
     /// Returns the absolute font directory.
     /// Relative paths in `fonts_dir` are resolved from `root_dir`.
+    #[must_use]
     pub fn font_dir(&self) -> PathBuf {
         resolve_from_root(&self.root_dir, &self.fonts_dir)
     }
