@@ -48,21 +48,40 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            port: env_u16(SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
-            root_dir: env_path(ROOT_DIR_ENV, DEFAULT_ROOT_DIR),
-            templates_dir: env_path(TEMPLATES_DIR_ENV, DEFAULT_TEMPLATES_DIR),
-            resources_dir: env_path(RESOURCES_DIR_ENV, DEFAULT_RESOURCES_DIR),
-            data_dir: env_path(DATA_DIR_ENV, DEFAULT_DATA_DIR),
-            fonts_dir: env_path(FONTS_DIR_ENV, DEFAULT_FONTS_DIR),
-            dev_mode: env_bool(DEV_MODE_ENV),
-            request_body_limit_bytes: env_usize(REQUEST_BODY_LIMIT_BYTES_ENV)
-                .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
-        }
+        Self::from_env_fn(|key| env::var(key).ok())
     }
 }
 
 impl Config {
+    /// Build a `Config` by reading environment variables through the provided
+    /// lookup function. This avoids direct `env::set_var` / `env::remove_var`
+    /// calls in tests — callers can supply a closure backed by a `HashMap`
+    /// instead of mutating the process environment.
+    fn from_env_fn(env_var: impl Fn(&str) -> Option<String>) -> Self {
+        let parse_u16 = |key: &str| env_var(key)?.parse::<u16>().ok();
+        let parse_usize = |key: &str| env_var(key)?.parse::<usize>().ok();
+        let path_or = |key: &str, default: &str| {
+            PathBuf::from(env_var(key).unwrap_or_else(|| default.to_owned()))
+        };
+        let bool_var = |key: &str| {
+            env_var(key)
+                .map(|value| value.eq_ignore_ascii_case("true"))
+                .unwrap_or(false)
+        };
+
+        Self {
+            port: parse_u16(SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
+            root_dir: path_or(ROOT_DIR_ENV, DEFAULT_ROOT_DIR),
+            templates_dir: path_or(TEMPLATES_DIR_ENV, DEFAULT_TEMPLATES_DIR),
+            resources_dir: path_or(RESOURCES_DIR_ENV, DEFAULT_RESOURCES_DIR),
+            data_dir: path_or(DATA_DIR_ENV, DEFAULT_DATA_DIR),
+            fonts_dir: path_or(FONTS_DIR_ENV, DEFAULT_FONTS_DIR),
+            dev_mode: bool_var(DEV_MODE_ENV),
+            request_body_limit_bytes: parse_usize(REQUEST_BODY_LIMIT_BYTES_ENV)
+                .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
+        }
+    }
+
     /// Returns the absolute resource directory used to resolve `/resources/...` Typst paths.
     /// Relative paths in `resources_dir` are resolved from `root_dir`.
     pub fn resource_root(&self) -> PathBuf {
@@ -76,10 +95,6 @@ impl Config {
     }
 }
 
-fn env_path(key: &str, default: &str) -> PathBuf {
-    PathBuf::from(env::var(key).unwrap_or_else(|_| default.to_owned()))
-}
-
 fn resolve_from_root(root: &Path, path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
@@ -88,83 +103,22 @@ fn resolve_from_root(root: &Path, path: &Path) -> PathBuf {
     }
 }
 
-fn env_u16(key: &str) -> Option<u16> {
-    env::var(key).ok()?.parse().ok()
-}
-
-fn env_bool(key: &str) -> bool {
-    env::var(key)
-        .map(|value| value.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-}
-
-fn env_usize(key: &str) -> Option<usize> {
-    env::var(key).ok()?.parse().ok()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Mutex, OnceLock};
+    use std::collections::HashMap;
 
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
-
-    struct EnvGuard {
-        saved: Vec<(&'static str, Option<String>)>,
-    }
-
-    impl EnvGuard {
-        fn set(vars: &[(&'static str, Option<&str>)]) -> Self {
-            let saved = vars
-                .iter()
-                .map(|(key, value)| {
-                    let previous = env::var(key).ok();
-                    match value {
-                        // TODO: Audit that the environment access only happens in single-threaded code.
-                        Some(value) => unsafe { env::set_var(key, value) },
-                        // TODO: Audit that the environment access only happens in single-threaded code.
-                        None => unsafe { env::remove_var(key) },
-                    }
-                    (*key, previous)
-                })
-                .collect();
-            Self { saved }
-        }
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            for (key, value) in &self.saved {
-                match value {
-                    // TODO: Audit that the environment access only happens in single-threaded code.
-                    Some(value) => unsafe { env::set_var(key, value) },
-                    // TODO: Audit that the environment access only happens in single-threaded code.
-                    None => unsafe { env::remove_var(key) },
-                }
-            }
-        }
+    fn env_from(entries: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
+        let map: HashMap<String, String> = entries
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |key: &str| map.get(key).cloned()
     }
 
     #[test]
     fn default_uses_fallback_values_when_env_is_missing() {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[
-            (SERVER_PORT_ENV, None),
-            (ROOT_DIR_ENV, None),
-            (TEMPLATES_DIR_ENV, None),
-            (RESOURCES_DIR_ENV, None),
-            (DATA_DIR_ENV, None),
-            (FONTS_DIR_ENV, None),
-            (DEV_MODE_ENV, None),
-            (REQUEST_BODY_LIMIT_BYTES_ENV, None),
-        ]);
-
-        let config = Config::default();
+        let config = Config::from_env_fn(|_| None);
 
         assert_eq!(config.port, DEFAULT_PORT);
         assert_eq!(config.root_dir, PathBuf::from(DEFAULT_ROOT_DIR));
@@ -181,21 +135,16 @@ mod tests {
 
     #[test]
     fn default_reads_values_from_env() {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[
-            (SERVER_PORT_ENV, Some("9090")),
-            (ROOT_DIR_ENV, Some("/tmp/root")),
-            (TEMPLATES_DIR_ENV, Some("/tmp/templates")),
-            (RESOURCES_DIR_ENV, Some("/tmp/resources")),
-            (DATA_DIR_ENV, Some("/tmp/data")),
-            (FONTS_DIR_ENV, Some("/tmp/fonts")),
-            (DEV_MODE_ENV, Some("TrUe")),
-            (REQUEST_BODY_LIMIT_BYTES_ENV, Some("4194304")),
-        ]);
-
-        let config = Config::default();
+        let config = Config::from_env_fn(env_from(&[
+            (SERVER_PORT_ENV, "9090"),
+            (ROOT_DIR_ENV, "/tmp/root"),
+            (TEMPLATES_DIR_ENV, "/tmp/templates"),
+            (RESOURCES_DIR_ENV, "/tmp/resources"),
+            (DATA_DIR_ENV, "/tmp/data"),
+            (FONTS_DIR_ENV, "/tmp/fonts"),
+            (DEV_MODE_ENV, "TrUe"),
+            (REQUEST_BODY_LIMIT_BYTES_ENV, "4194304"),
+        ]));
 
         assert_eq!(config.port, 9090);
         assert_eq!(config.root_dir, PathBuf::from("/tmp/root"));
@@ -209,36 +158,22 @@ mod tests {
 
     #[test]
     fn default_falls_back_to_default_port_for_invalid_env_value() {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[(SERVER_PORT_ENV, Some("not-a-port"))]);
-
-        let config = Config::default();
+        let config = Config::from_env_fn(env_from(&[(SERVER_PORT_ENV, "not-a-port")]));
 
         assert_eq!(config.port, DEFAULT_PORT);
     }
 
     #[test]
     fn default_treats_non_true_dev_mode_values_as_false() {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[(DEV_MODE_ENV, Some("FALSE"))]);
-
-        let config = Config::default();
+        let config = Config::from_env_fn(env_from(&[(DEV_MODE_ENV, "FALSE")]));
 
         assert!(!config.dev_mode);
     }
 
     #[test]
     fn default_falls_back_to_default_request_body_limit_for_invalid_env_value() {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[(REQUEST_BODY_LIMIT_BYTES_ENV, Some("not-a-number"))]);
-
-        let config = Config::default();
+        let config =
+            Config::from_env_fn(env_from(&[(REQUEST_BODY_LIMIT_BYTES_ENV, "not-a-number")]));
 
         assert_eq!(
             config.request_body_limit_bytes,

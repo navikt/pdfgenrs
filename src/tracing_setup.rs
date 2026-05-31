@@ -178,8 +178,17 @@ fn resolve_service_name(name: Option<&str>) -> String {
 /// Returns the `SdkTracerProvider` so the caller can call `.shutdown()` for a
 /// graceful flush before the process exits.
 pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
-    let exporter =
-        nais_otlp_exporter(std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().as_deref())?;
+    setup_tracing_with(
+        std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().as_deref(),
+        std::env::var("OTEL_SERVICE_NAME").ok().as_deref(),
+    )
+}
+
+fn setup_tracing_with(
+    otlp_endpoint: Option<&str>,
+    service_name_env: Option<&str>,
+) -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
+    let exporter = nais_otlp_exporter(otlp_endpoint)?;
     let exporter_active = exporter.is_some();
 
     let builder = opentelemetry_sdk::trace::SdkTracerProvider::builder();
@@ -201,7 +210,7 @@ pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
     // it unconditionally would silently override whatever OTEL_SERVICE_NAME NAIS injects.
     // We therefore read the env var ourselves and only substitute the hardcoded name as a
     // local-development fallback when the variable is absent or empty.
-    let service_name = resolve_service_name(std::env::var("OTEL_SERVICE_NAME").ok().as_deref());
+    let service_name = resolve_service_name(service_name_env);
     let tracer_provider = builder
         .with_resource(
             Resource::builder()
@@ -248,49 +257,8 @@ mod tests {
     use super::*;
     use serde_json::Value;
     use std::io;
-    use std::sync::{Arc, Mutex, OnceLock};
+    use std::sync::{Arc, Mutex};
     use tracing_subscriber::{layer::SubscriberExt, registry::Registry};
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
-
-    struct EnvGuard {
-        saved: Vec<(&'static str, Option<String>)>,
-    }
-
-    impl EnvGuard {
-        fn set(vars: &[(&'static str, Option<&str>)]) -> Self {
-            let saved = vars
-                .iter()
-                .map(|(key, value)| {
-                    let previous = std::env::var(key).ok();
-                    match value {
-                        // TODO: Audit that the environment access only happens in single-threaded code.
-                        Some(value) => unsafe { std::env::set_var(key, value) },
-                        // TODO: Audit that the environment access only happens in single-threaded code.
-                        None => unsafe { std::env::remove_var(key) },
-                    }
-                    (*key, previous)
-                })
-                .collect();
-            Self { saved }
-        }
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            for (key, value) in &self.saved {
-                match value {
-                    // TODO: Audit that the environment access only happens in single-threaded code.
-                    Some(value) => unsafe { std::env::set_var(key, value) },
-                    // TODO: Audit that the environment access only happens in single-threaded code.
-                    None => unsafe { std::env::remove_var(key) },
-                }
-            }
-        }
-    }
 
     #[derive(Clone, Default)]
     struct SharedBuffer(Arc<Mutex<Vec<u8>>>);
@@ -381,12 +349,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn nais_otlp_exporter_is_some_with_endpoint_env_present() -> anyhow::Result<()> {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[("OTEL_EXPORTER_OTLP_ENDPOINT", Some("http://127.0.0.1:4317"))]);
-
+    async fn nais_otlp_exporter_is_some_with_endpoint() -> anyhow::Result<()> {
         let exporter = nais_otlp_exporter(Some("http://127.0.0.1:4317"))?;
         assert!(exporter.is_some());
         Ok(())
@@ -510,16 +473,7 @@ mod tests {
 
     #[test]
     fn setup_tracing_initializes_without_otlp_exporter() -> anyhow::Result<()> {
-        let _guard = env_lock()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let _env = EnvGuard::set(&[
-            ("OTEL_EXPORTER_OTLP_ENDPOINT", None),
-            ("OTEL_SERVICE_NAME", Some("pdfgenrs-test")),
-            ("RUST_LOG", Some("info")),
-        ]);
-
-        let provider = setup_tracing()?;
+        let provider = setup_tracing_with(None, Some("pdfgenrs-test"))?;
         tracing::info!(test_case = "setup_tracing", "subscriber initialized");
         provider.shutdown()?;
         Ok(())
