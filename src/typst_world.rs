@@ -308,7 +308,10 @@ pub fn compile_to_html(
 }
 
 /// Formats a slice of Typst diagnostics into a single semicolon-separated error message.
-fn format_typst_errors(context: &str, errors: &[typst_library::diag::SourceDiagnostic]) -> anyhow::Error {
+fn format_typst_errors(
+    context: &str,
+    errors: &[typst_library::diag::SourceDiagnostic],
+) -> anyhow::Error {
     let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
     anyhow::anyhow!("Typst {context} failed: {}", msgs.join("; "))
 }
