@@ -2,13 +2,14 @@ use axum::{
     Json,
     body::Body,
     extract::{Path, State},
-    http::{StatusCode, header},
+    http::header,
     response::{IntoResponse, Response},
 };
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::info;
 
+use super::error::ApiError;
 use crate::html as gen_html;
 use crate::state::AppState;
 
@@ -20,7 +21,7 @@ use crate::state::AppState;
 pub async fn get_html(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
-) -> Response {
+) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name, template_name);
 
@@ -30,31 +31,27 @@ pub async fn get_html(
         data_map.get(&template_key).cloned()
     };
 
-    match (template_source, json_data) {
-        (None, _) | (_, None) => {
-            (StatusCode::NOT_FOUND, "Template or application not found").into_response()
-        }
-        (Some(source), Some(data)) => {
-            let fonts = Arc::clone(&state.fonts);
-            let root = state.config.root_dir.clone();
-            let resources_dir = state.config.resource_root();
-            match tokio::task::spawn_blocking(move || {
-                gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
-            })
-            .await
-            .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-            {
-                Err(e) => {
-                    error!(app_name = %template_key.0, template_name = %template_key.1, error = %e, "HTML generation failed");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-                }
-                Ok(html_string) => {
-                    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
-                    html_response(html_string)
-                }
-            }
-        }
-    }
+    let (source, data) = match (template_source, json_data) {
+        (Some(s), Some(d)) => (s, d),
+        _ => return Err(ApiError::NotFound),
+    };
+
+    let fonts = Arc::clone(&state.fonts);
+    let root = state.config.root_dir.clone();
+    let resources_dir = state.config.resource_root();
+    let html_string = tokio::task::spawn_blocking(move || {
+        gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
+    })
+    .await
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+    .map_err(|source| ApiError::GenerationFailed {
+        app_name: template_key.0.clone(),
+        template_name: Some(template_key.1.clone()),
+        source,
+    })?;
+
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+    Ok(html_response(html_string))
 }
 
 /// Handles `POST /api/v1/genhtml/{app_name}/{template}`.
@@ -66,32 +63,32 @@ pub async fn post_html(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
     Json(json_data): Json<Value>,
-) -> Response {
+) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name, template_name);
 
-    let Some(template_source) = state.templates.get(&template_key).cloned() else {
-        return (StatusCode::NOT_FOUND, "Template or application not found").into_response();
-    };
+    let template_source = state
+        .templates
+        .get(&template_key)
+        .cloned()
+        .ok_or(ApiError::NotFound)?;
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    match tokio::task::spawn_blocking(move || {
+    let html_string = tokio::task::spawn_blocking(move || {
         gen_html::typst_to_html(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
     .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    {
-        Err(e) => {
-            error!(app_name = %template_key.0, template_name = %template_key.1, error = %e, "HTML generation failed");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
-        }
-        Ok(html_string) => {
-            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
-            html_response(html_string)
-        }
-    }
+    .map_err(|source| ApiError::GenerationFailed {
+        app_name: template_key.0.clone(),
+        template_name: Some(template_key.1.clone()),
+        source,
+    })?;
+
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+    Ok(html_response(html_string))
 }
 
 fn html_response(html: String) -> Response {
@@ -111,7 +108,7 @@ mod tests {
     use axum::body::Bytes;
     use axum::extract::{Path, State};
     use axum::http::StatusCode;
-    use axum::response::Response;
+    use axum::response::{IntoResponse, Response};
     use axum::routing::{get, post};
     use axum::{Json, Router};
     use axum_test::TestServer;
@@ -177,6 +174,7 @@ mod tests {
             Json(json_data),
         )
         .await
+        .into_response()
     }
 
     fn make_router_with_delayed_post(state: AppState) -> Router {
