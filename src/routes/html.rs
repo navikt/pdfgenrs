@@ -39,19 +39,23 @@ pub async fn get_html(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let html_string = tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    .map_err(|source| ApiError::GenerationFailed {
-        app_name: template_key.0.clone(),
-        template_name: Some(template_key.1.clone()),
-        source,
-    })?;
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
-    Ok(html_response(html_string))
+    match result {
+        Ok(html_string) => {
+            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+            Ok(html_response(html_string))
+        }
+        Err(source) => Err(ApiError::GenerationFailed {
+            app_name: template_key.0,
+            template_name: Some(template_key.1),
+            source,
+        }),
+    }
 }
 
 /// Handles `POST /api/v1/genhtml/{app_name}/{template}`.
@@ -76,19 +80,23 @@ pub async fn post_html(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let html_string = tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         gen_html::typst_to_html(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    .map_err(|source| ApiError::GenerationFailed {
-        app_name: template_key.0.clone(),
-        template_name: Some(template_key.1.clone()),
-        source,
-    })?;
+    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
-    Ok(html_response(html_string))
+    match result {
+        Ok(html_string) => {
+            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+            Ok(html_response(html_string))
+        }
+        Err(source) => Err(ApiError::GenerationFailed {
+            app_name: template_key.0,
+            template_name: Some(template_key.1),
+            source,
+        }),
+    }
 }
 
 fn html_response(html: String) -> Response {
