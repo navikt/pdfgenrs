@@ -64,7 +64,7 @@ mod tests {
         let cfg = Config::default();
         let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir)?);
         Ok(AppState {
-            templates: Arc::new(HashMap::new()),
+            templates: Arc::new(RwLock::new(HashMap::new())),
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness,
             fonts,

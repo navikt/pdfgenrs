@@ -20,8 +20,9 @@ struct BenchResult {
 
 fn create_bench_state() -> anyhow::Result<pdfgenrs::state::AppState> {
     let cfg = config::Config::default();
-    let templates =
-        Arc::new(template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default());
+    let templates = Arc::new(RwLock::new(
+        template::load_templates_from_dir(&cfg.templates_dir).unwrap_or_default(),
+    ));
     let data = template::load_test_data(&cfg.data_dir).data;
     let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir)?);
     Ok(pdfgenrs::state::AppState {
@@ -145,10 +146,11 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
     let passes = 20;
     let mut results = Vec::new();
 
-    for (app_name, template_name) in app_state.templates.keys() {
-        let app_name = app_name.clone();
-        let template_name = template_name.clone();
-
+    let template_keys: Vec<_> = {
+        let templates = app_state.templates.read().await;
+        templates.keys().cloned().collect()
+    };
+    for (app_name, template_name) in template_keys {
         let json_data = {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
@@ -202,10 +204,11 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
     let passes = 30;
     let mut results = Vec::new();
 
-    for (app_name, template_name) in app_state.templates.keys() {
-        let app_name = app_name.clone();
-        let template_name = template_name.clone();
-
+    let template_keys: Vec<_> = {
+        let templates = app_state.templates.read().await;
+        templates.keys().cloned().collect()
+    };
+    for (app_name, template_name) in template_keys {
         let json_data = {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))

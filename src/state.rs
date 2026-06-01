@@ -8,10 +8,14 @@ use tokio::sync::RwLock;
 use crate::config;
 use crate::typst_world::Fonts;
 
+/// Shared template map type, protected by `RwLock` for hot-reloading in dev mode.
+pub type TemplateMap = std::collections::HashMap<(String, String), Arc<String>>;
+
 #[derive(Clone)]
 pub struct AppState {
     /// Pre-loaded Typst templates keyed by `(app_name, template_name)`.
-    pub templates: Arc<std::collections::HashMap<(String, String), Arc<String>>>,
+    /// Protected by an `RwLock` to allow hot-reloading in dev mode.
+    pub templates: Arc<RwLock<TemplateMap>>,
     /// Test JSON data keyed by `(app_name, template_name)`, used in dev mode.
     pub data: Arc<RwLock<std::collections::HashMap<(String, String), Value>>>,
     /// Liveness / readiness flags exposed via the NAIS health endpoints.

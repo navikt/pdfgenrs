@@ -2,7 +2,7 @@ mod tracing_setup;
 
 use anyhow::{Context, Result};
 use pdfgenrs::state::{AppAliveness, AppState};
-use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
+use pdfgenrs::{build_html_converter, build_router, config, template, typst_world, watcher};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     let cfg = config::Config::default();
 
     info!(path = %cfg.templates_dir.display(), "Loading templates");
-    let templates = Arc::new(
+    let templates = Arc::new(RwLock::new(
         template::load_templates_from_dir(&cfg.templates_dir).map_err(|e| {
             tracing::error!(
                 error = %e,
@@ -26,8 +26,8 @@ async fn main() -> Result<()> {
             );
             e
         })?,
-    );
-    info!(count = templates.len(), "Loaded templates");
+    ));
+    info!("Loaded templates");
 
     let data = if cfg.dev_mode {
         info!(path = %cfg.data_dir.display(), "Loading test data");
@@ -77,13 +77,26 @@ async fn main() -> Result<()> {
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
+    let data = Arc::new(RwLock::new(data));
     let state = AppState {
-        templates,
-        data: Arc::new(RwLock::new(data)),
+        templates: Arc::clone(&templates),
+        data: Arc::clone(&data),
         aliveness: aliveness.clone(),
         config: cfg.clone(),
         fonts,
         html_converter,
+    };
+
+    let _watcher_handle = if cfg.dev_mode {
+        info!("Starting file watcher for hot-reloading");
+        Some(watcher::spawn_watcher(
+            &cfg.templates_dir,
+            &cfg.data_dir,
+            Arc::clone(&templates),
+            Arc::clone(&data),
+        ))
+    } else {
+        None
     };
 
     let app = build_router(state);
@@ -167,7 +180,7 @@ mod tests {
 
     fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
         Ok(AppState {
-            templates: Arc::new(HashMap::new()),
+            templates: Arc::new(RwLock::new(HashMap::new())),
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness: state::AppAliveness::new(),
             config: config::Config {

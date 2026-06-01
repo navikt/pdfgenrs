@@ -11,6 +11,8 @@ pub mod state;
 pub mod template;
 /// Typst world, font loading, and compilation utilities.
 pub mod typst_world;
+/// File watcher for hot-reloading templates and data in dev mode.
+pub mod watcher;
 
 pub(crate) mod html;
 pub(crate) mod http_tracing;

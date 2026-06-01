@@ -25,7 +25,10 @@ pub async fn get_html(
     let start = std::time::Instant::now();
     let template_key = (app_name, template_name);
 
-    let template_source = state.templates.get(&template_key).cloned();
+    let template_source = {
+        let templates = state.templates.read().await;
+        templates.get(&template_key).cloned()
+    };
     let json_data = {
         let data_map = state.data.read().await;
         data_map.get(&template_key).cloned()
@@ -74,11 +77,13 @@ pub async fn post_html(
     let start = std::time::Instant::now();
     let template_key = (app_name, template_name);
 
-    let template_source = state
-        .templates
-        .get(&template_key)
-        .cloned()
-        .ok_or(ApiError::NotFound)?;
+    let template_source = {
+        let templates = state.templates.read().await;
+        templates
+            .get(&template_key)
+            .cloned()
+            .ok_or(ApiError::NotFound)?
+    };
 
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
@@ -145,12 +150,12 @@ mod tests {
         data: HashMap<(String, String), Value>,
         dev_mode: bool,
     ) -> anyhow::Result<AppState> {
-        let templates = templates
+        let templates: HashMap<_, _> = templates
             .into_iter()
             .map(|(k, v)| (k, Arc::new(v)))
             .collect();
         Ok(AppState {
-            templates: Arc::new(templates),
+            templates: Arc::new(RwLock::new(templates)),
             data: Arc::new(RwLock::new(data)),
             aliveness: state::AppAliveness::new(),
             config: config::Config {
