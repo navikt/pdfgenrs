@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{error, info};
 
 use super::error::ApiError;
@@ -39,22 +40,35 @@ pub async fn get_pdf(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let result = tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(
-            &source,
-            &data,
-            fonts,
-            &root,
-            &resources_dir,
-            &app_name,
-            &template_name,
-        )
-    })
-    .await
-    .unwrap_or_else(|e| {
-        error!("spawn_blocking task panicked: {e}");
-        Err(anyhow::anyhow!("Task join error: {e}"))
-    });
+    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let result = tokio::time::timeout(
+        timeout_duration,
+        tokio::task::spawn_blocking(move || {
+            gen_pdf::typst_to_pdf(
+                &source,
+                &data,
+                fonts,
+                &root,
+                &resources_dir,
+                &app_name,
+                &template_name,
+            )
+        }),
+    )
+    .await;
+
+    let result = match result {
+        Ok(join_result) => join_result.unwrap_or_else(|e| {
+            error!("spawn_blocking task panicked: {e}");
+            Err(anyhow::anyhow!("Task join error: {e}"))
+        }),
+        Err(_elapsed) => {
+            return Err(ApiError::RequestTimeout {
+                app_name: template_key.0,
+                template_name: Some(template_key.1),
+            });
+        }
+    };
 
     match result {
         Ok(pdf_bytes) => {
@@ -90,22 +104,35 @@ pub async fn post_pdf(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let result = tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(
-            &template_source,
-            &json_data,
-            fonts,
-            &root,
-            &resources_dir,
-            &app_name,
-            &template_name,
-        )
-    })
-    .await
-    .unwrap_or_else(|e| {
-        error!("spawn_blocking task panicked: {e}");
-        Err(anyhow::anyhow!("Task join error: {e}"))
-    });
+    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let result = tokio::time::timeout(
+        timeout_duration,
+        tokio::task::spawn_blocking(move || {
+            gen_pdf::typst_to_pdf(
+                &template_source,
+                &json_data,
+                fonts,
+                &root,
+                &resources_dir,
+                &app_name,
+                &template_name,
+            )
+        }),
+    )
+    .await;
+
+    let result = match result {
+        Ok(join_result) => join_result.unwrap_or_else(|e| {
+            error!("spawn_blocking task panicked: {e}");
+            Err(anyhow::anyhow!("Task join error: {e}"))
+        }),
+        Err(_elapsed) => {
+            return Err(ApiError::RequestTimeout {
+                app_name: template_key.0,
+                template_name: Some(template_key.1),
+            });
+        }
+    };
 
     match result {
         Ok(pdf_bytes) => {
@@ -130,16 +157,29 @@ pub async fn post_pdf_from_html(
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let html_converter = Arc::clone(&state.html_converter);
+    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
 
-    let pdf_bytes =
-        tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &html_converter))
-            .await
+    let result = tokio::time::timeout(
+        timeout_duration,
+        tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &html_converter)),
+    )
+    .await;
+
+    let pdf_bytes = match result {
+        Ok(join_result) => join_result
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
             .map_err(|source| ApiError::GenerationFailed {
                 app_name: app_name.clone(),
                 template_name: None,
                 source,
-            })?;
+            })?,
+        Err(_elapsed) => {
+            return Err(ApiError::RequestTimeout {
+                app_name,
+                template_name: None,
+            });
+        }
+    };
 
     info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
     Ok(pdf_response(pdf_bytes))
@@ -162,16 +202,30 @@ pub async fn post_pdf_from_image(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let pdf_bytes = tokio::task::spawn_blocking(move || {
-        gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
-    })
-    .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-    .map_err(|source| ApiError::GenerationFailed {
-        app_name: app_name.clone(),
-        template_name: None,
-        source,
-    })?;
+    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let result = tokio::time::timeout(
+        timeout_duration,
+        tokio::task::spawn_blocking(move || {
+            gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
+        }),
+    )
+    .await;
+
+    let pdf_bytes = match result {
+        Ok(join_result) => join_result
+            .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
+            .map_err(|source| ApiError::GenerationFailed {
+                app_name: app_name.clone(),
+                template_name: None,
+                source,
+            })?,
+        Err(_elapsed) => {
+            return Err(ApiError::RequestTimeout {
+                app_name,
+                template_name: None,
+            });
+        }
+    };
 
     info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from image");
     Ok(pdf_response(pdf_bytes))
@@ -254,6 +308,7 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
                 request_body_limit_bytes: 2 * 1024 * 1024,
+                compile_timeout_seconds: 30,
             },
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
