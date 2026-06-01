@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use ironpress::HtmlConverter;
 use serde_json::Value;
 use tokio::sync::RwLock;
 
@@ -19,8 +20,8 @@ pub struct AppState {
     pub config: config::Config,
     /// Shared font data used by the Typst compiler.
     pub fonts: Arc<Fonts>,
-    /// Pre-loaded HTML font aliases used by the HTML-to-PDF converter.
-    pub html_font_aliases: Arc<Vec<(String, Vec<u8>)>>,
+    /// Pre-built HTML-to-PDF converter with font aliases loaded at startup.
+    pub html_converter: Arc<HtmlConverter>,
 }
 
 /// Tracks the liveness and readiness state of the application.

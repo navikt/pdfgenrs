@@ -2,7 +2,7 @@ mod tracing_setup;
 
 use anyhow::{Context, Result};
 use pdfgenrs::state::{AppAliveness, AppState};
-use pdfgenrs::{build_router, config, load_html_font_aliases, template, typst_world};
+use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -66,8 +66,13 @@ async fn main() -> Result<()> {
     })?);
     info!(count = fonts.fonts.len(), "Loaded fonts");
 
-    let html_font_aliases = Arc::new(load_html_font_aliases(&cfg.root_dir.join(&cfg.fonts_dir)));
-    info!(count = html_font_aliases.len(), "Loaded HTML font aliases");
+    let (html_converter, html_font_count) =
+        build_html_converter(&cfg.root_dir.join(&cfg.fonts_dir), &cfg.root_dir);
+    let html_converter = Arc::new(html_converter);
+    info!(
+        count = html_font_count,
+        "Built HTML converter with font aliases"
+    );
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
@@ -78,7 +83,7 @@ async fn main() -> Result<()> {
         aliveness: aliveness.clone(),
         config: cfg.clone(),
         fonts,
-        html_font_aliases,
+        html_converter,
     };
 
     let app = build_router(state);
@@ -158,7 +163,7 @@ mod tests {
     use tokio::sync::RwLock;
 
     use pdfgenrs::state::AppState;
-    use pdfgenrs::{build_router, config, load_html_font_aliases, state, typst_world};
+    use pdfgenrs::{build_html_converter, build_router, config, state, typst_world};
 
     fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
         Ok(AppState {
@@ -178,9 +183,13 @@ mod tests {
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
             )?),
-            html_font_aliases: Arc::new(load_html_font_aliases(
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-            )),
+            html_converter: Arc::new(
+                build_html_converter(
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                )
+                .0,
+            ),
         })
     }
 

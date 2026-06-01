@@ -2,7 +2,7 @@ use std::future::IntoFuture;
 use std::sync::Arc;
 
 use axum_test::TestServer;
-use pdfgenrs::{build_router, config, load_html_font_aliases, state, template, typst_world};
+use pdfgenrs::{build_html_converter, build_router, config, state, template, typst_world};
 use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
@@ -29,7 +29,7 @@ fn create_bench_state() -> anyhow::Result<pdfgenrs::state::AppState> {
         data: Arc::new(RwLock::new(data)),
         aliveness: state::AppAliveness::new(),
         fonts,
-        html_font_aliases: Arc::new(load_html_font_aliases(&cfg.fonts_dir)),
+        html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
         config: cfg,
     })
 }
