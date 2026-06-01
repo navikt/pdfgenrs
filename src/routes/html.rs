@@ -43,7 +43,10 @@ pub async fn get_html(
         gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
+    .unwrap_or_else(|e| {
+        error!("spawn_blocking task panicked: {e}");
+        Err(anyhow::anyhow!("Task join error: {e}"))
+    });
 
     match result {
         Ok(html_string) => {
@@ -84,7 +87,10 @@ pub async fn post_html(
         gen_html::typst_to_html(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
+    .unwrap_or_else(|e| {
+        error!("spawn_blocking task panicked: {e}");
+        Err(anyhow::anyhow!("Task join error: {e}"))
+    });
 
     match result {
         Ok(html_string) => {
