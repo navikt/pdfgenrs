@@ -145,6 +145,10 @@ mod tests {
         data: HashMap<(String, String), Value>,
         dev_mode: bool,
     ) -> anyhow::Result<AppState> {
+        let templates = templates
+            .into_iter()
+            .map(|(k, v)| (k, Arc::new(v)))
+            .collect();
         Ok(AppState {
             templates: Arc::new(templates),
             data: Arc::new(RwLock::new(data)),
