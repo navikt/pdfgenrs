@@ -2,7 +2,7 @@ use std::future::IntoFuture;
 use std::sync::Arc;
 
 use axum_test::TestServer;
-use pdfgenrs::{build_html_converter, build_router, config, state, template, typst_world};
+use pdfgenrs::{build_html_converter, build_router, config, metrics, state, template, typst_world};
 use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
@@ -138,8 +138,13 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
     let port = listener.local_addr()?.port();
     let base_url = format!("http://127.0.0.1:{port}");
 
-    let server_handle =
-        tokio::spawn(axum::serve(listener, build_router(app_state.clone())).into_future());
+    let server_handle = tokio::spawn(
+        axum::serve(
+            listener,
+            build_router(app_state.clone(), metrics::test_metrics_handle()),
+        )
+        .into_future(),
+    );
 
     let client = Arc::new(reqwest::Client::new());
     let passes = 20;
@@ -197,7 +202,10 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
 
 async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
     let app_state = create_bench_state()?;
-    let server = TestServer::new(build_router(app_state.clone()));
+    let server = TestServer::new(build_router(
+        app_state.clone(),
+        metrics::test_metrics_handle(),
+    ));
 
     let passes = 30;
     let mut results = Vec::new();
