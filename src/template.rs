@@ -2,6 +2,7 @@ use anyhow::Context;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use walkdir::WalkDir;
 
 /// Categorises errors encountered while loading test data.
@@ -57,7 +58,7 @@ impl TestDataLoadResult {
 /// Returns an error if any file cannot be read or a path cannot be processed.
 pub fn load_templates_from_dir(
     templates_dir: &Path,
-) -> anyhow::Result<HashMap<(String, String), String>> {
+) -> anyhow::Result<HashMap<(String, String), Arc<String>>> {
     let mut templates = HashMap::new();
 
     for entry in WalkDir::new(templates_dir).follow_links(true).into_iter() {
@@ -86,7 +87,10 @@ pub fn load_templates_from_dir(
                 ));
             }
             let source = std::fs::read_to_string(path).context("Failed to read template file")?;
-            templates.insert((app_name.to_string(), template_name.to_string()), source);
+            templates.insert(
+                (app_name.to_string(), template_name.to_string()),
+                Arc::new(source),
+            );
         }
     }
     Ok(templates)
@@ -212,7 +216,7 @@ mod tests {
 
         assert_eq!(templates.len(), 1);
         assert_eq!(
-            templates[&("myapp".to_string(), "hello".to_string())],
+            templates[&("myapp".to_string(), "hello".to_string())].as_str(),
             "Hello Typst"
         );
         Ok(())
@@ -230,7 +234,7 @@ mod tests {
         assert_eq!(templates.len(), 1);
         let key = ("myapp".to_string(), "report".to_string());
         assert!(templates.contains_key(&key));
-        assert_eq!(templates[&key], "Report content");
+        assert_eq!(templates[&key].as_str(), "Report content");
         Ok(())
     }
 
