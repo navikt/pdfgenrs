@@ -7,7 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{error, info};
 
 use super::error::ApiError;
 use crate::pdf as gen_pdf;
@@ -43,7 +43,10 @@ pub async fn get_pdf(
         gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
+    .unwrap_or_else(|e| {
+        error!("spawn_blocking task panicked: {e}");
+        Err(anyhow::anyhow!("Task join error: {e}"))
+    });
 
     match result {
         Ok(pdf_bytes) => {
@@ -83,7 +86,10 @@ pub async fn post_pdf(
         gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root, &resources_dir)
     })
     .await
-    .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")));
+    .unwrap_or_else(|e| {
+        error!("spawn_blocking task panicked: {e}");
+        Err(anyhow::anyhow!("Task join error: {e}"))
+    });
 
     match result {
         Ok(pdf_bytes) => {
