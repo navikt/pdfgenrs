@@ -24,10 +24,10 @@ use axum::{
 use state::AppState;
 use tower_http::limit::RequestBodyLimitLayer;
 
-/// Loads optional HTML font aliases from `fonts_dir`.
+/// Builds a pre-configured HTML-to-PDF converter with font aliases.
 ///
-/// Missing font files are skipped and logged as warnings.
-pub use pdf::load_html_font_aliases;
+/// The converter is built once at startup and shared across requests.
+pub use pdf::build_html_converter;
 
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {

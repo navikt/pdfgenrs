@@ -113,11 +113,10 @@ pub async fn post_pdf_from_html(
     html: String,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
-    let root = state.config.root_dir.clone();
-    let html_font_aliases = Arc::clone(&state.html_font_aliases);
+    let html_converter = Arc::clone(&state.html_converter);
 
     let pdf_bytes =
-        tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &root, &html_font_aliases))
+        tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &html_converter))
             .await
             .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
             .map_err(|source| ApiError::GenerationFailed {
@@ -236,8 +235,9 @@ mod tests {
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
             )?),
-            html_font_aliases: Arc::new(crate::pdf::load_html_font_aliases(
+            html_converter: Arc::new(crate::pdf::build_html_converter(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
             )),
         })
     }
