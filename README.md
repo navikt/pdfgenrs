@@ -121,7 +121,7 @@ All `POST` endpoints enforce a request body limit of `2097152` bytes (2 MiB), in
 - `POST /api/v1/genpdf/{your_appname}/{template}`
 - `POST /api/v1/genhtml/{your_appname}/{template}`
 
-Set enviroment variable `REQUEST_BODY_LIMIT_BYTES` to tune this limit. Example in Dockerfile for 3 MiB:
+Set environment variable `REQUEST_BODY_LIMIT_BYTES` to tune this limit. Example in Dockerfile for 3 MiB:
 
 ```dockerfile
 FROM ghcr.io/navikt/pdfgenrs:<release>
