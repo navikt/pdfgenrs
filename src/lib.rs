@@ -5,6 +5,8 @@
 
 /// Runtime server configuration sourced from environment variables.
 pub mod config;
+/// Prometheus metrics middleware and recorder setup.
+pub mod metrics;
 /// Shared application state and liveness/readiness primitives.
 pub mod state;
 /// Template and development data loading helpers.
@@ -18,9 +20,10 @@ pub(crate) mod pdf;
 pub(crate) mod routes;
 
 use axum::{
-    Router,
+    Router, middleware,
     routing::{get, post},
 };
+use metrics_exporter_prometheus::PrometheusHandle;
 use state::AppState;
 use tower_http::limit::RequestBodyLimitLayer;
 
@@ -36,7 +39,7 @@ pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
 }
 
 /// Builds the full HTTP router for the PDF/HTML generation API.
-pub fn build_router(state: AppState) -> Router {
+pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router {
     let request_body_limit_bytes = state.config.request_body_limit_bytes;
     let mut pdf_router = Router::new()
         .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
@@ -54,7 +57,8 @@ pub fn build_router(state: AppState) -> Router {
     let app = Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
-        .merge(routes::nais::nais_router())
+        .merge(routes::nais::nais_router(metrics_handle))
+        .layer(middleware::from_fn(metrics::track_metrics))
         .layer(RequestBodyLimitLayer::new(request_body_limit_bytes))
         .with_state(state);
 
