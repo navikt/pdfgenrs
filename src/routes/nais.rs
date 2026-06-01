@@ -68,7 +68,7 @@ mod tests {
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness,
             fonts,
-            html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir)),
+            html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
             config: cfg,
         })
     }

@@ -162,10 +162,13 @@ mod tests {
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
             )?),
-            html_converter: Arc::new(build_html_converter(
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-            )),
+            html_converter: Arc::new(
+                build_html_converter(
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                )
+                .0,
+            ),
         })
     }
 

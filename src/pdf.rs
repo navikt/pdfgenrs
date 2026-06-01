@@ -27,14 +27,19 @@ const HTML_FONT_ALIASES: &[(&str, &str)] = &[
 /// The converter is constructed once and can be reused across requests via shared
 /// reference, avoiding per-request cloning of font byte vectors.
 /// Font files that cannot be read are skipped and logged as warnings.
-pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> HtmlConverter {
+///
+/// Returns a tuple of `(converter, count)` where `count` is the number of
+/// font aliases successfully loaded.
+pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverter, usize) {
     let mut converter = HtmlConverter::new().base_path(base_path);
+    let mut count = 0;
 
     for (family, file_name) in HTML_FONT_ALIASES {
         let font_path = fonts_dir.join(file_name);
         match std::fs::read(&font_path) {
             Ok(font_bytes) => {
                 converter = converter.add_font(family, font_bytes);
+                count += 1;
             }
             Err(error) => {
                 warn!(
@@ -46,7 +51,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> HtmlConverter
         }
     }
 
-    converter
+    (converter, count)
 }
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
@@ -175,7 +180,7 @@ Hello, world!
     #[test]
     fn html_to_pdf_simple_document_returns_pdf_bytes() -> Result<()> {
         let source = "<!DOCTYPE html><html><body><h1>Hello, world!</h1></body></html>";
-        let converter = build_html_converter(&fonts_dir(), &root_dir());
+        let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
         let bytes = html_to_pdf(source, &converter)?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -196,7 +201,7 @@ Hello, world!
     <h1>Hello, world!</h1>
 </body>
 </html>"#;
-        let converter = build_html_converter(&fonts_dir(), &root_dir());
+        let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
         let bytes = html_to_pdf(source, &converter)?;
         assert!(is_pdf(&bytes));
         Ok(())

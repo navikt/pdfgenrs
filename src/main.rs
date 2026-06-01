@@ -66,11 +66,13 @@ async fn main() -> Result<()> {
     })?);
     info!(count = fonts.fonts.len(), "Loaded fonts");
 
-    let html_converter = Arc::new(build_html_converter(
-        &cfg.root_dir.join(&cfg.fonts_dir),
-        &cfg.root_dir,
-    ));
-    info!("Built HTML converter with font aliases");
+    let (html_converter, html_font_count) =
+        build_html_converter(&cfg.root_dir.join(&cfg.fonts_dir), &cfg.root_dir);
+    let html_converter = Arc::new(html_converter);
+    info!(
+        count = html_font_count,
+        "Built HTML converter with font aliases"
+    );
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
@@ -181,10 +183,13 @@ mod tests {
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
             )?),
-            html_converter: Arc::new(build_html_converter(
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-            )),
+            html_converter: Arc::new(
+                build_html_converter(
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                )
+                .0,
+            ),
         })
     }
 

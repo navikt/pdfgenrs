@@ -29,7 +29,7 @@ fn create_bench_state() -> anyhow::Result<pdfgenrs::state::AppState> {
         data: Arc::new(RwLock::new(data)),
         aliveness: state::AppAliveness::new(),
         fonts,
-        html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir)),
+        html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
         config: cfg,
     })
 }
