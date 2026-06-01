@@ -252,10 +252,10 @@ Exposes Prometheus metrics for operational monitoring.
 
 **Metrics exposed:**
 
-| Metric | Type | Labels |
-|--------|------|--------|
-| `http_requests_total` | Counter | method, path, status |
-| `http_request_duration_seconds` | Histogram | method, path, status |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | method, path, status | Total number of HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution |
 
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 
