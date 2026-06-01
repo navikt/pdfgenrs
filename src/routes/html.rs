@@ -23,7 +23,7 @@ pub async fn get_html(
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
-    let template_key = (app_name, template_name);
+    let template_key = (app_name.clone(), template_name.clone());
 
     let template_source = state.templates.get(&template_key).cloned();
     let json_data = {
@@ -40,7 +40,15 @@ pub async fn get_html(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let result = tokio::task::spawn_blocking(move || {
-        gen_html::typst_to_html(&source, &data, fonts, &root, &resources_dir)
+        gen_html::typst_to_html(
+            &source,
+            &data,
+            fonts,
+            &root,
+            &resources_dir,
+            &app_name,
+            &template_name,
+        )
     })
     .await
     .unwrap_or_else(|e| {
@@ -72,7 +80,7 @@ pub async fn post_html(
     Json(json_data): Json<Value>,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
-    let template_key = (app_name, template_name);
+    let template_key = (app_name.clone(), template_name.clone());
 
     let template_source = state
         .templates
@@ -84,7 +92,15 @@ pub async fn post_html(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let result = tokio::task::spawn_blocking(move || {
-        gen_html::typst_to_html(&template_source, &json_data, fonts, &root, &resources_dir)
+        gen_html::typst_to_html(
+            &template_source,
+            &json_data,
+            fonts,
+            &root,
+            &resources_dir,
+            &app_name,
+            &template_name,
+        )
     })
     .await
     .unwrap_or_else(|e| {

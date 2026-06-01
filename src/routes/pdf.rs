@@ -23,7 +23,7 @@ pub async fn get_pdf(
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
-    let template_key = (app_name, template_name);
+    let template_key = (app_name.clone(), template_name.clone());
 
     let template_source = state.templates.get(&template_key).cloned();
     let json_data = {
@@ -40,7 +40,15 @@ pub async fn get_pdf(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let result = tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(&source, &data, fonts, &root, &resources_dir)
+        gen_pdf::typst_to_pdf(
+            &source,
+            &data,
+            fonts,
+            &root,
+            &resources_dir,
+            &app_name,
+            &template_name,
+        )
     })
     .await
     .unwrap_or_else(|e| {
@@ -71,7 +79,7 @@ pub async fn post_pdf(
     Json(json_data): Json<Value>,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
-    let template_key = (app_name, template_name);
+    let template_key = (app_name.clone(), template_name.clone());
 
     let template_source = state
         .templates
@@ -83,7 +91,15 @@ pub async fn post_pdf(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let result = tokio::task::spawn_blocking(move || {
-        gen_pdf::typst_to_pdf(&template_source, &json_data, fonts, &root, &resources_dir)
+        gen_pdf::typst_to_pdf(
+            &template_source,
+            &json_data,
+            fonts,
+            &root,
+            &resources_dir,
+            &app_name,
+            &template_name,
+        )
     })
     .await
     .unwrap_or_else(|e| {
@@ -650,7 +666,7 @@ mod tests {
         let _guard = crate::memory_sensitive_test_lock().lock().await;
         const TEMPLATE_WITH_JSON: &str = r#"#set document(date: auto)
 #set page(margin: 1cm)
-#let data = json("/data.json")
+#let data = json("/data/myapp/mytemplate.json")
 #data.at("message", default: "")
 "#;
 

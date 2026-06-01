@@ -1,6 +1,6 @@
-// JSON data is injected by the server as a virtual file at /data.json.
-// Access it with: #let data = json("/data.json")
-#let data = json("/data.json")
+// JSON data is injected by the server as a virtual file at /data/dsopkontroll/kontrollforespoersel.json.
+// Access it with: #let data = json("/data/dsopkontroll/kontrollforespoersel.json")
+#let data = json("/data/dsopkontroll/kontrollforespoersel.json")
 #let bs = data.at("brevSporring", default: (:))
 
 #set document(title: "Kontroll forespørsel")

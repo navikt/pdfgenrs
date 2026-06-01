@@ -8,8 +8,9 @@ use crate::typst_world::{self, Fonts};
 
 /// Compiles a Typst template with JSON data and returns the resulting HTML string.
 ///
-/// The JSON data is serialised and injected as a virtual file at `/data.json`,
-/// which the template can read with `#let data = json("/data.json")`.
+/// The JSON data is serialised and injected as a virtual file at
+/// `/data/{app_name}/{template_name}.json`, which the template can read with
+/// `#let data = json("/data/<app_name>/<template_name>.json")`.
 ///
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
@@ -20,10 +21,13 @@ pub fn typst_to_html(
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
+    app_name: &str,
+    template_name: &str,
 ) -> Result<String> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let mut vfiles = HashMap::new();
-    vfiles.insert("/data.json".to_string(), Bytes::new(json_bytes));
+    let data_path = format!("/data/{app_name}/{template_name}.json");
+    vfiles.insert(data_path, Bytes::new(json_bytes));
 
     typst_world::compile_to_html(
         fonts,
@@ -64,6 +68,8 @@ mod tests {
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
             &resources_dir(),
+            "test",
+            "simple",
         )?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -75,7 +81,7 @@ mod tests {
 
     #[test]
     fn typst_to_html_with_json_data_returns_html_with_data() -> Result<()> {
-        let source = r#"#let data = json("/data.json")
+        let source = r#"#let data = json("/data/test/app.json")
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
@@ -85,6 +91,8 @@ mod tests {
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
             &resources_dir(),
+            "test",
+            "app",
         )?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -100,6 +108,8 @@ mod tests {
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
             &resources_dir(),
+            "test",
+            "invalid",
         );
         assert!(
             result.is_err(),
