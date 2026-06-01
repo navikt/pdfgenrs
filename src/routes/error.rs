@@ -19,6 +19,11 @@ pub enum ApiError {
     },
     /// The request body content type is not supported.
     UnsupportedMediaType,
+    /// The compilation task exceeded the configured timeout.
+    RequestTimeout {
+        app_name: String,
+        template_name: Option<String>,
+    },
 }
 
 impl IntoResponse for ApiError {
@@ -40,6 +45,17 @@ impl IntoResponse for ApiError {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
             }
             Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response(),
+            Self::RequestTimeout {
+                ref app_name,
+                ref template_name,
+            } => {
+                if let Some(tmpl) = template_name {
+                    error!(app_name = %app_name, template_name = %tmpl, "Compilation timed out");
+                } else {
+                    error!(app_name = %app_name, "Compilation timed out");
+                }
+                (StatusCode::REQUEST_TIMEOUT, "Request timed out").into_response()
+            }
         }
     }
 }

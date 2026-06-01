@@ -9,6 +9,7 @@ const DATA_DIR_ENV: &str = "DATA_DIR";
 const FONTS_DIR_ENV: &str = "FONTS_DIR";
 const DEV_MODE_ENV: &str = "DEV_MODE";
 const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
+const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -17,6 +18,7 @@ const DEFAULT_RESOURCES_DIR: &str = "resources";
 const DEFAULT_DATA_DIR: &str = "data";
 const DEFAULT_FONTS_DIR: &str = "fonts";
 const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
+const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -44,6 +46,10 @@ pub struct Config {
     /// Maximum accepted request body size in bytes. Defaults to `2097152` (2 MiB)
     /// (`REQUEST_BODY_LIMIT_BYTES`).
     pub request_body_limit_bytes: usize,
+    /// Maximum time in seconds allowed for a single compilation task (Typst to PDF/HTML).
+    /// Requests exceeding this timeout will be aborted with a `408 Request Timeout`.
+    /// Defaults to `30` (`COMPILE_TIMEOUT_SECONDS`).
+    pub compile_timeout_seconds: u64,
 }
 
 impl Default for Config {
@@ -60,6 +66,7 @@ impl Config {
     fn from_env_fn(env_var: impl Fn(&str) -> Option<String>) -> Self {
         let parse_u16 = |key: &str| env_var(key)?.parse::<u16>().ok();
         let parse_usize = |key: &str| env_var(key)?.parse::<usize>().ok();
+        let parse_u64 = |key: &str| env_var(key)?.parse::<u64>().ok();
         let path_or = |key: &str, default: &str| {
             PathBuf::from(env_var(key).unwrap_or_else(|| default.to_owned()))
         };
@@ -79,6 +86,8 @@ impl Config {
             dev_mode: bool_var(DEV_MODE_ENV),
             request_body_limit_bytes: parse_usize(REQUEST_BODY_LIMIT_BYTES_ENV)
                 .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
+            compile_timeout_seconds: parse_u64(COMPILE_TIMEOUT_SECONDS_ENV)
+                .unwrap_or(DEFAULT_COMPILE_TIMEOUT_SECONDS),
         }
     }
 
@@ -134,6 +143,10 @@ mod tests {
             config.request_body_limit_bytes,
             DEFAULT_REQUEST_BODY_LIMIT_BYTES
         );
+        assert_eq!(
+            config.compile_timeout_seconds,
+            DEFAULT_COMPILE_TIMEOUT_SECONDS
+        );
     }
 
     #[test]
@@ -147,6 +160,7 @@ mod tests {
             (FONTS_DIR_ENV, "/tmp/fonts"),
             (DEV_MODE_ENV, "TrUe"),
             (REQUEST_BODY_LIMIT_BYTES_ENV, "4194304"),
+            (COMPILE_TIMEOUT_SECONDS_ENV, "60"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -157,6 +171,7 @@ mod tests {
         assert_eq!(config.fonts_dir, PathBuf::from("/tmp/fonts"));
         assert!(config.dev_mode);
         assert_eq!(config.request_body_limit_bytes, 4 * 1024 * 1024);
+        assert_eq!(config.compile_timeout_seconds, 60);
     }
 
     #[test]
@@ -185,6 +200,17 @@ mod tests {
     }
 
     #[test]
+    fn default_falls_back_to_default_compile_timeout_for_invalid_env_value() {
+        let config =
+            Config::from_env_fn(env_from(&[(COMPILE_TIMEOUT_SECONDS_ENV, "not-a-number")]));
+
+        assert_eq!(
+            config.compile_timeout_seconds,
+            DEFAULT_COMPILE_TIMEOUT_SECONDS
+        );
+    }
+
+    #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
         let config = Config {
             port: DEFAULT_PORT,
@@ -195,6 +221,7 @@ mod tests {
             fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
+            compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -211,6 +238,7 @@ mod tests {
             fonts_dir: PathBuf::from("/tmp/shared/fonts"),
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
+            compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -227,6 +255,7 @@ mod tests {
             fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
+            compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -243,6 +272,7 @@ mod tests {
             fonts_dir: PathBuf::from(DEFAULT_FONTS_DIR),
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
+            compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
         };
 
         assert_eq!(
