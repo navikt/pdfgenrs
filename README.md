@@ -241,6 +241,22 @@ When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Al
 - `200 OK` when ready
 - `500 Internal Server Error` otherwise
 
+### Metrics endpoint
+
+#### `GET /internal/metrics`
+
+Exposes Prometheus metrics for operational monitoring.
+
+- Response Content-Type: `text/plain`
+- Success: `200 OK`
+
+**Metrics exposed:**
+
+| Metric | Type | Labels |
+|--------|------|--------|
+| `http_requests_total` | Counter | method, path, status |
+| `http_request_duration_seconds` | Histogram | method, path, status |
+
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
