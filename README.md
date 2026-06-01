@@ -111,6 +111,7 @@ Example:
 | `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json` | `text/html; charset=utf-8` | Typst + JSON to HTML |
 | `/internal/is_alive` | `GET` | - | - | Liveness |
 | `/internal/is_ready` | `GET` | - | - | Readiness |
+| `/internal/metrics` | `GET` | - | `text/plain` | Prometheus metrics |
 
 ### Request body size limit
 
