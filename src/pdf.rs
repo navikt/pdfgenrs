@@ -56,8 +56,9 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
 ///
-/// The JSON data is serialised and injected as a virtual file at `/data.json`,
-/// which the template can read with `#let data = json("/data.json")`.
+/// The JSON data is serialised and injected as a virtual file at
+/// `/data/{app_name}/{template_name}.json`, which the template can read with
+/// `#let data = json("/data/<app_name>/<template_name>.json")`.
 ///
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
@@ -68,10 +69,13 @@ pub fn typst_to_pdf(
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
+    app_name: &str,
+    template_name: &str,
 ) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let mut vfiles = HashMap::new();
-    vfiles.insert("/data.json".to_string(), Bytes::new(json_bytes));
+    let data_path = format!("/data/{app_name}/{template_name}.json");
+    vfiles.insert(data_path, Bytes::new(json_bytes));
 
     typst_world::compile_to_pdf(
         fonts,
@@ -148,7 +152,15 @@ mod tests {
 Hello, world!
 ";
         let data = serde_json::json!({});
-        let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir(), &resources_dir())?;
+        let bytes = typst_to_pdf(
+            source,
+            &data,
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "simple",
+        )?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
@@ -156,11 +168,19 @@ Hello, world!
     #[test]
     fn typst_to_pdf_with_json_data_returns_pdf_bytes() -> Result<()> {
         let source = r#"#set document(date: auto)
-#let data = json("/data.json")
+#let data = json("/data/test/app.json")
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir(), &resources_dir())?;
+        let bytes = typst_to_pdf(
+            source,
+            &data,
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "app",
+        )?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
@@ -169,7 +189,15 @@ Hello, world!
     fn typst_to_pdf_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(source, &data, test_fonts()?, &root_dir(), &resources_dir());
+        let result = typst_to_pdf(
+            source,
+            &data,
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "invalid",
+        );
         assert!(
             result.is_err(),
             "Expected an error for invalid Typst source"
@@ -228,7 +256,15 @@ Hello, world!
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
         let data = serde_json::json!({});
-        let bytes = typst_to_pdf(source, &data, test_fonts()?, &root_dir(), &resources_dir())?;
+        let bytes = typst_to_pdf(
+            source,
+            &data,
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "resource",
+        )?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
