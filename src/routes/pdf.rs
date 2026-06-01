@@ -163,7 +163,10 @@ pub async fn post_pdf_from_image(
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
     (
-        [(header::CONTENT_TYPE, "application/pdf")],
+        [
+            (header::CONTENT_TYPE, "application/pdf"),
+            (header::CONTENT_DISPOSITION, "inline"),
+        ],
         Bytes::from(pdf_bytes),
     )
         .into_response()
