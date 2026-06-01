@@ -5,15 +5,20 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
+use metrics_exporter_prometheus::PrometheusHandle;
 
 use crate::state::AppState;
 
-/// Builds the NAIS health check router with `/internal/is_alive` and
-/// `/internal/is_ready` endpoints.
-pub fn nais_router() -> Router<AppState> {
+/// Builds the NAIS health check router with `/internal/is_alive`,
+/// `/internal/is_ready`, and `/internal/metrics` endpoints.
+pub fn nais_router(metrics_handle: PrometheusHandle) -> Router<AppState> {
     Router::new()
         .route("/internal/is_alive", get(is_alive))
         .route("/internal/is_ready", get(is_ready))
+        .route(
+            "/internal/metrics",
+            get(move || std::future::ready(metrics_handle.render())),
+        )
 }
 
 /// Handles `GET /internal/is_alive`.
@@ -63,6 +68,7 @@ mod tests {
 
     use super::nais_router;
     use crate::config::Config;
+    use crate::metrics;
     use crate::state::AppAliveness;
     use crate::state::AppState;
     use crate::{build_html_converter, typst_world};
@@ -106,7 +112,8 @@ mod tests {
 
     #[tokio::test]
     async fn is_alive_returns_200_when_alive() -> anyhow::Result<()> {
-        let server = TestServer::new(nais_router().with_state(test_state(true, false)?));
+        let handle = metrics::test_metrics_handle();
+        let server = TestServer::new(nais_router(handle).with_state(test_state(true, false)?));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::OK);
         Ok(())
@@ -114,7 +121,8 @@ mod tests {
 
     #[tokio::test]
     async fn is_alive_returns_500_when_not_alive() -> anyhow::Result<()> {
-        let server = TestServer::new(nais_router().with_state(test_state(false, false)?));
+        let handle = metrics::test_metrics_handle();
+        let server = TestServer::new(nais_router(handle).with_state(test_state(false, false)?));
         let response = server.get("/internal/is_alive").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
         Ok(())
@@ -122,7 +130,8 @@ mod tests {
 
     #[tokio::test]
     async fn is_ready_returns_200_when_ready() -> anyhow::Result<()> {
-        let server = TestServer::new(nais_router().with_state(test_state(false, true)?));
+        let handle = metrics::test_metrics_handle();
+        let server = TestServer::new(nais_router(handle).with_state(test_state(false, true)?));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::OK);
         Ok(())
@@ -130,7 +139,8 @@ mod tests {
 
     #[tokio::test]
     async fn is_ready_returns_500_when_not_ready() -> anyhow::Result<()> {
-        let server = TestServer::new(nais_router().with_state(test_state(false, false)?));
+        let handle = metrics::test_metrics_handle();
+        let server = TestServer::new(nais_router(handle).with_state(test_state(false, false)?));
         let response = server.get("/internal/is_ready").await;
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
         Ok(())

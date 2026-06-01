@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{error, info};
 
 use super::error::ApiError;
@@ -39,22 +40,35 @@ pub async fn get_html(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let result = tokio::task::spawn_blocking(move || {
-        gen_html::typst_to_html(
-            &source,
-            &data,
-            fonts,
-            &root,
-            &resources_dir,
-            &app_name,
-            &template_name,
-        )
-    })
-    .await
-    .unwrap_or_else(|e| {
-        error!("spawn_blocking task panicked: {e}");
-        Err(anyhow::anyhow!("Task join error: {e}"))
-    });
+    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let result = tokio::time::timeout(
+        timeout_duration,
+        tokio::task::spawn_blocking(move || {
+            gen_html::typst_to_html(
+                &source,
+                &data,
+                fonts,
+                &root,
+                &resources_dir,
+                &app_name,
+                &template_name,
+            )
+        }),
+    )
+    .await;
+
+    let result = match result {
+        Ok(join_result) => join_result.unwrap_or_else(|e| {
+            error!("spawn_blocking task panicked: {e}");
+            Err(anyhow::anyhow!("Task join error: {e}"))
+        }),
+        Err(_elapsed) => {
+            return Err(ApiError::RequestTimeout {
+                app_name: template_key.0,
+                template_name: Some(template_key.1),
+            });
+        }
+    };
 
     match result {
         Ok(html_string) => {
@@ -91,22 +105,35 @@ pub async fn post_html(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let result = tokio::task::spawn_blocking(move || {
-        gen_html::typst_to_html(
-            &template_source,
-            &json_data,
-            fonts,
-            &root,
-            &resources_dir,
-            &app_name,
-            &template_name,
-        )
-    })
-    .await
-    .unwrap_or_else(|e| {
-        error!("spawn_blocking task panicked: {e}");
-        Err(anyhow::anyhow!("Task join error: {e}"))
-    });
+    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let result = tokio::time::timeout(
+        timeout_duration,
+        tokio::task::spawn_blocking(move || {
+            gen_html::typst_to_html(
+                &template_source,
+                &json_data,
+                fonts,
+                &root,
+                &resources_dir,
+                &app_name,
+                &template_name,
+            )
+        }),
+    )
+    .await;
+
+    let result = match result {
+        Ok(join_result) => join_result.unwrap_or_else(|e| {
+            error!("spawn_blocking task panicked: {e}");
+            Err(anyhow::anyhow!("Task join error: {e}"))
+        }),
+        Err(_elapsed) => {
+            return Err(ApiError::RequestTimeout {
+                app_name: template_key.0,
+                template_name: Some(template_key.1),
+            });
+        }
+    };
 
     match result {
         Ok(html_string) => {
@@ -178,6 +205,7 @@ mod tests {
                 fonts_dir: PathBuf::from("fonts"),
                 dev_mode,
                 request_body_limit_bytes: 2 * 1024 * 1024,
+                compile_timeout_seconds: 30,
             },
             fonts: Arc::new(typst_world::load_fonts(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),

@@ -111,6 +111,7 @@ Example:
 | `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json` | `text/html; charset=utf-8` | Typst + JSON to HTML |
 | `/internal/is_alive` | `GET` | - | - | Liveness |
 | `/internal/is_ready` | `GET` | - | - | Readiness |
+| `/internal/metrics` | `GET` | - | `text/plain` | Prometheus metrics |
 
 ### Request body size limit
 
@@ -239,6 +240,22 @@ When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Al
 
 - `200 OK` when ready
 - `500 Internal Server Error` otherwise
+
+### Metrics endpoint
+
+#### `GET /internal/metrics`
+
+Exposes Prometheus metrics for operational monitoring.
+
+- Response Content-Type: `text/plain`
+- Success: `200 OK`
+
+**Metrics exposed:**
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | method, path, status | Total number of HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution |
 
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 
