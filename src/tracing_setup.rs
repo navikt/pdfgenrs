@@ -482,7 +482,11 @@ mod tests {
         );
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::info!(pos_inf = f64::INFINITY, neg_inf = f64::NEG_INFINITY, "infinity values");
+            tracing::info!(
+                pos_inf = f64::INFINITY,
+                neg_inf = f64::NEG_INFINITY,
+                "infinity values"
+            );
         });
 
         let log_line = parse_single_log_line(&buffer);
