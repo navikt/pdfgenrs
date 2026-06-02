@@ -2534,6 +2534,7 @@ dependencies = [
  "axum-test",
  "chrono",
  "comemo",
+ "http-body-util",
  "ironpress",
  "metrics",
  "metrics-exporter-prometheus",
