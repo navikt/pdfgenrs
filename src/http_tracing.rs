@@ -62,6 +62,9 @@ mod imp {
     mod tests {
         use super::*;
         use axum::http::{HeaderValue, Method, Uri, Version};
+        use opentelemetry::propagation::TextMapPropagator;
+        use opentelemetry::trace::TraceContextExt;
+        use opentelemetry_sdk::propagation::TraceContextPropagator;
 
         #[test]
         fn header_extractor_reads_valid_headers_and_skips_non_utf8_values() {
@@ -90,6 +93,20 @@ mod imp {
         }
 
         #[test]
+        fn header_extractor_returns_none_for_missing_header() {
+            let headers = HeaderMap::new();
+            let extractor = HeaderExtractor(&headers);
+            assert_eq!(extractor.get("traceparent"), None);
+        }
+
+        #[test]
+        fn header_extractor_returns_empty_keys_for_empty_headers() {
+            let headers = HeaderMap::new();
+            let extractor = HeaderExtractor(&headers);
+            assert!(extractor.keys().is_empty());
+        }
+
+        #[test]
         fn make_otel_span_creates_http_request_span() {
             let request_result = Request::builder()
                 .method(Method::POST)
@@ -113,6 +130,46 @@ mod imp {
 
             assert_eq!(metadata.name(), "HTTP request");
             assert_eq!(metadata.level(), &tracing::Level::INFO);
+        }
+
+        #[test]
+        fn propagator_extracts_trace_context_from_header_extractor() {
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "traceparent",
+                HeaderValue::from_static("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"),
+            );
+
+            let propagator = TraceContextPropagator::new();
+            let context = propagator.extract(&HeaderExtractor(&headers));
+            let span_context = context.span().span_context().clone();
+
+            assert!(
+                span_context.is_valid(),
+                "expected valid span context from traceparent header"
+            );
+            assert_eq!(
+                format!("{:032x}", span_context.trace_id()),
+                "4bf92f3577b34da6a3ce929d0e0e4736"
+            );
+            assert_eq!(
+                format!("{:016x}", span_context.span_id()),
+                "00f067aa0ba902b7"
+            );
+        }
+
+        #[test]
+        fn propagator_returns_invalid_context_without_traceparent() {
+            let headers = HeaderMap::new();
+
+            let propagator = TraceContextPropagator::new();
+            let context = propagator.extract(&HeaderExtractor(&headers));
+            let span_context = context.span().span_context().clone();
+
+            assert!(
+                !span_context.is_valid(),
+                "expected invalid span context without traceparent header"
+            );
         }
     }
 }

@@ -114,4 +114,30 @@ mod tests {
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
         Ok(())
     }
+
+    #[tokio::test]
+    async fn metrics_endpoint_returns_200() -> anyhow::Result<()> {
+        let handle = metrics::test_metrics_handle();
+        let server = TestServer::new(nais_router(handle).with_state(test_state(true, true)?));
+        let response = server.get("/internal/metrics").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn metrics_endpoint_returns_prometheus_output() -> anyhow::Result<()> {
+        let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        ::metrics::with_local_recorder(&recorder, || {
+            ::metrics::counter!("test_counter").increment(1);
+        });
+        let server = TestServer::new(nais_router(handle).with_state(test_state(true, true)?));
+        let response = server.get("/internal/metrics").await;
+        let body = response.text();
+        assert!(
+            body.contains("test_counter"),
+            "expected prometheus metrics output to contain test_counter: {body}"
+        );
+        Ok(())
+    }
 }
