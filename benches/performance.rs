@@ -43,7 +43,7 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
     let mut md = String::new();
     md.push_str("## Performance benchmark results\n\n");
 
-    md.push_str("### Multi-thread (8 workers, 20 passes)\n\n");
+    md.push_str("### Multi-thread (8 workers, 30 passes)\n\n");
     md.push_str("| App | Template | Total (ms) | Avg per request (ms) |\n");
     md.push_str("|-----|----------|-----------|----------------------|\n");
     for r in mt_results {
@@ -147,7 +147,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
     );
 
     let client = Arc::new(reqwest::Client::new());
-    let passes = 20;
+    let passes = 30;
     let mut results = Vec::new();
 
     for (app_name, template_name) in app_state.templates.keys() {
