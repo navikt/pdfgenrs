@@ -822,11 +822,17 @@ mod tests {
         let response = pdf_response(b"%PDF-1.4 fake content".to_vec());
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").map(|v| v.to_str().ok()),
+            response
+                .headers()
+                .get("content-type")
+                .map(|v| v.to_str().ok()),
             Some(Some("application/pdf"))
         );
         assert_eq!(
-            response.headers().get("content-disposition").map(|v| v.to_str().ok()),
+            response
+                .headers()
+                .get("content-disposition")
+                .map(|v| v.to_str().ok()),
             Some(Some("inline"))
         );
 
@@ -875,7 +881,10 @@ mod tests {
 
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(
-            response.headers().get("content-type").map(|v| v.to_str().ok()),
+            response
+                .headers()
+                .get("content-type")
+                .map(|v| v.to_str().ok()),
             Some(Some("application/pdf"))
         );
         assert!(is_pdf(response.as_bytes()));
@@ -977,8 +986,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_from_html_client_timeout_cancels_and_followup_succeeds()
-    -> anyhow::Result<()> {
+    async fn post_pdf_from_html_client_timeout_cancels_and_followup_succeeds() -> anyhow::Result<()>
+    {
         let state = make_state(HashMap::new(), HashMap::new(), false)?;
         let router = Router::new()
             .route("/html/{app_name}", post(delayed_post_pdf_from_html))
@@ -999,8 +1008,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_from_image_client_timeout_cancels_and_followup_succeeds()
-    -> anyhow::Result<()> {
+    async fn post_pdf_from_image_client_timeout_cancels_and_followup_succeeds() -> anyhow::Result<()>
+    {
         let state = make_state(HashMap::new(), HashMap::new(), false)?;
         let router = Router::new()
             .route("/image/{app_name}", post(delayed_post_pdf_from_image))
