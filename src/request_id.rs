@@ -71,7 +71,10 @@ mod tests {
         let server = TestServer::new(test_app());
         let response = server
             .get("/")
-            .add_header(X_REQUEST_ID.clone(), HeaderValue::from_static("my-custom-id"))
+            .add_header(
+                X_REQUEST_ID.clone(),
+                HeaderValue::from_static("my-custom-id"),
+            )
             .await;
         assert_eq!(response.status_code(), StatusCode::OK);
         let header = match response.headers().get("x-request-id") {
