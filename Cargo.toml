@@ -46,6 +46,7 @@ uuid = { version = "1.23.2", features = ["v4"] }
 
 [dev-dependencies]
 axum-test = "20.0.0"
+http-body-util = "0.1"
 reqwest = { version = "0.13.3", features = ["json"] }
 tempfile = "3.27.0"
 
