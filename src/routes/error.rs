@@ -31,11 +31,18 @@ impl std::fmt::Debug for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotFound => write!(f, "NotFound"),
-            Self::GenerationFailed { app_name, template_name, .. } => {
+            Self::GenerationFailed {
+                app_name,
+                template_name,
+                ..
+            } => {
                 write!(f, "GenerationFailed({app_name}, {template_name:?})")
             }
             Self::UnsupportedMediaType => write!(f, "UnsupportedMediaType"),
-            Self::RequestTimeout { app_name, template_name } => {
+            Self::RequestTimeout {
+                app_name,
+                template_name,
+            } => {
                 write!(f, "RequestTimeout({app_name}, {template_name:?})")
             }
         }
