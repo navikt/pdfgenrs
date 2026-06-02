@@ -17,6 +17,7 @@ pub mod typst_world;
 pub(crate) mod html;
 pub(crate) mod http_tracing;
 pub(crate) mod pdf;
+pub(crate) mod request_id;
 pub(crate) mod routes;
 
 use axum::{
@@ -58,6 +59,7 @@ pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router(metrics_handle))
+        .layer(middleware::from_fn(request_id::request_id_middleware))
         .layer(middleware::from_fn(metrics::track_metrics))
         .layer(RequestBodyLimitLayer::new(request_body_limit_bytes))
         .with_state(state);
