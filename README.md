@@ -103,15 +103,15 @@ Example:
 
 ### Endpoint overview
 
-| Endpoint | Method | Request Content-Type | Response Content-Type | Notes |
-|---|---|---|---|---|
-| `/api/v1/genpdf/{your_appname}/{template}` | `POST` | `application/json` | `application/pdf` | Typst + JSON to PDF |
-| `/api/v1/genpdf/html/{your_appname}` | `POST` | `text/html` | `application/pdf` | HTML to PDF |
-| `/api/v1/genpdf/image/{your_appname}` | `POST` | `image/png` or `image/jpeg` | `application/pdf` | Image to PDF |
-| `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json` | `text/html; charset=utf-8` | Typst + JSON to HTML |
-| `/internal/is_alive` | `GET` | - | - | Liveness |
-| `/internal/is_ready` | `GET` | - | - | Readiness |
-| `/internal/metrics` | `GET` | - | `text/plain` | Prometheus metrics |
+| Endpoint                                    | Method | Request Content-Type        | Response Content-Type      | Notes                |
+|---------------------------------------------|--------|-----------------------------|----------------------------|----------------------|
+| `/api/v1/genpdf/{your_appname}/{template}`  | `POST` | `application/json`          | `application/pdf`          | Typst + JSON to PDF  |
+| `/api/v1/genpdf/html/{your_appname}`        | `POST` | `text/html`                 | `application/pdf`          | HTML to PDF          |
+| `/api/v1/genpdf/image/{your_appname}`       | `POST` | `image/png` or `image/jpeg` | `application/pdf`          | Image to PDF         |
+| `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json`          | `text/html; charset=utf-8` | Typst + JSON to HTML |
+| `/internal/is_alive`                        | `GET`  | -                           | -                          | Liveness             |
+| `/internal/is_ready`                        | `GET`  | -                           | -                          | Readiness            |
+| `/internal/metrics`                         | `GET`  | -                           | `text/plain`               | Prometheus metrics   |
 
 ### Request body size limit
 
@@ -252,10 +252,10 @@ Exposes Prometheus metrics for operational monitoring.
 
 **Metrics exposed:**
 
-| Metric | Type | Labels | Description |
-|--------|------|--------|-------------|
-| `http_requests_total` | Counter | method, path, status | Total number of HTTP requests |
-| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution |
+| Metric                          | Type      | Labels               | Description                   |
+|---------------------------------|-----------|----------------------|-------------------------------|
+| `http_requests_total`           | Counter   | method, path, status | Total number of HTTP requests |
+| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution  |
 
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 
@@ -284,6 +284,7 @@ cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo build
 cargo test
+cargo bench --bench performance
 cargo run
 ```
 
