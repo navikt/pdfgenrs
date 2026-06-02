@@ -307,8 +307,4 @@ For contact requests within the [@navikt](https://github.com/navikt) org, use th
 
 To get started, fork the repository and create a new branch.
 
-```bash
-cargo build
-```
-
 See more info in [CONTRIBUTING.md](CONTRIBUTING.md).
