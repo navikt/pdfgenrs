@@ -772,4 +772,286 @@ mod tests {
     async fn post_pdf_repeated_requests_do_not_grow_memory_unboundedly() {
         // Intentionally empty: this regression check only runs on Linux.
     }
+
+    // --- Unit tests for image_virtual_path edge cases ---
+
+    #[test]
+    fn image_virtual_path_returns_none_for_no_header() {
+        assert_eq!(image_virtual_path(None), None);
+    }
+
+    #[test]
+    fn image_virtual_path_returns_none_for_empty_value() {
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static(""))),
+            None
+        );
+    }
+
+    #[test]
+    fn image_virtual_path_returns_none_for_text_plain() {
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("text/plain"))),
+            None
+        );
+    }
+
+    #[test]
+    fn image_virtual_path_returns_none_for_application_pdf() {
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("application/pdf"))),
+            None
+        );
+    }
+
+    #[test]
+    fn image_virtual_path_trims_whitespace_in_content_type() {
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static(" image/png "))),
+            Some("/image.png")
+        );
+    }
+
+    // --- Unit tests for pdf_response helper ---
+
+    #[tokio::test]
+    async fn pdf_response_sets_correct_headers() {
+        use super::pdf_response;
+        use http_body_util::BodyExt;
+
+        let response = pdf_response(b"%PDF-1.4 fake content".to_vec());
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").map(|v| v.to_str().ok()),
+            Some(Some("application/pdf"))
+        );
+        assert_eq!(
+            response.headers().get("content-disposition").map(|v| v.to_str().ok()),
+            Some(Some("inline"))
+        );
+
+        let body = response.into_body().collect().await.map(|b| b.to_bytes());
+        assert!(body.is_ok());
+        assert!(body.ok().is_some_and(|b| b.starts_with(b"%PDF")));
+    }
+
+    #[tokio::test]
+    async fn pdf_response_handles_empty_bytes() {
+        use super::pdf_response;
+        use http_body_util::BodyExt;
+
+        let response = pdf_response(Vec::new());
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.map(|b| b.to_bytes());
+        assert!(body.is_ok());
+        assert!(body.ok().is_some_and(|b| b.is_empty()));
+    }
+
+    // --- HTML-to-PDF error path tests ---
+
+    #[tokio::test]
+    async fn post_pdf_from_html_returns_pdf_for_empty_html() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server.post("/html/myapp").text("").await;
+
+        // Empty HTML still produces a PDF (the converter renders a blank page)
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_html_returns_pdf_for_minimal_html() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server.post("/html/myapp").text("<p>Hello</p>").await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").map(|v| v.to_str().ok()),
+            Some(Some("application/pdf"))
+        );
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    // --- Image-to-PDF error path tests ---
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_500_for_corrupted_png() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from_static(b"not a valid png file"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_500_for_corrupted_jpeg() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/jpeg")
+            .bytes(Bytes::from_static(b"not a valid jpeg file"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_500_for_empty_image_bytes() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from_static(b""))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_415_without_content_type() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .bytes(Bytes::from_static(b"some bytes"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        Ok(())
+    }
+
+    // --- Timeout tests for HTML and image endpoints ---
+
+    async fn delayed_post_pdf_from_html(
+        State(state): State<AppState>,
+        Path(app_name): Path<String>,
+        html: String,
+    ) -> Response {
+        tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
+        post_pdf_from_html(State(state), Path(app_name), html)
+            .await
+            .into_response()
+    }
+
+    async fn delayed_post_pdf_from_image(
+        State(state): State<AppState>,
+        Path(app_name): Path<String>,
+        headers: axum::http::HeaderMap,
+        image_bytes: Bytes,
+    ) -> Response {
+        tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
+        post_pdf_from_image(State(state), Path(app_name), headers, image_bytes)
+            .await
+            .into_response()
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_html_client_timeout_cancels_and_followup_succeeds()
+    -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let router = Router::new()
+            .route("/html/{app_name}", post(delayed_post_pdf_from_html))
+            .with_state(state);
+        let server = TestServer::new(router);
+
+        let timed_out = timeout(
+            Duration::from_millis(CLIENT_TIMEOUT_DURATION_MS),
+            server.post("/html/myapp").text("<p>Hello</p>"),
+        )
+        .await;
+        assert!(timed_out.is_err());
+
+        let response = server.post("/html/myapp").text("<p>Hello</p>").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_client_timeout_cancels_and_followup_succeeds()
+    -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let router = Router::new()
+            .route("/image/{app_name}", post(delayed_post_pdf_from_image))
+            .with_state(state);
+        let server = TestServer::new(router);
+
+        let image_bytes = Bytes::from(std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("resources")
+                .join("NAVLogoRed.png"),
+        )?);
+
+        let timed_out = timeout(
+            Duration::from_millis(CLIENT_TIMEOUT_DURATION_MS),
+            server
+                .post("/image/myapp")
+                .content_type("image/png")
+                .bytes(image_bytes.clone()),
+        )
+        .await;
+        assert!(timed_out.is_err());
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(image_bytes)
+            .await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    // --- get_pdf error path: invalid template ---
+
+    #[tokio::test]
+    async fn get_pdf_returns_500_for_invalid_template() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            INVALID_TEMPLATE.to_string(),
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            serde_json::json!({}),
+        );
+        let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
+
+        let response = server.get("/myapp/mytemplate").await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
 }
