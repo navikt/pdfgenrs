@@ -295,7 +295,7 @@ This project follows [semantic versioning](https://semver.org/) and does **not**
 
 For release steps, see [Creating a release on GitHub](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release).
 
-## 👥 Contact
+## Contact
 
 This project is currently maintained by [@navikt](https://github.com/navikt).
 
@@ -303,7 +303,7 @@ If you have questions, please create an issue and tag it with the appropriate la
 
 For contact requests within the [@navikt](https://github.com/navikt) org, use the Slack channel `#pdfgen`.
 
-## ✏️ Contributing
+## Contributing
 
 To get started, fork the repository and create a new branch.
 
