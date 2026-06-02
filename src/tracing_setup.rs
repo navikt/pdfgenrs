@@ -472,6 +472,101 @@ mod tests {
     }
 
     #[test]
+    fn nais_json_format_falls_back_for_infinity_values() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!(
+                pos_inf = f64::INFINITY,
+                neg_inf = f64::NEG_INFINITY,
+                "infinity values"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["pos_inf"], Value::Number(0.into()));
+        assert_eq!(log_line["neg_inf"], Value::Number(0.into()));
+    }
+
+    #[test]
+    fn nais_json_format_timestamp_is_rfc3339() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!("timestamp check");
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        let ts = match log_line["timestamp"].as_str() {
+            Some(ts) => ts,
+            None => panic!("timestamp should be a string"),
+        };
+        // Validate it parses as a valid RFC3339 / ISO8601 datetime
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(ts).is_ok(),
+            "timestamp should be valid RFC3339: {ts}"
+        );
+    }
+
+    #[test]
+    fn nais_json_format_omits_trace_and_span_ids_without_otel_context() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!("no otel context");
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert!(
+            log_line.get("trace_id").is_none(),
+            "trace_id should be absent without valid OTel span context"
+        );
+        assert!(
+            log_line.get("span_id").is_none(),
+            "span_id should be absent without valid OTel span context"
+        );
+    }
+
+    #[test]
+    fn nais_json_format_omits_span_field_without_active_span() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!("no span active");
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert!(
+            log_line.get("span").is_none(),
+            "span field should be absent when no tracing span is entered"
+        );
+    }
+
+    #[test]
     fn setup_tracing_initializes_without_otlp_exporter() -> Result<()> {
         let provider = setup_tracing_with(None, Some("pdfgenrs-test"))?;
         tracing::info!(test_case = "setup_tracing", "subscriber initialized");
