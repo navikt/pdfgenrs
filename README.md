@@ -277,6 +277,28 @@ rustc --version
 cargo --version
 ```
 
+### Docker Compose (recommended for template development)
+
+Start the development server with hot-reload:
+
+```bash
+docker compose up
+```
+
+This will:
+- Build a development image with `cargo-watch`
+- Enable `DEV_MODE` for GET endpoints with test data
+- Mount `templates/`, `data/`, `resources/`, and `src/` as volumes
+- Automatically rebuild and restart on file changes
+
+The server is available at `http://localhost:8080`. Edit templates or data files and the server will reload automatically.
+
+To rebuild the image after dependency changes:
+
+```bash
+docker compose up --build
+```
+
 ### Development commands
 
 ```bash

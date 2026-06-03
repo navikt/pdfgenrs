@@ -1,0 +1,29 @@
+services:
+  pdfgenrs:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    environment:
+      DEV_MODE: "true"
+      ROOT_DIR: /app
+      TEMPLATES_DIR: /app/templates
+      RESOURCES_DIR: /app/resources
+      DATA_DIR: /app/data
+      FONTS_DIR: /app/fonts
+    volumes:
+      - ./templates:/app/templates
+      - ./data:/app/data
+      - ./resources:/app/resources
+      - ./fonts:/app/fonts
+      - ./src:/app/src
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    working_dir: /app
+
+volumes:
+  cargo-cache:
+  target-cache:
