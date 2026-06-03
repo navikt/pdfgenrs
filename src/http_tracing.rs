@@ -42,6 +42,7 @@ mod imp {
             otel.kind = "server",
             otel.status_code = tracing::field::Empty,
             http.status_code = tracing::field::Empty,
+            request_id = tracing::field::Empty,
         );
         let parent_cx = global::get_text_map_propagator(|propagator| {
             propagator.extract(&HeaderExtractor(request.headers()))
