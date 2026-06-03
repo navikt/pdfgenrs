@@ -2,7 +2,9 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use opentelemetry::trace::TraceContextExt;
 use tracing::error;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// Centralized error type for API route handlers.
 ///
@@ -49,12 +51,34 @@ impl std::fmt::Debug for ApiError {
     }
 }
 
+/// Returns the current OpenTelemetry trace ID if one is active, or `None`.
+fn current_trace_id() -> Option<String> {
+    let context = tracing::Span::current().context();
+    let span_ref = context.span();
+    let span_context = span_ref.span_context();
+    if span_context.is_valid() {
+        Some(format!("{:032x}", span_context.trace_id()))
+    } else {
+        None
+    }
+}
+
+/// Formats an error message, appending the trace ID when available.
+fn error_body(message: &str) -> String {
+    match current_trace_id() {
+        Some(trace_id) => format!("{message} (trace_id: {trace_id})"),
+        None => message.to_string(),
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
-            Self::NotFound => {
-                (StatusCode::NOT_FOUND, "Template or application not found").into_response()
-            }
+            Self::NotFound => (
+                StatusCode::NOT_FOUND,
+                error_body("Template or application not found"),
+            )
+                .into_response(),
             Self::GenerationFailed {
                 ref app_name,
                 ref template_name,
@@ -65,9 +89,17 @@ impl IntoResponse for ApiError {
                 } else {
                     error!(app_name = %app_name, error = %source, "Document generation failed");
                 }
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    error_body("Internal server error"),
+                )
+                    .into_response()
             }
-            Self::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response(),
+            Self::UnsupportedMediaType => (
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                error_body("Unsupported media type"),
+            )
+                .into_response(),
             Self::RequestTimeout {
                 ref app_name,
                 ref template_name,
@@ -77,7 +109,7 @@ impl IntoResponse for ApiError {
                 } else {
                     error!(app_name = %app_name, "Compilation timed out");
                 }
-                (StatusCode::REQUEST_TIMEOUT, "Request timed out").into_response()
+                (StatusCode::REQUEST_TIMEOUT, error_body("Request timed out")).into_response()
             }
         }
     }
@@ -132,7 +164,7 @@ mod tests {
     async fn unsupported_media_type_returns_415() {
         let (status, body) = status_and_body(ApiError::UnsupportedMediaType).await;
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
-        assert_eq!(body, "");
+        assert_eq!(body, "Unsupported media type");
     }
 
     #[tokio::test]
