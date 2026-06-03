@@ -4,6 +4,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use tracing::Span;
 use uuid::Uuid;
 
 static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
@@ -22,6 +23,10 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
             HeaderValue::from_str(&Uuid::new_v4().to_string())
                 .unwrap_or_else(|_| HeaderValue::from_static("unknown"))
         });
+
+    if let Ok(id_str) = request_id.to_str() {
+        Span::current().record("request_id", id_str);
+    }
 
     let mut response = next.run(request).await;
     response
