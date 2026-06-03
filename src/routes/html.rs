@@ -159,8 +159,6 @@ fn html_response(html: String) -> Response {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::path::PathBuf;
-    use std::sync::Arc;
 
     use axum::body::Bytes;
     use axum::extract::{Path, State};
@@ -170,55 +168,17 @@ mod tests {
     use axum::{Json, Router};
     use axum_test::TestServer;
     use serde_json::Value;
-    use tokio::sync::RwLock;
     use tokio::time::{Duration, timeout};
 
     use super::{get_html, post_html};
     use crate::state::AppState;
-    use crate::{build_html_converter, config, state, typst_world};
+    use crate::testutil::make_state;
 
     const SIMPLE_TEMPLATE: &str = "Hello!\n";
     const INVALID_TEMPLATE: &str = "#this-is-not-valid-typst-syntax(((";
     const OVERSIZED_PAYLOAD_SIZE_BYTES: usize = 3 * 1024 * 1024;
     const DELAYED_REQUEST_DURATION_MS: u64 = 200;
     const CLIENT_TIMEOUT_DURATION_MS: u64 = 50;
-
-    fn make_state(
-        templates: HashMap<(String, String), String>,
-        data: HashMap<(String, String), Value>,
-        dev_mode: bool,
-    ) -> anyhow::Result<AppState> {
-        let templates = templates
-            .into_iter()
-            .map(|(k, v)| (k, Arc::new(v)))
-            .collect();
-        Ok(AppState {
-            templates: Arc::new(templates),
-            data: Arc::new(RwLock::new(data)),
-            aliveness: state::AppAliveness::new(),
-            config: config::Config {
-                port: 8080,
-                root_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-                templates_dir: PathBuf::from("templates"),
-                resources_dir: PathBuf::from("resources"),
-                data_dir: PathBuf::from("data"),
-                fonts_dir: PathBuf::from("fonts"),
-                dev_mode,
-                request_body_limit_bytes: 2 * 1024 * 1024,
-                compile_timeout_seconds: 30,
-            },
-            fonts: Arc::new(typst_world::load_fonts(
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-            )?),
-            html_converter: Arc::new(
-                build_html_converter(
-                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-                )
-                .0,
-            ),
-        })
-    }
 
     fn make_router(state: AppState, dev_mode: bool) -> Router {
         let mut router = Router::new().route("/{app_name}/{template}", post(post_html));
