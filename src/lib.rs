@@ -19,6 +19,8 @@ pub(crate) mod http_tracing;
 pub(crate) mod pdf;
 pub(crate) mod request_id;
 pub(crate) mod routes;
+#[doc(hidden)]
+pub mod testutil;
 
 use axum::{
     Router, middleware,

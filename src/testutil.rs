@@ -1,0 +1,51 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use serde_json::Value;
+use tokio::sync::RwLock;
+
+use crate::pdf::build_html_converter;
+use crate::state::AppState;
+use crate::{config, state, typst_world};
+
+/// Creates an [`AppState`] for use in tests.
+///
+/// Accepts pre-built template and data maps as well as a `dev_mode` flag.
+/// Templates and data may be empty when not needed by the test.
+pub fn make_state(
+    templates: HashMap<(String, String), String>,
+    data: HashMap<(String, String), Value>,
+    dev_mode: bool,
+) -> anyhow::Result<AppState> {
+    let templates = templates
+        .into_iter()
+        .map(|(k, v)| (k, Arc::new(v)))
+        .collect();
+    Ok(AppState {
+        templates: Arc::new(templates),
+        data: Arc::new(RwLock::new(data)),
+        aliveness: state::AppAliveness::new(),
+        config: config::Config {
+            port: 8080,
+            root_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            templates_dir: PathBuf::from("templates"),
+            resources_dir: PathBuf::from("resources"),
+            data_dir: PathBuf::from("data"),
+            fonts_dir: PathBuf::from("fonts"),
+            dev_mode,
+            request_body_limit_bytes: 2 * 1024 * 1024,
+            compile_timeout_seconds: 30,
+        },
+        fonts: Arc::new(typst_world::load_fonts(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+        )?),
+        html_converter: Arc::new(
+            build_html_converter(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            )
+            .0,
+        ),
+    })
+}

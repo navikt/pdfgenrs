@@ -159,48 +159,21 @@ async fn shutdown_signal(aliveness: AppAliveness) -> Result<()> {
 mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use std::sync::Arc;
 
     use axum::http::StatusCode;
     use axum_test::TestServer;
-    use tokio::sync::RwLock;
 
-    use pdfgenrs::state::AppState;
-    use pdfgenrs::{build_html_converter, build_router, config, metrics, state, typst_world};
+    use pdfgenrs::testutil::make_state;
+    use pdfgenrs::{build_router, metrics};
 
-    fn make_state(dev_mode: bool) -> anyhow::Result<AppState> {
-        Ok(AppState {
-            templates: Arc::new(HashMap::new()),
-            data: Arc::new(RwLock::new(HashMap::new())),
-            aliveness: state::AppAliveness::new(),
-            config: config::Config {
-                port: 8080,
-                root_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-                templates_dir: PathBuf::from("templates"),
-                resources_dir: PathBuf::from("resources"),
-                data_dir: PathBuf::from("data"),
-                fonts_dir: PathBuf::from("fonts"),
-                dev_mode,
-                request_body_limit_bytes: 2 * 1024 * 1024,
-                compile_timeout_seconds: 30,
-            },
-            fonts: Arc::new(typst_world::load_fonts(
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-            )?),
-            html_converter: Arc::new(
-                build_html_converter(
-                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-                )
-                .0,
-            ),
-        })
+    fn make_empty_state(dev_mode: bool) -> anyhow::Result<pdfgenrs::state::AppState> {
+        make_state(HashMap::new(), HashMap::new(), dev_mode)
     }
 
     #[tokio::test]
     async fn build_router_is_alive_route_exists() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/internal/is_alive").await;
@@ -211,7 +184,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_is_ready_route_exists() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/internal/is_ready").await;
@@ -222,7 +195,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_post_pdf_returns_404_for_missing_template() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server
@@ -236,7 +209,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_post_pdf_from_html_returns_pdf() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server
@@ -257,7 +230,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_post_pdf_from_image_returns_pdf() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server
@@ -283,7 +256,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_get_pdf_returns_405_when_dev_mode_disabled() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
@@ -294,7 +267,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_get_pdf_returns_404_when_dev_mode_enabled() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(true)?,
+            make_empty_state(true)?,
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
@@ -305,7 +278,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_post_html_returns_404_for_missing_template() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server
@@ -319,7 +292,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_get_html_returns_405_when_dev_mode_disabled() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(false)?,
+            make_empty_state(false)?,
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
@@ -330,7 +303,7 @@ mod tests {
     #[tokio::test]
     async fn build_router_get_html_returns_404_when_dev_mode_enabled() -> anyhow::Result<()> {
         let server = TestServer::new(build_router(
-            make_state(true)?,
+            make_empty_state(true)?,
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/api/v1/genhtml/myapp/mytemplate").await;
