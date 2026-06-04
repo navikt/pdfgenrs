@@ -3,12 +3,23 @@ use std::sync::Arc;
 
 use axum_test::TestServer;
 use pdfgenrs::{build_html_converter, build_router, config, metrics, state, template, typst_world};
+use reqwest::header;
 use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 
+const BENCH_HTML_BODY: &str = r#"<!DOCTYPE html>
+<html>
+<head><style>body { font-family: "Source Sans 3", sans-serif; }</style></head>
+<body><h1>Benchmark HTML to PDF</h1><p>This is a performance test document.</p></body>
+</html>"#;
+
 const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 600;
+const BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD: u128 = 5000;
+const BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD: u128 = 60000;
+const BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD: u128 = 5000;
+const BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD: u128 = 60000;
 
 #[derive(Clone, Debug)]
 struct BenchResult {
@@ -82,15 +93,29 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
 fn fail_if_total_too_long(
     results: &[BenchResult],
     mode: &str,
-    max_total_ms: u128,
+    default_max_ms: u128,
+    html_max_ms: u128,
+    image_max_ms: u128,
 ) -> anyhow::Result<()> {
     let slow_results: Vec<String> = results
         .iter()
-        .filter(|result| result.duration_ms > max_total_ms)
+        .filter(|result| {
+            let max = match result.app.as_str() {
+                "html" => html_max_ms,
+                "image" => image_max_ms,
+                _ => default_max_ms,
+            };
+            result.duration_ms > max
+        })
         .map(|result| {
+            let max = match result.app.as_str() {
+                "html" => html_max_ms,
+                "image" => image_max_ms,
+                _ => default_max_ms,
+            };
             format!(
                 "{}/{}: {}ms (limit: {}ms)",
-                result.app, result.template, result.duration_ms, max_total_ms
+                result.app, result.template, result.duration_ms, max
             )
         })
         .collect();
@@ -121,11 +146,19 @@ fn main() -> anyhow::Result<()> {
     let st_results = st_runtime.block_on(performance_single_thread())?;
 
     write_github_summary(&mt_results, &st_results);
-    fail_if_total_too_long(&mt_results, "Multi-thread", BENCH_MAX_TOTAL_MS_MULTI_THREAD)?;
+    fail_if_total_too_long(
+        &mt_results,
+        "Multi-thread",
+        BENCH_MAX_TOTAL_MS_MULTI_THREAD,
+        BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD,
+        BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD,
+    )?;
     fail_if_total_too_long(
         &st_results,
         "Single-thread",
         BENCH_MAX_TOTAL_MS_SINGLE_THREAD,
+        BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD,
+        BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD,
     )?;
 
     Ok(())
@@ -196,6 +229,81 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         });
     }
 
+    // Benchmark HTML-to-PDF
+    {
+        let start = std::time::Instant::now();
+        let mut join_set = JoinSet::new();
+        for _ in 0..passes {
+            let client = Arc::clone(&client);
+            let url = format!("{base_url}/api/v1/genpdf/html/bench");
+            let body = BENCH_HTML_BODY.to_string();
+            join_set.spawn(async move {
+                let response = client
+                    .post(&url)
+                    .header(header::CONTENT_TYPE, "text/html")
+                    .body(body)
+                    .send()
+                    .await?;
+                assert!(response.status().is_success());
+                let bytes = response.bytes().await?;
+                assert!(!bytes.is_empty());
+                anyhow::Ok(())
+            });
+        }
+        while let Some(task_result) = join_set.join_next().await {
+            task_result??;
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(duration_ms, "Multi-thread HTML-to-PDF benchmark completed");
+        results.push(BenchResult {
+            app: "html".to_string(),
+            template: "bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
+    // Benchmark image-to-PDF
+    {
+        let image_bytes = std::fs::read(
+            app_state
+                .config
+                .root_dir
+                .join("resources")
+                .join("NAVLogoRed.png"),
+        )?;
+        let start = std::time::Instant::now();
+        let mut join_set = JoinSet::new();
+        for _ in 0..passes {
+            let client = Arc::clone(&client);
+            let url = format!("{base_url}/api/v1/genpdf/image/bench");
+            let data = image_bytes.clone();
+            join_set.spawn(async move {
+                let response = client
+                    .post(&url)
+                    .header(header::CONTENT_TYPE, "image/png")
+                    .body(data)
+                    .send()
+                    .await?;
+                assert!(response.status().is_success());
+                let bytes = response.bytes().await?;
+                assert!(!bytes.is_empty());
+                anyhow::Ok(())
+            });
+        }
+        while let Some(task_result) = join_set.join_next().await {
+            task_result??;
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(duration_ms, "Multi-thread image-to-PDF benchmark completed");
+        results.push(BenchResult {
+            app: "image".to_string(),
+            template: "bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
     server_handle.abort();
     Ok(results)
 }
@@ -240,6 +348,60 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: app_name,
             template: template_name,
+            passes,
+            duration_ms,
+        });
+    }
+
+    // Benchmark HTML-to-PDF
+    {
+        let start = std::time::Instant::now();
+        for _ in 0..passes {
+            let response = server
+                .post("/api/v1/genpdf/html/bench")
+                .content_type("text/html")
+                .bytes(axum::body::Bytes::from(BENCH_HTML_BODY))
+                .await;
+            response.assert_status_success();
+            assert!(!response.as_bytes().is_empty());
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(duration_ms, "Single-thread HTML-to-PDF benchmark completed");
+        results.push(BenchResult {
+            app: "html".to_string(),
+            template: "bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
+    // Benchmark image-to-PDF
+    {
+        let image_bytes = std::fs::read(
+            app_state
+                .config
+                .root_dir
+                .join("resources")
+                .join("NAVLogoRed.png"),
+        )?;
+        let start = std::time::Instant::now();
+        for _ in 0..passes {
+            let response = server
+                .post("/api/v1/genpdf/image/bench")
+                .content_type("image/png")
+                .bytes(axum::body::Bytes::from(image_bytes.clone()))
+                .await;
+            response.assert_status_success();
+            assert!(!response.as_bytes().is_empty());
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(
+            duration_ms,
+            "Single-thread image-to-PDF benchmark completed"
+        );
+        results.push(BenchResult {
+            app: "image".to_string(),
+            template: "bench".to_string(),
             passes,
             duration_ms,
         });
