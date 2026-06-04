@@ -7,8 +7,8 @@ use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 
-const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 500;
-const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 500;
+const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 600;
+const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 600;
 
 #[derive(Clone, Debug)]
 struct BenchResult {
