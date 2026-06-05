@@ -64,6 +64,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
+#[must_use = "this returns a Result that should be handled"]
 pub fn typst_to_pdf(
     template_source: &str,
     json_data: &serde_json::Value,
@@ -89,6 +90,7 @@ pub fn typst_to_pdf(
 }
 
 /// Converts an HTML document into PDF bytes using a pre-built converter.
+#[must_use = "this returns a Result that should be handled"]
 pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
     converter
         .convert(html)
