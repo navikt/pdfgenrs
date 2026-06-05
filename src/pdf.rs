@@ -30,6 +30,7 @@ const HTML_FONT_ALIASES: &[(&str, &str)] = &[
 ///
 /// Returns a tuple of `(converter, count)` where `count` is the number of
 /// font aliases successfully loaded.
+#[must_use]
 pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverter, usize) {
     let mut converter = HtmlConverter::new().base_path(base_path);
     let mut count = 0;
