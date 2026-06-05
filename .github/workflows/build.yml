@@ -48,6 +48,8 @@ jobs:
         run: cargo test --release -- --nocapture
       - name: Run Benchmark performance test
         run: cargo bench --bench performance
+      - name: Run Criterion benchmarks
+        run: cargo bench --bench criterion_bench
       - name: Build
         run: cargo build --release
   
