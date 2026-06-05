@@ -78,6 +78,19 @@ async fn main() -> Result<()> {
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
+    let compile_semaphore = if cfg.max_concurrent_compilations > 0 {
+        info!(
+            max = cfg.max_concurrent_compilations,
+            "Limiting concurrent compilations"
+        );
+        Some(Arc::new(tokio::sync::Semaphore::new(
+            cfg.max_concurrent_compilations,
+        )))
+    } else {
+        info!("No concurrent compilation limit configured");
+        None
+    };
+
     let state = AppState {
         templates,
         data: Arc::new(RwLock::new(data)),
@@ -85,6 +98,7 @@ async fn main() -> Result<()> {
         config: cfg.clone(),
         fonts,
         html_converter,
+        compile_semaphore,
     };
 
     let metrics_handle = metrics::setup_metrics_recorder();

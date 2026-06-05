@@ -11,6 +11,7 @@ const DEV_MODE_ENV: &str = "DEV_MODE";
 const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
 const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
 const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
+const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -21,6 +22,7 @@ const DEFAULT_FONTS_DIR: &str = "fonts";
 const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
+const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 0;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -57,6 +59,9 @@ pub struct Config {
     /// new traffic before existing connections are drained. Defaults to `5`
     /// (`SHUTDOWN_DRAIN_SECONDS`).
     pub shutdown_drain_seconds: u64,
+    /// Maximum number of concurrent compilation tasks allowed. When set to `0` (default),
+    /// no limit is enforced. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
+    pub max_concurrent_compilations: usize,
 }
 
 impl Default for Config {
@@ -97,6 +102,8 @@ impl Config {
                 .unwrap_or(DEFAULT_COMPILE_TIMEOUT_SECONDS),
             shutdown_drain_seconds: parse_u64(SHUTDOWN_DRAIN_SECONDS_ENV)
                 .unwrap_or(DEFAULT_SHUTDOWN_DRAIN_SECONDS),
+            max_concurrent_compilations: parse_usize(MAX_CONCURRENT_COMPILATIONS_ENV)
+                .unwrap_or(DEFAULT_MAX_CONCURRENT_COMPILATIONS),
         }
     }
 
@@ -160,6 +167,10 @@ mod tests {
             config.shutdown_drain_seconds,
             DEFAULT_SHUTDOWN_DRAIN_SECONDS
         );
+        assert_eq!(
+            config.max_concurrent_compilations,
+            DEFAULT_MAX_CONCURRENT_COMPILATIONS
+        );
     }
 
     #[test]
@@ -175,6 +186,7 @@ mod tests {
             (REQUEST_BODY_LIMIT_BYTES_ENV, "4194304"),
             (COMPILE_TIMEOUT_SECONDS_ENV, "60"),
             (SHUTDOWN_DRAIN_SECONDS_ENV, "10"),
+            (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -187,6 +199,7 @@ mod tests {
         assert_eq!(config.request_body_limit_bytes, 4 * 1024 * 1024);
         assert_eq!(config.compile_timeout_seconds, 60);
         assert_eq!(config.shutdown_drain_seconds, 10);
+        assert_eq!(config.max_concurrent_compilations, 4);
     }
 
     #[test]
@@ -236,6 +249,19 @@ mod tests {
     }
 
     #[test]
+    fn default_falls_back_to_default_max_concurrent_compilations_for_invalid_env_value() {
+        let config = Config::from_env_fn(env_from(&[(
+            MAX_CONCURRENT_COMPILATIONS_ENV,
+            "not-a-number",
+        )]));
+
+        assert_eq!(
+            config.max_concurrent_compilations,
+            DEFAULT_MAX_CONCURRENT_COMPILATIONS
+        );
+    }
+
+    #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
         let config = Config {
             port: DEFAULT_PORT,
@@ -248,6 +274,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -266,6 +293,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -284,6 +312,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -302,6 +331,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
         };
 
         assert_eq!(

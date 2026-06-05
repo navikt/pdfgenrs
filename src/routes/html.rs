@@ -8,11 +8,26 @@ use axum::{
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info};
 
 use super::error::ApiError;
 use crate::html as gen_html;
 use crate::state::AppState;
+
+/// Acquires a compilation semaphore permit if a limit is configured.
+async fn acquire_compile_permit(state: &AppState) -> Option<OwnedSemaphorePermit> {
+    if let Some(ref semaphore) = state.compile_semaphore {
+        Some(
+            Arc::clone(semaphore)
+                .acquire_owned()
+                .await
+                .unwrap_or_else(|_| unreachable!("semaphore is never closed")),
+        )
+    } else {
+        None
+    }
+}
 
 /// Handles `GET /api/v1/genhtml/{app_name}/{template}` (dev mode only).
 ///
@@ -41,9 +56,11 @@ pub async fn get_html(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let permit = acquire_compile_permit(&state).await;
     let result = tokio::time::timeout(
         timeout_duration,
         tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             gen_html::typst_to_html(
                 &source,
                 &data,
@@ -106,9 +123,11 @@ pub async fn post_html(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let permit = acquire_compile_permit(&state).await;
     let result = tokio::time::timeout(
         timeout_duration,
         tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             gen_html::typst_to_html(
                 &template_source,
                 &json_data,

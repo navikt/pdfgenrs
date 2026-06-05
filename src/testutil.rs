@@ -37,10 +37,12 @@ pub fn make_state(
             request_body_limit_bytes: 2 * 1024 * 1024,
             compile_timeout_seconds: 30,
             shutdown_drain_seconds: 5,
+            max_concurrent_compilations: 0,
         },
         fonts: Arc::new(typst_world::load_fonts(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
         )?),
+        compile_semaphore: None,
         html_converter: Arc::new(
             build_html_converter(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),

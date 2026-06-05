@@ -42,6 +42,7 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
         fonts,
         html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
         config: cfg,
+        compile_semaphore: None,
     })
 }
 

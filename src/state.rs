@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ironpress::HtmlConverter;
 use serde_json::Value;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Semaphore};
 
 use crate::config;
 use crate::typst_world::Fonts;
@@ -22,6 +22,9 @@ pub struct AppState {
     pub fonts: Arc<Fonts>,
     /// Pre-built HTML-to-PDF converter with font aliases loaded at startup.
     pub html_converter: Arc<HtmlConverter>,
+    /// Semaphore to limit the number of concurrent compilation tasks.
+    /// When `None`, no limit is enforced.
+    pub compile_semaphore: Option<Arc<Semaphore>>,
 }
 
 /// Tracks the liveness and readiness state of the application.

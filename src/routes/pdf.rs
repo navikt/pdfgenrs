@@ -8,11 +8,27 @@ use axum::{
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info};
 
 use super::error::ApiError;
 use crate::pdf as gen_pdf;
 use crate::state::AppState;
+
+/// Acquires a compilation semaphore permit if a limit is configured.
+/// When no semaphore is set (unlimited mode), returns `None` immediately.
+async fn acquire_compile_permit(state: &AppState) -> Option<OwnedSemaphorePermit> {
+    if let Some(ref semaphore) = state.compile_semaphore {
+        Some(
+            Arc::clone(semaphore)
+                .acquire_owned()
+                .await
+                .unwrap_or_else(|_| unreachable!("semaphore is never closed")),
+        )
+    } else {
+        None
+    }
+}
 
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
@@ -41,9 +57,11 @@ pub async fn get_pdf(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let permit = acquire_compile_permit(&state).await;
     let result = tokio::time::timeout(
         timeout_duration,
         tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             gen_pdf::typst_to_pdf(
                 &source,
                 &data,
@@ -105,9 +123,11 @@ pub async fn post_pdf(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let permit = acquire_compile_permit(&state).await;
     let result = tokio::time::timeout(
         timeout_duration,
         tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             gen_pdf::typst_to_pdf(
                 &template_source,
                 &json_data,
@@ -158,10 +178,14 @@ pub async fn post_pdf_from_html(
     let start = std::time::Instant::now();
     let html_converter = Arc::clone(&state.html_converter);
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let permit = acquire_compile_permit(&state).await;
 
     let result = tokio::time::timeout(
         timeout_duration,
-        tokio::task::spawn_blocking(move || gen_pdf::html_to_pdf(&html, &html_converter)),
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            gen_pdf::html_to_pdf(&html, &html_converter)
+        }),
     )
     .await;
 
@@ -203,9 +227,11 @@ pub async fn post_pdf_from_image(
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
+    let permit = acquire_compile_permit(&state).await;
     let result = tokio::time::timeout(
         timeout_duration,
         tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
         }),
     )
