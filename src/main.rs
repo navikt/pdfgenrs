@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use pdfgenrs::metrics;
 use pdfgenrs::state::{AppAliveness, AppState};
 use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
