@@ -36,6 +36,7 @@ pub fn make_state(
             dev_mode,
             request_body_limit_bytes: 2 * 1024 * 1024,
             compile_timeout_seconds: 30,
+            shutdown_drain_seconds: 5,
         },
         fonts: Arc::new(typst_world::load_fonts(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
