@@ -1,6 +1,8 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+use tracing::warn;
+
 const SERVER_PORT_ENV: &str = "SERVER_PORT";
 const ROOT_DIR_ENV: &str = "ROOT_DIR";
 const TEMPLATES_DIR_ENV: &str = "TEMPLATES_DIR";
@@ -76,9 +78,36 @@ impl Config {
     /// calls in tests — callers can supply a closure backed by a `HashMap`
     /// instead of mutating the process environment.
     fn from_env_fn(env_var: impl Fn(&str) -> Option<String>) -> Self {
-        let parse_u16 = |key: &str| env_var(key)?.parse::<u16>().ok();
-        let parse_usize = |key: &str| env_var(key)?.parse::<usize>().ok();
-        let parse_u64 = |key: &str| env_var(key)?.parse::<u64>().ok();
+        let parse_u16 = |key: &str| {
+            let raw = env_var(key)?;
+            match raw.parse::<u16>() {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
+                    None
+                }
+            }
+        };
+        let parse_usize = |key: &str| {
+            let raw = env_var(key)?;
+            match raw.parse::<usize>() {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
+                    None
+                }
+            }
+        };
+        let parse_u64 = |key: &str| {
+            let raw = env_var(key)?;
+            match raw.parse::<u64>() {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
+                    None
+                }
+            }
+        };
         let path_or = |key: &str, default: &str| {
             PathBuf::from(env_var(key).unwrap_or_else(|| default.to_owned()))
         };
