@@ -235,12 +235,12 @@ When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Al
 #### `GET /internal/is_alive`
 
 - `200 OK` when alive
-- `500 Internal Server Error` otherwise
+- `503 Service Unavailable` otherwise
 
 #### `GET /internal/is_ready`
 
 - `200 OK` when ready
-- `500 Internal Server Error` otherwise
+- `503 Service Unavailable` otherwise
 
 ### Metrics endpoint
 

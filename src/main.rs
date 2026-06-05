@@ -196,7 +196,7 @@ mod tests {
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/internal/is_alive").await;
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         Ok(())
     }
 
@@ -207,7 +207,7 @@ mod tests {
             metrics::test_metrics_handle(),
         ));
         let response = server.get("/internal/is_ready").await;
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         Ok(())
     }
 

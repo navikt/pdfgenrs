@@ -23,24 +23,24 @@ pub fn nais_router(metrics_handle: PrometheusHandle) -> Router<AppState> {
 
 /// Handles `GET /internal/is_alive`.
 ///
-/// Returns 200 OK when the application is alive, or 500 otherwise.
+/// Returns 200 OK when the application is alive, or 503 Service Unavailable otherwise.
 pub async fn is_alive(State(state): State<AppState>) -> Response {
     if state.aliveness.is_alive() {
         (StatusCode::OK, "I'm alive").into_response()
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, "I'm dead x_x").into_response()
+        (StatusCode::SERVICE_UNAVAILABLE, "I'm dead x_x").into_response()
     }
 }
 
 /// Handles `GET /internal/is_ready`.
 ///
-/// Returns 200 OK when the application is ready to serve traffic, or 500 otherwise.
+/// Returns 200 OK when the application is ready to serve traffic, or 503 Service Unavailable otherwise.
 pub async fn is_ready(State(state): State<AppState>) -> Response {
     if state.aliveness.is_ready() {
         (StatusCode::OK, "I'm ready").into_response()
     } else {
         (
-            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::SERVICE_UNAVAILABLE,
             "Please wait! I'm not ready :(",
         )
             .into_response()
@@ -90,11 +90,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn is_alive_returns_500_when_not_alive() -> anyhow::Result<()> {
+    async fn is_alive_returns_503_when_not_alive() -> anyhow::Result<()> {
         let handle = metrics::test_metrics_handle();
         let server = TestServer::new(nais_router(handle).with_state(test_state(false, false)?));
         let response = server.get("/internal/is_alive").await;
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         Ok(())
     }
 
@@ -108,11 +108,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn is_ready_returns_500_when_not_ready() -> anyhow::Result<()> {
+    async fn is_ready_returns_503_when_not_ready() -> anyhow::Result<()> {
         let handle = metrics::test_metrics_handle();
         let server = TestServer::new(nais_router(handle).with_state(test_state(false, false)?));
         let response = server.get("/internal/is_ready").await;
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         Ok(())
     }
 
