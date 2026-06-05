@@ -81,7 +81,7 @@ mkdir -p fonts resources
 - `templates/your_appname/`
   - Add `.typ` Typst templates.
   - Template file names are part of API paths.
-  - Templates can read JSON with `#let data = json("/data.json")`.
+  - Templates can read JSON with `#let data = json("/data/{app_name}/{template_name}.json")`.
 - `data/your_appname/`
   - Add JSON files matching template names for local testing.
 - `fonts/`
