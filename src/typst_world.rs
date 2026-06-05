@@ -231,6 +231,7 @@ impl World for PdfgenWorld {
 ///
 /// # Errors
 /// Returns an error if Typst compilation fails or the PDF cannot be exported.
+#[must_use = "this returns a Result that should be handled"]
 pub fn compile_to_pdf(
     fonts: Arc<Fonts>,
     root: &Path,
