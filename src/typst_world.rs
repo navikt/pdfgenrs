@@ -2,6 +2,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Maximum number of evictions to perform on the comemo memoization cache after
+/// each compilation. This bounds memory growth while preserving frequently-used
+/// cache entries to maintain a good hit rate.
+const COMEMO_EVICTION_THRESHOLD: usize = 15;
+
 use anyhow::{Context, Result};
 use chrono::Datelike;
 use chrono::Timelike;
@@ -246,7 +251,7 @@ pub fn compile_to_pdf(
 
     let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
 
-    comemo::evict(15);
+    comemo::evict(COMEMO_EVICTION_THRESHOLD);
 
     let document = result
         .output
@@ -296,7 +301,7 @@ pub fn compile_to_html(
 
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
 
-    comemo::evict(15);
+    comemo::evict(COMEMO_EVICTION_THRESHOLD);
 
     let document = result
         .output
