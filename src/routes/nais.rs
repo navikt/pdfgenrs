@@ -90,11 +90,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn is_alive_returns_500_when_not_alive() -> anyhow::Result<()> {
+    async fn is_alive_returns_503_when_not_alive() -> anyhow::Result<()> {
         let handle = metrics::test_metrics_handle();
         let server = TestServer::new(nais_router(handle).with_state(test_state(false, false)?));
         let response = server.get("/internal/is_alive").await;
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         Ok(())
     }
 
@@ -108,11 +108,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn is_ready_returns_500_when_not_ready() -> anyhow::Result<()> {
+    async fn is_ready_returns_503_when_not_ready() -> anyhow::Result<()> {
         let handle = metrics::test_metrics_handle();
         let server = TestServer::new(nais_router(handle).with_state(test_state(false, false)?));
         let response = server.get("/internal/is_ready").await;
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         Ok(())
     }
 
