@@ -108,6 +108,7 @@ async fn main() -> Result<()> {
             if let Err(e) = shutdown_signal(aliveness_for_shutdown.clone()).await {
                 tracing::error!(error = %e, "Shutdown signal handler failed");
                 aliveness_for_shutdown.set_ready(false);
+                tokio::time::sleep(Duration::from_secs(5))
                 aliveness_for_shutdown.set_alive(false);
             }
         })
