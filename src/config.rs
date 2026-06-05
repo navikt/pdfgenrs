@@ -10,6 +10,7 @@ const FONTS_DIR_ENV: &str = "FONTS_DIR";
 const DEV_MODE_ENV: &str = "DEV_MODE";
 const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
 const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
+const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -19,6 +20,7 @@ const DEFAULT_DATA_DIR: &str = "data";
 const DEFAULT_FONTS_DIR: &str = "fonts";
 const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
+const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -50,6 +52,11 @@ pub struct Config {
     /// Requests exceeding this timeout will be aborted with a `408 Request Timeout`.
     /// Defaults to `30` (`COMPILE_TIMEOUT_SECONDS`).
     pub compile_timeout_seconds: u64,
+    /// Duration in seconds to wait between marking the application as not ready and
+    /// marking it as not alive during shutdown. This allows Kubernetes to stop routing
+    /// new traffic before existing connections are drained. Defaults to `5`
+    /// (`SHUTDOWN_DRAIN_SECONDS`).
+    pub shutdown_drain_seconds: u64,
 }
 
 impl Default for Config {
@@ -88,6 +95,8 @@ impl Config {
                 .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
             compile_timeout_seconds: parse_u64(COMPILE_TIMEOUT_SECONDS_ENV)
                 .unwrap_or(DEFAULT_COMPILE_TIMEOUT_SECONDS),
+            shutdown_drain_seconds: parse_u64(SHUTDOWN_DRAIN_SECONDS_ENV)
+                .unwrap_or(DEFAULT_SHUTDOWN_DRAIN_SECONDS),
         }
     }
 
@@ -147,6 +156,10 @@ mod tests {
             config.compile_timeout_seconds,
             DEFAULT_COMPILE_TIMEOUT_SECONDS
         );
+        assert_eq!(
+            config.shutdown_drain_seconds,
+            DEFAULT_SHUTDOWN_DRAIN_SECONDS
+        );
     }
 
     #[test]
@@ -161,6 +174,7 @@ mod tests {
             (DEV_MODE_ENV, "TrUe"),
             (REQUEST_BODY_LIMIT_BYTES_ENV, "4194304"),
             (COMPILE_TIMEOUT_SECONDS_ENV, "60"),
+            (SHUTDOWN_DRAIN_SECONDS_ENV, "10"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -172,6 +186,7 @@ mod tests {
         assert!(config.dev_mode);
         assert_eq!(config.request_body_limit_bytes, 4 * 1024 * 1024);
         assert_eq!(config.compile_timeout_seconds, 60);
+        assert_eq!(config.shutdown_drain_seconds, 10);
     }
 
     #[test]
@@ -211,6 +226,16 @@ mod tests {
     }
 
     #[test]
+    fn default_falls_back_to_default_shutdown_drain_for_invalid_env_value() {
+        let config = Config::from_env_fn(env_from(&[(SHUTDOWN_DRAIN_SECONDS_ENV, "not-a-number")]));
+
+        assert_eq!(
+            config.shutdown_drain_seconds,
+            DEFAULT_SHUTDOWN_DRAIN_SECONDS
+        );
+    }
+
+    #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
         let config = Config {
             port: DEFAULT_PORT,
@@ -222,6 +247,7 @@ mod tests {
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
+            shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -239,6 +265,7 @@ mod tests {
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
+            shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -256,6 +283,7 @@ mod tests {
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
+            shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -273,6 +301,7 @@ mod tests {
             dev_mode: false,
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
+            shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
         };
 
         assert_eq!(
