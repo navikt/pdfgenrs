@@ -98,6 +98,9 @@ pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
 }
 
 /// Converts a PNG or JPEG image into PDF bytes.
+///
+/// Landscape images (width > height) are automatically placed on a
+/// landscape-oriented page so they fill the page without distortion.
 pub fn image_to_pdf<B>(
     image_bytes: B,
     image_path: &str,
@@ -108,17 +111,71 @@ pub fn image_to_pdf<B>(
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
+    let is_landscape = image_dimensions(image_bytes.as_ref())
+        .map(|(w, h)| w > h)
+        .unwrap_or(false);
+
     let mut vfiles = HashMap::new();
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
 
+    let flipped = if is_landscape { "flipped: true, " } else { "" };
     let source = format!(
         r#"#set document(date: auto)
-#set page(margin: 0pt)
+#set page({flipped}margin: 0pt)
 #image("{image_path}", width: 100%, alt: "Uploaded image")
 "#
     );
 
     typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", source, vfiles)
+}
+
+/// Extracts (width, height) from PNG or JPEG image bytes by parsing headers.
+///
+/// Returns `None` if the format is unrecognised or the header is too short.
+fn image_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    if data.starts_with(b"\x89PNG\r\n\x1a\n") {
+        png_dimensions(data)
+    } else if data.starts_with(&[0xFF, 0xD8]) {
+        jpeg_dimensions(data)
+    } else {
+        None
+    }
+}
+
+fn png_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    if data.len() < 24 {
+        return None;
+    }
+    let width = u32::from_be_bytes([data[16], data[17], data[18], data[19]]);
+    let height = u32::from_be_bytes([data[20], data[21], data[22], data[23]]);
+    Some((width, height))
+}
+
+fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    let mut i = 2;
+    while i + 1 < data.len() {
+        if data[i] != 0xFF {
+            return None;
+        }
+        let marker = data[i + 1];
+        if marker == 0xD9 {
+            return None;
+        }
+        if matches!(marker, 0xC0..=0xC3) {
+            if i + 9 >= data.len() {
+                return None;
+            }
+            let height = u32::from(u16::from_be_bytes([data[i + 5], data[i + 6]]));
+            let width = u32::from(u16::from_be_bytes([data[i + 7], data[i + 8]]));
+            return Some((width, height));
+        }
+        if i + 3 >= data.len() {
+            return None;
+        }
+        let seg_len = u16::from_be_bytes([data[i + 2], data[i + 3]]) as usize;
+        i += 2 + seg_len;
+    }
+    None
 }
 
 #[cfg(test)]
@@ -250,6 +307,44 @@ Hello, world!
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_landscape_png_returns_pdf_bytes() -> Result<()> {
+        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        assert!(
+            image_dimensions(&image_bytes).is_some_and(|(w, h)| w > h),
+            "Test image should be landscape"
+        );
+        let bytes = image_to_pdf(
+            image_bytes,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+        )?;
+        assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn image_dimensions_png_parses_correctly() -> Result<()> {
+        let data = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let dims = image_dimensions(&data);
+        assert_eq!(dims, Some((2201, 1386)));
+        Ok(())
+    }
+
+    #[test]
+    fn image_dimensions_returns_none_for_short_data() {
+        assert_eq!(image_dimensions(&[0x89, 0x50, 0x4E, 0x47]), None);
+        assert_eq!(image_dimensions(&[0xFF, 0xD8]), None);
+        assert_eq!(image_dimensions(&[]), None);
+    }
+
+    #[test]
+    fn image_dimensions_returns_none_for_unknown_format() {
+        assert_eq!(image_dimensions(b"GIF89a"), None);
     }
 
     #[test]
