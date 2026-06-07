@@ -329,4 +329,26 @@ mod tests {
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
         Ok(())
     }
+
+    #[tokio::test]
+    async fn build_router_fallback_returns_404_with_template_list() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "invoice".to_string()),
+            "template".to_string(),
+        );
+        templates.insert(
+            ("otherapp".to_string(), "receipt".to_string()),
+            "template".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+        let response = server.get("/unknown/path").await;
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        let body = response.text();
+        assert!(body.contains("Unknown path. Known templates:"));
+        assert!(body.contains("myapp/invoice"));
+        assert!(body.contains("otherapp/receipt"));
+        Ok(())
+    }
 }
