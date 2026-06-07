@@ -16,7 +16,8 @@ pub mod typst_world;
 
 pub(crate) mod html;
 pub(crate) mod http_tracing;
-pub(crate) mod pdf;
+/// PDF generation functions: Typst-to-PDF, HTML-to-PDF, and image-to-PDF.
+pub mod pdf;
 pub(crate) mod request_id;
 pub(crate) mod routes;
 #[doc(hidden)]
