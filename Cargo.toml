@@ -18,6 +18,11 @@ name = "performance"
 path = "benches/performance.rs"
 harness = false
 
+[[bench]]
+name = "criterion_bench"
+path = "benches/criterion_bench.rs"
+harness = false
+
 [dependencies]
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
 axum = "0.8.9"
@@ -46,6 +51,7 @@ uuid = { version = "1.23.2", features = ["v4"] }
 
 [dev-dependencies]
 axum-test = "20.1.0"
+criterion = { version = "0.5", features = ["html_reports"] }
 http-body-util = "0.1.3"
 reqwest = { version = "0.13.4", features = ["json"] }
 tempfile = "3.27.0"
