@@ -1,5 +1,5 @@
 use axum::{
-    http::StatusCode,
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use opentelemetry::trace::TraceContextExt;
@@ -10,6 +10,9 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 ///
 /// Each variant maps to a specific HTTP status code and carries enough context
 /// for structured logging while returning a safe message to the client.
+///
+/// Responses use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem
+/// Details format (`application/problem+json`).
 pub enum ApiError {
     /// The requested template or application was not found.
     NotFound,
@@ -63,22 +66,39 @@ fn current_trace_id() -> Option<String> {
     }
 }
 
-/// Formats an error message, appending the trace ID when available.
-fn error_body(message: &str) -> String {
-    match current_trace_id() {
-        Some(trace_id) => format!("{message} (trace_id: {trace_id})"),
-        None => message.to_string(),
+/// Builds an RFC 9457 Problem Details JSON response.
+///
+/// The `type` member is always `"about:blank"` which signals that the `title`
+/// carries the same semantics as the HTTP status phrase (§4.2.1 of RFC 9457).
+fn problem_response(status: StatusCode, detail: &str) -> Response {
+    let mut body = serde_json::json!({
+        "type": "about:blank",
+        "title": status.canonical_reason().unwrap_or("Error"),
+        "status": status.as_u16(),
+        "detail": detail,
+    });
+
+    if let Some(trace_id) = current_trace_id() {
+        body["trace_id"] = serde_json::Value::String(trace_id);
     }
+
+    (
+        status,
+        [(
+            header::CONTENT_TYPE,
+            "application/problem+json; charset=utf-8",
+        )],
+        body.to_string(),
+    )
+        .into_response()
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
-            Self::NotFound => (
-                StatusCode::NOT_FOUND,
-                error_body("Template or application not found"),
-            )
-                .into_response(),
+            Self::NotFound => {
+                problem_response(StatusCode::NOT_FOUND, "Template or application not found")
+            }
             Self::GenerationFailed {
                 ref app_name,
                 ref template_name,
@@ -89,17 +109,11 @@ impl IntoResponse for ApiError {
                 } else {
                     error!(app_name = %app_name, error = %source, "Document generation failed");
                 }
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    error_body("Internal server error"),
-                )
-                    .into_response()
+                problem_response(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
-            Self::UnsupportedMediaType => (
-                StatusCode::UNSUPPORTED_MEDIA_TYPE,
-                error_body("Unsupported media type"),
-            )
-                .into_response(),
+            Self::UnsupportedMediaType => {
+                problem_response(StatusCode::UNSUPPORTED_MEDIA_TYPE, "Unsupported media type")
+            }
             Self::RequestTimeout {
                 ref app_name,
                 ref template_name,
@@ -109,7 +123,7 @@ impl IntoResponse for ApiError {
                 } else {
                     error!(app_name = %app_name, "Compilation timed out");
                 }
-                (StatusCode::REQUEST_TIMEOUT, error_body("Request timed out")).into_response()
+                problem_response(StatusCode::REQUEST_TIMEOUT, "Request timed out")
             }
         }
     }
@@ -122,18 +136,32 @@ mod tests {
     use axum::http::StatusCode;
     use http_body_util::BodyExt;
 
-    async fn status_and_body(error: ApiError) -> (StatusCode, String) {
+    async fn status_and_body(error: ApiError) -> (StatusCode, serde_json::Value) {
         let response = error.into_response();
         let status = response.status();
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "application/problem+json; charset=utf-8"
+        );
         let body = response.into_body().collect().await.unwrap().to_bytes();
-        (status, String::from_utf8(body.to_vec()).unwrap())
+        let json: serde_json::Value =
+            serde_json::from_slice(&body).expect("response body must be valid JSON");
+        (status, json)
     }
 
     #[tokio::test]
     async fn not_found_returns_404() {
         let (status, body) = status_and_body(ApiError::NotFound).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
-        assert_eq!(body, "Template or application not found");
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Not Found");
+        assert_eq!(body["status"], 404);
+        assert_eq!(body["detail"], "Template or application not found");
     }
 
     #[tokio::test]
@@ -145,7 +173,10 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(body, "Internal server error");
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Internal Server Error");
+        assert_eq!(body["status"], 500);
+        assert_eq!(body["detail"], "Internal server error");
     }
 
     #[tokio::test]
@@ -157,14 +188,20 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(body, "Internal server error");
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Internal Server Error");
+        assert_eq!(body["status"], 500);
+        assert_eq!(body["detail"], "Internal server error");
     }
 
     #[tokio::test]
     async fn unsupported_media_type_returns_415() {
         let (status, body) = status_and_body(ApiError::UnsupportedMediaType).await;
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
-        assert_eq!(body, "Unsupported media type");
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Unsupported Media Type");
+        assert_eq!(body["status"], 415);
+        assert_eq!(body["detail"], "Unsupported media type");
     }
 
     #[tokio::test]
@@ -175,7 +212,10 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
-        assert_eq!(body, "Request timed out");
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Request Timeout");
+        assert_eq!(body["status"], 408);
+        assert_eq!(body["detail"], "Request timed out");
     }
 
     #[tokio::test]
@@ -186,6 +226,9 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
-        assert_eq!(body, "Request timed out");
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Request Timeout");
+        assert_eq!(body["status"], 408);
+        assert_eq!(body["detail"], "Request timed out");
     }
 }
