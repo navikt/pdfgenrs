@@ -19,10 +19,8 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
         .headers()
         .get(&X_REQUEST_ID)
         .cloned()
-        .unwrap_or_else(|| {
-            HeaderValue::from_str(&Uuid::new_v4().to_string())
-                .unwrap_or_else(|_| HeaderValue::from_static("unknown"))
-        });
+        .or_else(|| HeaderValue::from_str(&Uuid::new_v4().to_string()).ok())
+        .unwrap_or_else(|| HeaderValue::from_static("unknown"));
 
     if let Ok(id_str) = request_id.to_str() {
         Span::current().record("request_id", id_str);
