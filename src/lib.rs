@@ -23,7 +23,11 @@ pub(crate) mod routes;
 pub mod testutil;
 
 use axum::{
-    Router, middleware,
+    Router,
+    extract::State,
+    http::StatusCode,
+    middleware,
+    response::IntoResponse,
     routing::{get, post},
 };
 use metrics_exporter_prometheus::PrometheusHandle;
@@ -61,10 +65,32 @@ pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
         .merge(routes::nais::nais_router(metrics_handle))
+        .fallback(fallback_handler)
         .layer(middleware::from_fn(request_id::request_id_middleware))
         .layer(middleware::from_fn(metrics::track_metrics))
         .layer(RequestBodyLimitLayer::new(request_body_limit_bytes))
         .with_state(state);
 
     http_tracing::apply_http_tracing_layer(app)
+}
+
+/// Fallback handler that returns 404 with a list of all known templates.
+async fn fallback_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let mut template_names: Vec<String> = state
+        .templates
+        .keys()
+        .map(|(app, tmpl)| format!("{app}/{tmpl}"))
+        .collect();
+    template_names.sort();
+
+    let body = format!(
+        "Unknown path. Known templates:\n{}",
+        template_names
+            .iter()
+            .map(|name| format!("  - {name}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+
+    (StatusCode::NOT_FOUND, body)
 }
