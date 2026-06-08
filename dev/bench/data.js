@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780922123185,
+  "lastUpdate": 1780923869022,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -383,6 +383,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 674167,
             "range": "± 12545",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d55a586692aa9cddfc1f023b2b05bea5e1fe312a",
+          "message": "Merge pull request #261 from navikt/copilot/extract-common-route-handler-logic\n\nExtract common route handler logic into helper functions",
+          "timestamp": "2026-06-08T14:59:36+02:00",
+          "tree_id": "228097a6cac11091d74aff1deea914064787894a",
+          "url": "https://github.com/navikt/pdfgenrs/commit/d55a586692aa9cddfc1f023b2b05bea5e1fe312a"
+        },
+        "date": 1780923864868,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 794793,
+            "range": "± 30006",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1068758,
+            "range": "± 36026",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1173490232,
+            "range": "± 4692660",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 629655,
+            "range": "± 8385",
             "unit": "ns/iter"
           }
         ]
