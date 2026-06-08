@@ -25,9 +25,8 @@ pub fn typst_to_html(
     template_name: &str,
 ) -> Result<String> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
-    let mut vfiles = HashMap::new();
     let data_path = format!("/data/{app_name}/{template_name}.json");
-    vfiles.insert(data_path, Bytes::new(json_bytes));
+    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
     typst_world::compile_to_html(
         fonts,
