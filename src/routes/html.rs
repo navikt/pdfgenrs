@@ -7,27 +7,12 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::OwnedSemaphorePermit;
-use tracing::{error, info};
+use tracing::info;
 
+use super::compile_blocking;
 use super::error::ApiError;
 use crate::html as gen_html;
 use crate::state::AppState;
-
-/// Acquires a compilation semaphore permit if a limit is configured.
-async fn acquire_compile_permit(state: &AppState) -> Option<OwnedSemaphorePermit> {
-    if let Some(ref semaphore) = state.compile_semaphore {
-        Some(
-            Arc::clone(semaphore)
-                .acquire_owned()
-                .await
-                .unwrap_or_else(|_| unreachable!("semaphore is never closed")),
-        )
-    } else {
-        None
-    }
-}
 
 /// Handles `GET /api/v1/genhtml/{app_name}/{template}` (dev mode only).
 ///
@@ -55,12 +40,12 @@ pub async fn get_html(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(&state).await;
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
+
+    let html_string = compile_blocking(
+        &state,
+        template_key.0.clone(),
+        Some(template_key.1.clone()),
+        move || {
             gen_html::typst_to_html(
                 &source,
                 &data,
@@ -70,34 +55,12 @@ pub async fn get_html(
                 &app_name,
                 &template_name,
             )
-        }),
+        },
     )
-    .await;
+    .await?;
 
-    let result = match result {
-        Ok(join_result) => join_result.unwrap_or_else(|e| {
-            error!("spawn_blocking task panicked: {e}");
-            Err(anyhow::anyhow!("Task join error: {e}"))
-        }),
-        Err(_elapsed) => {
-            return Err(ApiError::RequestTimeout {
-                app_name: template_key.0,
-                template_name: Some(template_key.1),
-            });
-        }
-    };
-
-    match result {
-        Ok(html_string) => {
-            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
-            Ok(html_response(html_string))
-        }
-        Err(source) => Err(ApiError::GenerationFailed {
-            app_name: template_key.0,
-            template_name: Some(template_key.1),
-            source,
-        }),
-    }
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+    Ok(html_response(html_string))
 }
 
 /// Handles `POST /api/v1/genhtml/{app_name}/{template}`.
@@ -122,12 +85,12 @@ pub async fn post_html(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(&state).await;
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
+
+    let html_string = compile_blocking(
+        &state,
+        template_key.0.clone(),
+        Some(template_key.1.clone()),
+        move || {
             gen_html::typst_to_html(
                 &template_source,
                 &json_data,
@@ -137,34 +100,12 @@ pub async fn post_html(
                 &app_name,
                 &template_name,
             )
-        }),
+        },
     )
-    .await;
+    .await?;
 
-    let result = match result {
-        Ok(join_result) => join_result.unwrap_or_else(|e| {
-            error!("spawn_blocking task panicked: {e}");
-            Err(anyhow::anyhow!("Task join error: {e}"))
-        }),
-        Err(_elapsed) => {
-            return Err(ApiError::RequestTimeout {
-                app_name: template_key.0,
-                template_name: Some(template_key.1),
-            });
-        }
-    };
-
-    match result {
-        Ok(html_string) => {
-            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
-            Ok(html_response(html_string))
-        }
-        Err(source) => Err(ApiError::GenerationFailed {
-            app_name: template_key.0,
-            template_name: Some(template_key.1),
-            source,
-        }),
-    }
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+    Ok(html_response(html_string))
 }
 
 fn html_response(html: String) -> Response {
