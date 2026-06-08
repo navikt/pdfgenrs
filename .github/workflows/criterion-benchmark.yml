@@ -55,10 +55,17 @@ jobs:
           comment-on-alert: true
           fail-on-alert: false
           benchmark-data-dir-path: dev/bench
+      - name: Deploy Criterion HTML report to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: target/criterion
+          destination_dir: dev/criterion-report
       - name: Add benchmark report link to summary
         run: |
           echo '## Criterion Benchmark Results' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo '📊 [View interactive benchmark dashboard](https://navikt.github.io/pdfgenrs/dev/bench/)' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'The full Criterion HTML report is also available as the `criterion-report` artifact.' >> $GITHUB_STEP_SUMMARY
+          echo '📋 [View full Criterion HTML report](https://navikt.github.io/pdfgenrs/dev/criterion-report/report/)' >> $GITHUB_STEP_SUMMARY
