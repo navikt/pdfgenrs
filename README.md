@@ -307,7 +307,8 @@ cargo bench --bench performance
 cargo run
 ```
 
-## Benchmark repports
+## Benchmark reports
+https://navikt.github.io/pdfgenrs/dev/criterion-report/report/
 https://navikt.github.io/pdfgenrs/dev/bench/
 
 ## Release
