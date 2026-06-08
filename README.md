@@ -271,19 +271,19 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 
 All configuration is done through environment variables. If an environment variable is not set, the default value is used.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SERVER_PORT` | TCP port the server listens on | `8080` |
-| `ROOT_DIR` | Root directory used as the Typst filesystem root. Relative directory paths are resolved from this directory. | `.` |
-| `TEMPLATES_DIR` | Directory containing Typst template files | `templates` |
-| `RESOURCES_DIR` | Directory containing static resource files (e.g., logos) | `resources` |
-| `DATA_DIR` | Directory containing test JSON data used in dev mode | `data` |
-| `FONTS_DIR` | Directory containing font files used by Typst | `fonts` |
-| `DEV_MODE` | When `true`, enables GET endpoints and loads test data from `DATA_DIR` | `false` |
-| `REQUEST_BODY_LIMIT_BYTES` | Maximum accepted request body size in bytes | `2097152` (2 MiB) |
-| `COMPILE_TIMEOUT_SECONDS` | Maximum time in seconds allowed for a single compilation task. Requests exceeding this timeout are aborted with `408 Request Timeout`. | `30` |
-| `SHUTDOWN_DRAIN_SECONDS` | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5` |
-| `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` means no limit. | `0` |
+| Variable                      | Description                                                                                                                                              | Default           |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
+| `SERVER_PORT`                 | TCP port the server listens on                                                                                                                           | `8080`            |
+| `ROOT_DIR`                    | Root directory used as the Typst filesystem root. Relative directory paths are resolved from this directory.                                             | `.`               |
+| `TEMPLATES_DIR`               | Directory containing Typst template files                                                                                                                | `templates`       |
+| `RESOURCES_DIR`               | Directory containing static resource files (e.g., logos)                                                                                                 | `resources`       |
+| `DATA_DIR`                    | Directory containing test JSON data used in dev mode                                                                                                     | `data`            |
+| `FONTS_DIR`                   | Directory containing font files used by Typst                                                                                                            | `fonts`           |
+| `DEV_MODE`                    | When `true`, enables GET endpoints and loads test data from `DATA_DIR`                                                                                   | `false`           |
+| `REQUEST_BODY_LIMIT_BYTES`    | Maximum accepted request body size in bytes                                                                                                              | `2097152` (2 MiB) |
+| `COMPILE_TIMEOUT_SECONDS`     | Maximum time in seconds allowed for a single compilation task. Requests exceeding this timeout are aborted with `408 Request Timeout`.                   | `30`              |
+| `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
+| `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` means no limit.                                                                              | `0`               |
 
 ## Developing pdfgenrs
 
