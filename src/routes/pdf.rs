@@ -7,28 +7,12 @@ use axum::{
 };
 use serde_json::Value;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::OwnedSemaphorePermit;
-use tracing::{error, info};
+use tracing::info;
 
+use super::compile_blocking;
 use super::error::ApiError;
 use crate::pdf as gen_pdf;
 use crate::state::AppState;
-
-/// Acquires a compilation semaphore permit if a limit is configured.
-/// When no semaphore is set (unlimited mode), returns `None` immediately.
-async fn acquire_compile_permit(state: &AppState) -> Option<OwnedSemaphorePermit> {
-    if let Some(ref semaphore) = state.compile_semaphore {
-        Some(
-            Arc::clone(semaphore)
-                .acquire_owned()
-                .await
-                .unwrap_or_else(|_| unreachable!("semaphore is never closed")),
-        )
-    } else {
-        None
-    }
-}
 
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
@@ -56,12 +40,12 @@ pub async fn get_pdf(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(&state).await;
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
+
+    let pdf_bytes = compile_blocking(
+        &state,
+        template_key.0.clone(),
+        Some(template_key.1.clone()),
+        move || {
             gen_pdf::typst_to_pdf(
                 &source,
                 &data,
@@ -71,34 +55,12 @@ pub async fn get_pdf(
                 &app_name,
                 &template_name,
             )
-        }),
+        },
     )
-    .await;
+    .await?;
 
-    let result = match result {
-        Ok(join_result) => join_result.unwrap_or_else(|e| {
-            error!("spawn_blocking task panicked: {e}");
-            Err(anyhow::anyhow!("Task join error: {e}"))
-        }),
-        Err(_elapsed) => {
-            return Err(ApiError::RequestTimeout {
-                app_name: template_key.0,
-                template_name: Some(template_key.1),
-            });
-        }
-    };
-
-    match result {
-        Ok(pdf_bytes) => {
-            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
-            Ok(pdf_response(pdf_bytes))
-        }
-        Err(source) => Err(ApiError::GenerationFailed {
-            app_name: template_key.0,
-            template_name: Some(template_key.1),
-            source,
-        }),
-    }
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+    Ok(pdf_response(pdf_bytes))
 }
 
 /// Handles `POST /api/v1/genpdf/{app_name}/{template}`.
@@ -123,12 +85,12 @@ pub async fn post_pdf(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(&state).await;
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
+
+    let pdf_bytes = compile_blocking(
+        &state,
+        template_key.0.clone(),
+        Some(template_key.1.clone()),
+        move || {
             gen_pdf::typst_to_pdf(
                 &template_source,
                 &json_data,
@@ -138,34 +100,12 @@ pub async fn post_pdf(
                 &app_name,
                 &template_name,
             )
-        }),
+        },
     )
-    .await;
+    .await?;
 
-    let result = match result {
-        Ok(join_result) => join_result.unwrap_or_else(|e| {
-            error!("spawn_blocking task panicked: {e}");
-            Err(anyhow::anyhow!("Task join error: {e}"))
-        }),
-        Err(_elapsed) => {
-            return Err(ApiError::RequestTimeout {
-                app_name: template_key.0,
-                template_name: Some(template_key.1),
-            });
-        }
-    };
-
-    match result {
-        Ok(pdf_bytes) => {
-            info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
-            Ok(pdf_response(pdf_bytes))
-        }
-        Err(source) => Err(ApiError::GenerationFailed {
-            app_name: template_key.0,
-            template_name: Some(template_key.1),
-            source,
-        }),
-    }
+    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+    Ok(pdf_response(pdf_bytes))
 }
 
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
@@ -178,33 +118,11 @@ pub async fn post_pdf_from_html(
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let html_converter = Arc::clone(&state.html_converter);
-    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(&state).await;
 
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
-            gen_pdf::html_to_pdf(&html, &html_converter)
-        }),
-    )
-    .await;
-
-    let pdf_bytes = match result {
-        Ok(join_result) => join_result
-            .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-            .map_err(|source| ApiError::GenerationFailed {
-                app_name: app_name.clone(),
-                template_name: None,
-                source,
-            })?,
-        Err(_elapsed) => {
-            return Err(ApiError::RequestTimeout {
-                app_name,
-                template_name: None,
-            });
-        }
-    };
+    let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
+        gen_pdf::html_to_pdf(&html, &html_converter)
+    })
+    .await?;
 
     info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
     Ok(pdf_response(pdf_bytes))
@@ -227,32 +145,11 @@ pub async fn post_pdf_from_image(
     let fonts = Arc::clone(&state.fonts);
     let root = state.config.root_dir.clone();
     let resources_dir = state.config.resource_root();
-    let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(&state).await;
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
-            gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
-        }),
-    )
-    .await;
 
-    let pdf_bytes = match result {
-        Ok(join_result) => join_result
-            .unwrap_or_else(|e| Err(anyhow::anyhow!("Task join error: {e}")))
-            .map_err(|source| ApiError::GenerationFailed {
-                app_name: app_name.clone(),
-                template_name: None,
-                source,
-            })?,
-        Err(_elapsed) => {
-            return Err(ApiError::RequestTimeout {
-                app_name,
-                template_name: None,
-            });
-        }
-    };
+    let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
+        gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
+    })
+    .await?;
 
     info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from image");
     Ok(pdf_response(pdf_bytes))
