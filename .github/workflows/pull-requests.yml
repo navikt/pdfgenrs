@@ -46,14 +46,5 @@ jobs:
         run: cargo test --release -- --nocapture
       - name: Run Benchmark performance test
         run: cargo bench --bench performance
-      - name: Run Criterion benchmark
-        run: cargo bench --bench criterion_bench
-      - name: Upload Criterion HTML report
-        uses: actions/upload-artifact@v4
-        with:
-          name: criterion-report
-          path: target/criterion/report/
-      - name: Add benchmark report link to summary
-        run: echo '## Criterion Benchmark Report uploaded as artifact `criterion-report`' >> $GITHUB_STEP_SUMMARY
       - name: Build
         run: cargo build --release
