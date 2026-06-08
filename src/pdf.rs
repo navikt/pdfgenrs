@@ -75,9 +75,8 @@ pub fn typst_to_pdf(
     template_name: &str,
 ) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
-    let mut vfiles = HashMap::new();
     let data_path = format!("/data/{app_name}/{template_name}.json");
-    vfiles.insert(data_path, Bytes::new(json_bytes));
+    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
     typst_world::compile_to_pdf(
         fonts,
