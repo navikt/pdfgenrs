@@ -9,8 +9,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use tracing::info;
 
-use super::compile_blocking;
 use super::error::ApiError;
+use super::{compile_blocking, lookup_template_and_data, lookup_template_with_data};
 use crate::html as gen_html;
 use crate::state::AppState;
 
@@ -26,20 +26,7 @@ pub async fn get_html(
     let start = std::time::Instant::now();
     let template_key = (app_name.clone(), template_name.clone());
 
-    let template_source = state.templates.get(&template_key).cloned();
-    let json_data = {
-        let data_map = state.data.read().await;
-        data_map.get(&template_key).cloned()
-    };
-
-    let (source, data) = match (template_source, json_data) {
-        (Some(s), Some(d)) => (s, d),
-        _ => return Err(ApiError::NotFound),
-    };
-
-    let fonts = Arc::clone(&state.fonts);
-    let root = state.config.root_dir.clone();
-    let resources_dir = state.config.resource_root();
+    let params = lookup_template_and_data(&state, &template_key).await?;
 
     let html_string = compile_blocking(
         &state,
@@ -47,11 +34,11 @@ pub async fn get_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                Arc::unwrap_or_clone(source),
-                &data,
-                fonts,
-                &root,
-                &resources_dir,
+                Arc::unwrap_or_clone(params.source),
+                &params.data,
+                params.fonts,
+                &params.root,
+                &params.resources_dir,
                 &app_name,
                 &template_name,
             )
@@ -76,15 +63,7 @@ pub async fn post_html(
     let start = std::time::Instant::now();
     let template_key = (app_name.clone(), template_name.clone());
 
-    let template_source = state
-        .templates
-        .get(&template_key)
-        .cloned()
-        .ok_or(ApiError::NotFound)?;
-
-    let fonts = Arc::clone(&state.fonts);
-    let root = state.config.root_dir.clone();
-    let resources_dir = state.config.resource_root();
+    let params = lookup_template_with_data(&state, &template_key, json_data)?;
 
     let html_string = compile_blocking(
         &state,
@@ -92,11 +71,11 @@ pub async fn post_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                Arc::unwrap_or_clone(template_source),
-                &json_data,
-                fonts,
-                &root,
-                &resources_dir,
+                Arc::unwrap_or_clone(params.source),
+                &params.data,
+                params.fonts,
+                &params.root,
+                &params.resources_dir,
                 &app_name,
                 &template_name,
             )
