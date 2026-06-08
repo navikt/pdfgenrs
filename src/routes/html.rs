@@ -47,7 +47,7 @@ pub async fn get_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                &source,
+                Arc::unwrap_or_clone(source),
                 &data,
                 fonts,
                 &root,
@@ -92,7 +92,7 @@ pub async fn post_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                &template_source,
+                Arc::unwrap_or_clone(template_source),
                 &json_data,
                 fonts,
                 &root,

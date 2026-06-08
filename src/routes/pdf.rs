@@ -47,7 +47,7 @@ pub async fn get_pdf(
         Some(template_key.1.clone()),
         move || {
             gen_pdf::typst_to_pdf(
-                &source,
+                Arc::unwrap_or_clone(source),
                 &data,
                 fonts,
                 &root,
@@ -92,7 +92,7 @@ pub async fn post_pdf(
         Some(template_key.1.clone()),
         move || {
             gen_pdf::typst_to_pdf(
-                &template_source,
+                Arc::unwrap_or_clone(template_source),
                 &json_data,
                 fonts,
                 &root,

@@ -66,7 +66,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
 /// compilation / PDF export fails.
 #[must_use = "this returns a Result that should be handled"]
 pub fn typst_to_pdf(
-    template_source: &str,
+    template_source: String,
     json_data: &serde_json::Value,
     fonts: Arc<Fonts>,
     root: &Path,
@@ -84,7 +84,7 @@ pub fn typst_to_pdf(
         root,
         resources_dir,
         "/main.typ",
-        template_source.to_string(),
+        template_source,
         vfiles,
     )
 }
@@ -213,7 +213,7 @@ Hello, world!
 ";
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(
-            source,
+            source.to_string(),
             &data,
             test_fonts()?,
             &root_dir(),
@@ -233,7 +233,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({"name": "Test User"});
         let bytes = typst_to_pdf(
-            source,
+            source.to_string(),
             &data,
             test_fonts()?,
             &root_dir(),
@@ -250,7 +250,7 @@ Hello, world!
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_pdf(
-            source,
+            source.to_string(),
             &data,
             test_fonts()?,
             &root_dir(),
@@ -355,7 +355,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(
-            source,
+            source.to_string(),
             &data,
             test_fonts()?,
             &root_dir(),
