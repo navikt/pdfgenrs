@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780912338078,
+  "lastUpdate": 1780912742857,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -143,6 +143,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 674954,
             "range": "± 9505",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "afbc060c196d403c29bc1faf3d1ebfbca2447a3a",
+          "message": "Merge pull request #257 from navikt/copilot/full-html-report-github-pages\n\nDeploy full Criterion HTML report to GitHub Pages",
+          "timestamp": "2026-06-08T11:54:18+02:00",
+          "tree_id": "eeb6563ba7e77143cb008357c8eb5fe8146490b5",
+          "url": "https://github.com/navikt/pdfgenrs/commit/afbc060c196d403c29bc1faf3d1ebfbca2447a3a"
+        },
+        "date": 1780912739511,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 850776,
+            "range": "± 26859",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1080973,
+            "range": "± 8947",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167074173,
+            "range": "± 527708",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 675438,
+            "range": "± 10413",
             "unit": "ns/iter"
           }
         ]
