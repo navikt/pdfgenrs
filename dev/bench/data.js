@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780914401145,
+  "lastUpdate": 1780921609181,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -287,6 +287,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 580426,
             "range": "± 17523",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "57a7d3d223b22b07bf70ac15b7e84ab8f9163e21",
+          "message": "Merge pull request #259 from navikt/copilot/pre-allocate-hashmap-in-typst-to-pdf\n\nPre-allocate HashMap in typst_to_pdf",
+          "timestamp": "2026-06-08T14:22:13+02:00",
+          "tree_id": "758b6529e63b06a9e56addd79a0641697d8790e6",
+          "url": "https://github.com/navikt/pdfgenrs/commit/57a7d3d223b22b07bf70ac15b7e84ab8f9163e21"
+        },
+        "date": 1780921606922,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 852633,
+            "range": "± 65181",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1077380,
+            "range": "± 21445",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1169178800,
+            "range": "± 1398723",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 676292,
+            "range": "± 8322",
             "unit": "ns/iter"
           }
         ]
