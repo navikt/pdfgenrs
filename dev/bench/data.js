@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780921609181,
+  "lastUpdate": 1780922123185,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -335,6 +335,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 676292,
             "range": "± 8322",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9059f082feae35258f634883c4b2f23af657d374",
+          "message": "Merge pull request #260 from navikt/copilot/avoid-string-allocation\n\nrefactor: avoid unnecessary String allocation in typst_to_pdf/typst_to_html",
+          "timestamp": "2026-06-08T14:30:38+02:00",
+          "tree_id": "d9dfdd7fe46486f07c81282b410fdb950a6dc969",
+          "url": "https://github.com/navikt/pdfgenrs/commit/9059f082feae35258f634883c4b2f23af657d374"
+        },
+        "date": 1780922120074,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 841923,
+            "range": "± 8391",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1079052,
+            "range": "± 10776",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167788934,
+            "range": "± 1335933",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 674167,
+            "range": "± 12545",
             "unit": "ns/iter"
           }
         ]
