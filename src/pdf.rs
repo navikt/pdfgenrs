@@ -153,7 +153,7 @@ fn png_dimensions(data: &[u8]) -> Option<(u32, u32)> {
 
 fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
     let mut i = 2;
-    while i + 1 < data.len() {
+    while data.len() >= i + 2 {
         if data[i] != 0xFF {
             return None;
         }
@@ -162,14 +162,14 @@ fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
             return None;
         }
         if matches!(marker, 0xC0..=0xC3) {
-            if i + 9 >= data.len() {
+            if data.len() < i + 9 {
                 return None;
             }
             let height = u32::from(u16::from_be_bytes([data[i + 5], data[i + 6]]));
             let width = u32::from(u16::from_be_bytes([data[i + 7], data[i + 8]]));
             return Some((width, height));
         }
-        if i + 3 >= data.len() {
+        if data.len() < i + 4 {
             return None;
         }
         let seg_len = u16::from_be_bytes([data[i + 2], data[i + 3]]) as usize;
