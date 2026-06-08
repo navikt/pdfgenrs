@@ -49,12 +49,14 @@ jobs:
       - name: Run Benchmark performance test
         run: cargo bench --bench performance
       - name: Run Criterion benchmark
-        run: |
-          cargo bench --bench criterion_bench 2>&1 | tee /tmp/criterion_output.txt
-          echo '## Criterion Benchmark Results' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat /tmp/criterion_output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+        run: cargo bench --bench criterion_bench
+      - name: Upload Criterion HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: criterion-report
+          path: target/criterion/report/
+      - name: Add benchmark report link to summary
+        run: echo '## Criterion Benchmark Report uploaded as artifact `criterion-report`' >> $GITHUB_STEP_SUMMARY
       - name: Build
         run: cargo build --release
   
