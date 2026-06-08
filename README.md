@@ -307,6 +307,9 @@ cargo bench --bench performance
 cargo run
 ```
 
+## Benchmark repports
+https://navikt.github.io/pdfgenrs/dev/bench/
+
 ## Release
 
 We use default GitHub releases.
