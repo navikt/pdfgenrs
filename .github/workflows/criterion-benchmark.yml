@@ -13,6 +13,10 @@ on:
       - '**.MD'
       - '.gitignore'
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   benchmark:
     name: Run Criterion benchmark
@@ -33,11 +37,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
       - name: Run Criterion benchmark
-        run: cargo bench --bench criterion_bench
+        run: cargo bench --bench criterion_bench -- --output-format bencher | tee output.txt
       - name: Upload Criterion HTML report
         uses: actions/upload-artifact@v4
         with:
           name: criterion-report
           path: target/criterion/report/
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Criterion Benchmark
+          tool: 'cargo'
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          alert-threshold: '200%'
+          comment-on-alert: true
+          fail-on-alert: false
+          benchmark-data-dir-path: dev/bench
       - name: Add benchmark report link to summary
-        run: echo '## Criterion Benchmark Report uploaded as artifact `criterion-report`' >> $GITHUB_STEP_SUMMARY
+        run: |
+          echo '## Criterion Benchmark Results' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '📊 [View interactive benchmark dashboard](https://navikt.github.io/pdfgenrs/dev/bench/)' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'The full Criterion HTML report is also available as the `criterion-report` artifact.' >> $GITHUB_STEP_SUMMARY
