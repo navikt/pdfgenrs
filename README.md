@@ -267,6 +267,8 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 - https://github.com/navikt/pdfgenrs-test
 - https://github.com/navikt/pale-2-pdfgenrs
 - https://github.com/navikt/pengeflyt-pdfgenrs
+- https://github.com/navikt/helse-sprinter
+
 ## Environment variables
 
 All configuration is done through environment variables. If an environment variable is not set, the default value is used.
