@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781104776079,
+  "lastUpdate": 1781110911827,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -719,6 +719,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 676353,
             "range": "± 14219",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa0a1c720b3d66e91651ce8a9ef8370cf6f4d51c",
+          "message": "Merge pull request #270 from navikt/copilot/semaphore-timeout-on-acquisition\n\nAdd semaphore acquisition timeout with 503 Service Unavailable response",
+          "timestamp": "2026-06-10T18:51:07+02:00",
+          "tree_id": "daf2bdba0325de1d3b013955627773b806e1adb8",
+          "url": "https://github.com/navikt/pdfgenrs/commit/fa0a1c720b3d66e91651ce8a9ef8370cf6f4d51c"
+        },
+        "date": 1781110908095,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 846969,
+            "range": "± 18691",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1086081,
+            "range": "± 12330",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167976109,
+            "range": "± 1352688",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 677085,
+            "range": "± 12987",
             "unit": "ns/iter"
           }
         ]
