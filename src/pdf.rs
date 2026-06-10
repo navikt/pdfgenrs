@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use ironpress::HtmlConverter;
 use std::collections::HashMap;
-use std::path::Path;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 use tracing::warn;
 use typst::foundations::Bytes;
 
@@ -22,37 +22,56 @@ const HTML_FONT_ALIASES: &[(&str, &str)] = &[
     ("Noto Emoji", "NotoColorEmoji-Regular.ttf"),
 ];
 
+/// Cached font alias bytes. Once loaded, subsequent calls to [`build_html_converter`]
+/// reuse the cached bytes instead of re-reading files from disk.
+type FontAliasCache = (PathBuf, Vec<(&'static str, Vec<u8>)>);
+static FONT_ALIAS_CACHE: OnceLock<FontAliasCache> = OnceLock::new();
+
+/// Loads font alias bytes from `fonts_dir`, using a process-wide cache to avoid
+/// redundant file I/O on repeated calls with the same directory.
+fn load_font_aliases(fonts_dir: &Path) -> &'static [(&'static str, Vec<u8>)] {
+    let (_, aliases) = FONT_ALIAS_CACHE.get_or_init(|| {
+        let mut loaded = Vec::new();
+        for (family, file_name) in HTML_FONT_ALIASES {
+            let font_path = fonts_dir.join(file_name);
+            match std::fs::read(&font_path) {
+                Ok(font_bytes) => {
+                    loaded.push((*family, font_bytes));
+                }
+                Err(error) => {
+                    warn!(
+                        font_path = %font_path.display(),
+                        font_family = family,
+                        "Failed to load HTML font alias: {error}"
+                    );
+                }
+            }
+        }
+        (fonts_dir.to_path_buf(), loaded)
+    });
+    aliases
+}
+
 /// Builds a pre-configured [`HtmlConverter`] with font aliases loaded from `fonts_dir`.
 ///
-/// The converter is constructed once and can be reused across requests via shared
-/// reference, avoiding per-request cloning of font byte vectors.
-/// Font files that cannot be read are skipped and logged as warnings.
+/// Font alias bytes are cached in a process-wide [`OnceLock`] so that repeated calls
+/// (e.g. in tests) avoid redundant file I/O. The converter itself is constructed fresh
+/// each call with the given `base_path`, but the expensive disk reads happen at most once.
+///
+/// Font files that cannot be read are skipped and logged as warnings (on first load only).
 ///
 /// Returns a tuple of `(converter, count)` where `count` is the number of
 /// font aliases successfully loaded.
 #[must_use]
 pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverter, usize) {
+    let aliases = load_font_aliases(fonts_dir);
     let mut converter = HtmlConverter::new().base_path(base_path);
-    let mut count = 0;
 
-    for (family, file_name) in HTML_FONT_ALIASES {
-        let font_path = fonts_dir.join(file_name);
-        match std::fs::read(&font_path) {
-            Ok(font_bytes) => {
-                converter = converter.add_font(family, font_bytes);
-                count += 1;
-            }
-            Err(error) => {
-                warn!(
-                    font_path = %font_path.display(),
-                    font_family = family,
-                    "Failed to load HTML font alias: {error}"
-                );
-            }
-        }
+    for (family, font_bytes) in aliases {
+        converter = converter.add_font(family, font_bytes.clone());
     }
 
-    (converter, count)
+    (converter, aliases.len())
 }
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
