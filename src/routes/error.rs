@@ -29,6 +29,8 @@ pub enum ApiError {
         app_name: String,
         template_name: Option<String>,
     },
+    /// The server is overloaded and cannot accept new compilation requests.
+    ServiceUnavailable,
 }
 
 #[cfg(test)]
@@ -50,6 +52,7 @@ impl std::fmt::Debug for ApiError {
             } => {
                 write!(f, "RequestTimeout({app_name}, {template_name:?})")
             }
+            Self::ServiceUnavailable => write!(f, "ServiceUnavailable"),
         }
     }
 }
@@ -137,6 +140,11 @@ impl IntoResponse for ApiError {
                     "Request timed out",
                 )
             }
+            Self::ServiceUnavailable => problem_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "urn:pdfgenrs:error:service-unavailable",
+                "Server is overloaded, please try again later",
+            ),
         }
     }
 }
@@ -250,6 +258,20 @@ mod tests {
         assert_eq!(body["title"], "Request Timeout");
         assert_eq!(body["status"], 408);
         assert_eq!(body["detail"], "Request timed out");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn service_unavailable_returns_503() -> anyhow::Result<()> {
+        let (status, body) = status_and_body(ApiError::ServiceUnavailable).await?;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["type"], "urn:pdfgenrs:error:service-unavailable");
+        assert_eq!(body["title"], "Service Unavailable");
+        assert_eq!(body["status"], 503);
+        assert_eq!(
+            body["detail"],
+            "Server is overloaded, please try again later"
+        );
         Ok(())
     }
 }

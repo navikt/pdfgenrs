@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
-use tracing::error;
+use tracing::{error, warn};
 
 use self::error::ApiError;
 use crate::state::AppState;
@@ -73,17 +73,26 @@ pub(crate) fn lookup_template_with_data(
 }
 
 /// Acquires a compilation semaphore permit if a limit is configured.
-/// When no semaphore is set (unlimited mode), returns `None` immediately.
-pub(crate) async fn acquire_compile_permit(state: &AppState) -> Option<OwnedSemaphorePermit> {
+/// When no semaphore is set (unlimited mode), returns `Ok(None)` immediately.
+/// Returns `Err(ApiError::ServiceUnavailable)` if the permit cannot be acquired
+/// within the configured timeout.
+pub(crate) async fn acquire_compile_permit(
+    state: &AppState,
+) -> Result<Option<OwnedSemaphorePermit>, ApiError> {
     if let Some(ref semaphore) = state.compile_semaphore {
-        Some(
-            Arc::clone(semaphore)
-                .acquire_owned()
-                .await
-                .unwrap_or_else(|_| unreachable!("semaphore is never closed")),
-        )
+        let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
+        match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
+            Ok(Ok(permit)) => Ok(Some(permit)),
+            Ok(Err(_)) => unreachable!("semaphore is never closed"),
+            Err(_elapsed) => {
+                warn!(
+                    "Semaphore acquisition timed out after {timeout_duration:?}; system is overloaded"
+                );
+                Err(ApiError::ServiceUnavailable)
+            }
+        }
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -102,7 +111,7 @@ where
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state).await;
+    let permit = acquire_compile_permit(state).await?;
 
     let result = tokio::time::timeout(
         timeout_duration,
@@ -217,6 +226,38 @@ mod tests {
         };
         assert_eq!(value, 42);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_returns_503_when_semaphore_acquire_times_out() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 10;
+        state.config.semaphore_acquire_timeout_seconds = 1;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
+
+        // Acquire the only permit so subsequent requests must wait.
+        let sem = Arc::clone(
+            state
+                .compile_semaphore
+                .as_ref()
+                .context("semaphore must be set")?,
+        );
+        let _permit = sem.acquire_owned().await.context("acquire permit")?;
+
+        let result: Result<(), _> =
+            compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
+
+        assert!(result.is_err());
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected service unavailable error"),
+            Err(err) => err,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::SERVICE_UNAVAILABLE
+        );
         Ok(())
     }
 }
