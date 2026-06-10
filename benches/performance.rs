@@ -87,7 +87,11 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
     }
 
     if let Err(e) = std::fs::write(&summary_file, &md) {
-        eprintln!("Failed to write GitHub step summary to {summary_file}: {e}");
+        tracing::warn!(
+            path = %summary_file,
+            error = %e,
+            "Failed to write GitHub step summary"
+        );
     }
 }
 
