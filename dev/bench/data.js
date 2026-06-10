@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781097223050,
+  "lastUpdate": 1781104776079,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -671,6 +671,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 631151,
             "range": "± 14756",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4fe640896ae632b16294c941f4d1f7b3dce96d3f",
+          "message": "Merge pull request #268 from navikt/copilot/cache-html-converter-font-aliases\n\nCache HTML converter font alias bytes using OnceLock",
+          "timestamp": "2026-06-10T17:14:02+02:00",
+          "tree_id": "38b7cebf638a8e0d0230c78ad43fa2852cf61028",
+          "url": "https://github.com/navikt/pdfgenrs/commit/4fe640896ae632b16294c941f4d1f7b3dce96d3f"
+        },
+        "date": 1781104771646,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 856516,
+            "range": "± 7940",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1081252,
+            "range": "± 13399",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168966893,
+            "range": "± 1966126",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 676353,
+            "range": "± 14219",
             "unit": "ns/iter"
           }
         ]
