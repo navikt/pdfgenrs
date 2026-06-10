@@ -288,6 +288,36 @@ All configuration is done through environment variables. If an environment varia
 | `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` means no limit.                                                                              | `0`               |
 
+### Logging and tracing
+
+`pdfgenrs` uses [`tracing`](https://docs.rs/tracing) with an [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) that reads the standard `RUST_LOG` environment variable to control log verbosity. The default level is `INFO`.
+
+Examples:
+
+```bash
+# Show debug logs for pdfgenrs only
+RUST_LOG=pdfgenrs=debug
+
+# Show trace logs for all crates
+RUST_LOG=trace
+
+# Combine filters
+RUST_LOG=pdfgenrs=debug,tower_http=trace
+```
+
+See the [`EnvFilter` documentation](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives) for the full filter syntax.
+
+#### OpenTelemetry (OTEL) variables
+
+When deployed on [NAIS](https://doc.nais.io/), OpenTelemetry tracing is configured automatically via environment variables injected by the platform. These variables are also respected when running locally if you want to export spans to a collector:
+
+| Variable                          | Description                                                                 | Default      |
+|-----------------------------------|-----------------------------------------------------------------------------|--------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT`    | gRPC endpoint for the OTLP span exporter. When unset, no spans are exported. | *(unset)*    |
+| `OTEL_SERVICE_NAME`              | Logical service name attached to exported spans                              | `pdfgenrs`   |
+| `OTEL_RESOURCE_ATTRIBUTES`       | Additional resource attributes (key=value pairs)                             | *(unset)*    |
+| `OTEL_EXPORTER_OTLP_INSECURE`   | Use insecure (plaintext) gRPC connection                                     | *(unset)*    |
+
 ## Developing pdfgenrs
 
 ### Prerequisites
