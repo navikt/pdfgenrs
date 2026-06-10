@@ -2,6 +2,7 @@ mod tracing_setup;
 
 use anyhow::{Context, Result};
 use pdfgenrs::metrics;
+use pdfgenrs::pdf::HtmlPdfCache;
 use pdfgenrs::state::{AppAliveness, AppState};
 use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
@@ -88,6 +89,16 @@ async fn main() -> Result<()> {
         None
     };
 
+    let html_pdf_cache = HtmlPdfCache::from_capacity(cfg.html_pdf_cache_size);
+    if cfg.html_pdf_cache_size > 0 {
+        info!(
+            capacity = cfg.html_pdf_cache_size,
+            "HTML-to-PDF cache enabled"
+        );
+    } else {
+        info!("HTML-to-PDF cache disabled");
+    }
+
     let state = AppState {
         templates,
         data: Arc::new(RwLock::new(data)),
@@ -96,6 +107,7 @@ async fn main() -> Result<()> {
         fonts,
         html_converter,
         compile_semaphore,
+        html_pdf_cache,
     };
 
     let metrics_handle = metrics::setup_metrics_recorder()?;

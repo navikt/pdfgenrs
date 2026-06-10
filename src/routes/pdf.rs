@@ -90,6 +90,7 @@ pub async fn post_pdf(
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
 ///
 /// Accepts an HTML body and converts it to PDF.
+/// Results are cached by HTML content hash when the cache is enabled.
 pub async fn post_pdf_from_html(
     State(state): State<AppState>,
     Path(app_name): Path<String>,
@@ -97,9 +98,10 @@ pub async fn post_pdf_from_html(
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let html_converter = Arc::clone(&state.html_converter);
+    let cache = state.html_pdf_cache.clone();
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::html_to_pdf(&html, &html_converter)
+        gen_pdf::html_to_pdf_cached(&html, &html_converter, &cache)
     })
     .await?;
 

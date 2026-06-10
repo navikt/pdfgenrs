@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokio::sync::{RwLock, Semaphore};
 
 use crate::config;
+use crate::pdf::HtmlPdfCache;
 use crate::typst_world::Fonts;
 
 #[derive(Clone)]
@@ -25,6 +26,8 @@ pub struct AppState {
     /// Semaphore to limit the number of concurrent compilation tasks.
     /// When `None`, no limit is enforced.
     pub compile_semaphore: Option<Arc<Semaphore>>,
+    /// LRU cache for HTML-to-PDF conversion results.
+    pub html_pdf_cache: HtmlPdfCache,
 }
 
 /// Tracks the liveness and readiness state of the application.

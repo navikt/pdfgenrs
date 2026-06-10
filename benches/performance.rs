@@ -2,6 +2,7 @@ use std::future::IntoFuture;
 use std::sync::Arc;
 
 use axum_test::TestServer;
+use pdfgenrs::pdf::HtmlPdfCache;
 use pdfgenrs::{build_html_converter, build_router, config, metrics, state, template, typst_world};
 use reqwest::header;
 use tokio::sync::RwLock;
@@ -43,6 +44,7 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
         html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
         config: cfg,
         compile_semaphore: None,
+        html_pdf_cache: HtmlPdfCache::disabled(),
     })
 }
 

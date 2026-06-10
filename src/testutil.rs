@@ -5,7 +5,7 @@ use std::sync::Arc;
 use serde_json::Value;
 use tokio::sync::RwLock;
 
-use crate::pdf::build_html_converter;
+use crate::pdf::{HtmlPdfCache, build_html_converter};
 use crate::state::AppState;
 use crate::{config, state, typst_world};
 
@@ -38,6 +38,7 @@ pub fn make_state(
             compile_timeout_seconds: 30,
             shutdown_drain_seconds: 5,
             max_concurrent_compilations: 0,
+            html_pdf_cache_size: 0,
         },
         fonts: Arc::new(typst_world::load_fonts(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
@@ -50,5 +51,6 @@ pub fn make_state(
             )
             .0,
         ),
+        html_pdf_cache: HtmlPdfCache::disabled(),
     })
 }

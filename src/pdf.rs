@@ -1,8 +1,11 @@
 use anyhow::{Context, Result};
 use ironpress::HtmlConverter;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use tracing::warn;
 use typst::foundations::Bytes;
 
@@ -113,6 +116,95 @@ pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
     converter
         .convert(html)
         .context("Failed to convert HTML to PDF")
+}
+
+/// Thread-safe LRU cache for HTML-to-PDF conversion results.
+///
+/// The cache key is a hash of the HTML input string. Cache hits avoid the
+/// expensive HTML→PDF conversion entirely. When the cache is full, the least
+/// recently used entry is evicted.
+///
+/// Construct with [`HtmlPdfCache::new`] to create an enabled cache, or
+/// [`HtmlPdfCache::disabled`] to create a no-op instance.
+type PdfLruCache = Arc<Mutex<lru::LruCache<u64, Arc<Vec<u8>>>>>;
+
+#[derive(Clone)]
+pub struct HtmlPdfCache {
+    inner: Option<PdfLruCache>,
+}
+
+impl HtmlPdfCache {
+    /// Creates a new cache with the given maximum capacity.
+    ///
+    /// # Panics
+    /// Panics if `capacity` is zero. Use [`HtmlPdfCache::disabled`] instead.
+    #[must_use]
+    pub fn new(capacity: usize) -> Self {
+        let cap = NonZeroUsize::new(capacity)
+            .unwrap_or_else(|| unreachable!("caller must check capacity > 0"));
+        Self {
+            inner: Some(Arc::new(Mutex::new(lru::LruCache::new(cap)))),
+        }
+    }
+
+    /// Creates a disabled (no-op) cache that never stores or returns entries.
+    #[must_use]
+    pub fn disabled() -> Self {
+        Self { inner: None }
+    }
+
+    /// Creates a cache from a capacity value: enabled if `capacity > 0`, disabled otherwise.
+    #[must_use]
+    pub fn from_capacity(capacity: usize) -> Self {
+        if capacity > 0 {
+            Self::new(capacity)
+        } else {
+            Self::disabled()
+        }
+    }
+
+    /// Looks up a cached PDF result for the given HTML content.
+    /// Returns `Some(pdf_bytes)` on cache hit, `None` on miss.
+    pub fn get(&self, html: &str) -> Option<Vec<u8>> {
+        let cache = self.inner.as_ref()?;
+        let key = hash_html(html);
+        let mut guard = cache.lock().unwrap_or_else(|e| e.into_inner());
+        guard.get(&key).map(|v| Vec::clone(v))
+    }
+
+    /// Stores a PDF result in the cache, keyed by the HTML content hash.
+    pub fn put(&self, html: &str, pdf_bytes: Vec<u8>) {
+        if let Some(ref cache) = self.inner {
+            let key = hash_html(html);
+            let mut guard = cache.lock().unwrap_or_else(|e| e.into_inner());
+            guard.put(key, Arc::new(pdf_bytes));
+        }
+    }
+}
+
+/// Computes a hash of the HTML string for use as a cache key.
+fn hash_html(html: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    html.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// Converts an HTML document into PDF bytes, using the cache when available.
+///
+/// On a cache hit, returns the cached PDF bytes immediately. On a miss,
+/// performs the conversion and stores the result in the cache.
+#[must_use = "this returns a Result that should be handled"]
+pub fn html_to_pdf_cached(
+    html: &str,
+    converter: &HtmlConverter,
+    cache: &HtmlPdfCache,
+) -> Result<Vec<u8>> {
+    if let Some(cached) = cache.get(html) {
+        return Ok(cached);
+    }
+    let pdf_bytes = html_to_pdf(html, converter)?;
+    cache.put(html, pdf_bytes.clone());
+    Ok(pdf_bytes)
 }
 
 /// Converts a PNG or JPEG image into PDF bytes.

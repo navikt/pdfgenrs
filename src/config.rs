@@ -14,6 +14,7 @@ const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
 const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
 const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
+const HTML_PDF_CACHE_SIZE_ENV: &str = "HTML_PDF_CACHE_SIZE";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -25,6 +26,7 @@ const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 0;
+const DEFAULT_HTML_PDF_CACHE_SIZE: usize = 100;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -64,6 +66,9 @@ pub struct Config {
     /// Maximum number of concurrent compilation tasks allowed. When set to `0` (default),
     /// no limit is enforced. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
     pub max_concurrent_compilations: usize,
+    /// Maximum number of HTML-to-PDF conversion results to cache. When set to `0`,
+    /// caching is disabled. Defaults to `100` (`HTML_PDF_CACHE_SIZE`).
+    pub html_pdf_cache_size: usize,
 }
 
 impl Default for Config {
@@ -133,6 +138,8 @@ impl Config {
                 .unwrap_or(DEFAULT_SHUTDOWN_DRAIN_SECONDS),
             max_concurrent_compilations: parse_usize(MAX_CONCURRENT_COMPILATIONS_ENV)
                 .unwrap_or(DEFAULT_MAX_CONCURRENT_COMPILATIONS),
+            html_pdf_cache_size: parse_usize(HTML_PDF_CACHE_SIZE_ENV)
+                .unwrap_or(DEFAULT_HTML_PDF_CACHE_SIZE),
         }
     }
 
@@ -200,6 +207,7 @@ mod tests {
             config.max_concurrent_compilations,
             DEFAULT_MAX_CONCURRENT_COMPILATIONS
         );
+        assert_eq!(config.html_pdf_cache_size, DEFAULT_HTML_PDF_CACHE_SIZE);
     }
 
     #[test]
@@ -216,6 +224,7 @@ mod tests {
             (COMPILE_TIMEOUT_SECONDS_ENV, "60"),
             (SHUTDOWN_DRAIN_SECONDS_ENV, "10"),
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
+            (HTML_PDF_CACHE_SIZE_ENV, "200"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -229,6 +238,7 @@ mod tests {
         assert_eq!(config.compile_timeout_seconds, 60);
         assert_eq!(config.shutdown_drain_seconds, 10);
         assert_eq!(config.max_concurrent_compilations, 4);
+        assert_eq!(config.html_pdf_cache_size, 200);
     }
 
     #[test]
@@ -304,6 +314,7 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            html_pdf_cache_size: DEFAULT_HTML_PDF_CACHE_SIZE,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -323,6 +334,7 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            html_pdf_cache_size: DEFAULT_HTML_PDF_CACHE_SIZE,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -342,6 +354,7 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            html_pdf_cache_size: DEFAULT_HTML_PDF_CACHE_SIZE,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -361,6 +374,7 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            html_pdf_cache_size: DEFAULT_HTML_PDF_CACHE_SIZE,
         };
 
         assert_eq!(

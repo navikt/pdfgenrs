@@ -59,6 +59,7 @@ mod tests {
     use super::nais_router;
     use crate::config::Config;
     use crate::metrics;
+    use crate::pdf::HtmlPdfCache;
     use crate::state::AppAliveness;
     use crate::state::AppState;
     use crate::{build_html_converter, typst_world};
@@ -77,6 +78,7 @@ mod tests {
             html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
             config: cfg,
             compile_semaphore: None,
+            html_pdf_cache: HtmlPdfCache::disabled(),
         })
     }
 
