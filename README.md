@@ -16,6 +16,7 @@
 - [Applications that use pdfgenrs](#applications-that-use-pdfgenrs)
 - [Environment variables](#environment-variables)
 - [Developing pdfgenrs](#developing-pdfgenrs)
+- [Benchmark reports](#benchmark-reports)
 - [Release](#release)
 - [Contact](#contact)
 - [Contributing](#contributing)
