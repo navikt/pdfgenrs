@@ -131,3 +131,83 @@ where
         }),
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use tokio::sync::Semaphore;
+
+    use super::compile_blocking;
+    use crate::testutil::make_state;
+
+    #[tokio::test]
+    async fn compile_blocking_returns_timeout_when_task_exceeds_deadline() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 1;
+
+        let result: Result<(), _> = compile_blocking(
+            &state,
+            "myapp".to_string(),
+            Some("mytemplate".to_string()),
+            || {
+                std::thread::sleep(Duration::from_secs(5));
+                Ok(())
+            },
+        )
+        .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(response.status(), axum::http::StatusCode::REQUEST_TIMEOUT);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_semaphore_limits_concurrency() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 10;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
+
+        let state1 = state.clone();
+        let state2 = state.clone();
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let task1 = tokio::spawn(async move {
+            compile_blocking(&state1, "app".to_string(), None, move || {
+                started_tx.send(()).ok();
+                rx.blocking_recv().ok();
+                Ok(42)
+            })
+            .await
+        });
+
+        started_rx.await.unwrap();
+
+        let task2 = tokio::spawn(async move {
+            tokio::time::timeout(
+                Duration::from_millis(100),
+                compile_blocking(&state2, "app".to_string(), None, || Ok(99)),
+            )
+            .await
+        });
+
+        let task2_result = task2.await.unwrap();
+        assert!(
+            task2_result.is_err(),
+            "Expected task2 to time out while task1 holds the semaphore"
+        );
+
+        tx.send(()).ok();
+        let task1_result = task1.await.unwrap();
+        assert_eq!(task1_result.unwrap(), 42);
+
+        Ok(())
+    }
+}
