@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781089488406,
+  "lastUpdate": 1781094568125,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -479,6 +479,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 620479,
             "range": "± 17845",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89b1fdcc94bd4a298afae8ab92f6a6a38dbd2a71",
+          "message": "Merge pull request #262 from navikt/MikAoJk-patch-1\n\nchore: tighten Clippy lint compliance",
+          "timestamp": "2026-06-10T14:24:45+02:00",
+          "tree_id": "fc268902308142a3e0dd8d1bb695de59e9331b6c",
+          "url": "https://github.com/navikt/pdfgenrs/commit/89b1fdcc94bd4a298afae8ab92f6a6a38dbd2a71"
+        },
+        "date": 1781094565147,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 776391,
+            "range": "± 19332",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1064866,
+            "range": "± 11924",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1170049177,
+            "range": "± 1575565",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 582103,
+            "range": "± 20444",
             "unit": "ns/iter"
           }
         ]
