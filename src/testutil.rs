@@ -38,6 +38,7 @@ pub fn make_state(
             compile_timeout_seconds: 30,
             shutdown_drain_seconds: 5,
             max_concurrent_compilations: 0,
+            semaphore_acquire_timeout_seconds: 10,
         },
         fonts: Arc::new(typst_world::load_fonts(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
