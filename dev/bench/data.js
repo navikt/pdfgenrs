@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781096756638,
+  "lastUpdate": 1781097223050,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -623,6 +623,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 677149,
             "range": "± 12595",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8345228e695a988fcb29387bfffe96c824a5342f",
+          "message": "Merge pull request #267 from navikt/copilot/add-content-length-header\n\nAdd Content-Length header to PDF/HTML responses",
+          "timestamp": "2026-06-10T15:08:26+02:00",
+          "tree_id": "cc62bc280ed3d67e1da57c09b96056d67a6fb20f",
+          "url": "https://github.com/navikt/pdfgenrs/commit/8345228e695a988fcb29387bfffe96c824a5342f"
+        },
+        "date": 1781097220291,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 802299,
+            "range": "± 36188",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1084132,
+            "range": "± 25436",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1171896479,
+            "range": "± 926631",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 631151,
+            "range": "± 14756",
             "unit": "ns/iter"
           }
         ]
