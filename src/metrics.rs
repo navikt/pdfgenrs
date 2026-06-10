@@ -27,6 +27,8 @@ pub fn test_metrics_handle() -> PrometheusHandle {
 /// Records:
 /// - `http_requests_total` counter with labels: method, path, status
 /// - `http_request_duration_seconds` histogram with labels: method, path, status
+/// - `http_request_body_size_bytes` histogram with labels: method, path, status
+/// - `http_response_body_size_bytes` histogram with labels: method, path, status
 pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
     let method = request.method().to_string();
     let path = request
@@ -35,16 +37,35 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
         .map(|p| p.as_str().to_owned())
         .unwrap_or_else(|| "unknown".to_owned());
 
+    let request_body_size = request
+        .headers()
+        .get(axum::http::header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse::<u64>().ok());
+
     let start = Instant::now();
     let response = next.run(request).await;
     let duration = start.elapsed().as_secs_f64();
 
     let status = response.status().as_u16().to_string();
 
+    let response_body_size = response
+        .headers()
+        .get(axum::http::header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse::<u64>().ok());
+
     let labels = [("method", method), ("path", path), ("status", status)];
 
     counter!("http_requests_total", &labels).increment(1);
     histogram!("http_request_duration_seconds", &labels).record(duration);
+
+    if let Some(size) = request_body_size {
+        histogram!("http_request_body_size_bytes", &labels).record(size as f64);
+    }
+    if let Some(size) = response_body_size {
+        histogram!("http_response_body_size_bytes", &labels).record(size as f64);
+    }
 
     response
 }
@@ -53,7 +74,7 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
 mod tests {
     use super::*;
     use axum::http::StatusCode;
-    use axum::{Router, middleware, routing::get};
+    use axum::{Router, middleware, routing::get, routing::post};
     use axum_test::TestServer;
 
     fn build_runtime() -> anyhow::Result<tokio::runtime::Runtime> {
@@ -71,10 +92,22 @@ mod tests {
         StatusCode::NOT_FOUND
     }
 
+    async fn echo_handler(body: axum::body::Bytes) -> Response {
+        match Response::builder()
+            .status(StatusCode::OK)
+            .header(axum::http::header::CONTENT_LENGTH, body.len().to_string())
+            .body(Body::from(body))
+        {
+            Ok(response) => response,
+            Err(_) => Response::new(Body::empty()),
+        }
+    }
+
     fn test_app() -> Router {
         Router::new()
             .route("/hello", get(handler))
             .route("/missing", get(not_found_handler))
+            .route("/echo", post(echo_handler))
             .layer(middleware::from_fn(track_metrics))
     }
 
@@ -204,6 +237,80 @@ mod tests {
                     anyhow::bail!("matching metric line should exist after assertion");
                 };
                 assert!(line.ends_with(" 3"), "expected counter value 3: {line}");
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn records_request_body_size_histogram() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = build_runtime()?;
+            rt.block_on(async {
+                let server = TestServer::new(test_app());
+                let body = "hello";
+                server
+                    .post("/echo")
+                    .add_header(
+                        axum::http::header::CONTENT_LENGTH,
+                        axum::http::HeaderValue::from_static("5"),
+                    )
+                    .text(body)
+                    .await;
+
+                let output = handle.render();
+                assert!(
+                    output.contains("http_request_body_size_bytes"),
+                    "expected http_request_body_size_bytes in output: {output}"
+                );
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn records_response_body_size_histogram() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = build_runtime()?;
+            rt.block_on(async {
+                let server = TestServer::new(test_app());
+                server.post("/echo").text("hello").await;
+
+                let output = handle.render();
+                assert!(
+                    output.contains("http_response_body_size_bytes"),
+                    "expected http_response_body_size_bytes in output: {output}"
+                );
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn no_body_size_metrics_when_content_length_absent() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = build_runtime()?;
+            rt.block_on(async {
+                let server = TestServer::new(test_app());
+                server.get("/hello").await;
+
+                let output = handle.render();
+                assert!(
+                    !output.contains("http_request_body_size_bytes"),
+                    "unexpected http_request_body_size_bytes for GET without body: {output}"
+                );
                 Ok::<_, anyhow::Error>(())
             })?;
             Ok::<(), anyhow::Error>(())
