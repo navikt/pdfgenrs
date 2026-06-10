@@ -34,9 +34,9 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use anyhow::anyhow;
     use axum::http::StatusCode;
     use axum::{Router, middleware, routing::get};
     use axum_test::TestServer;
@@ -52,23 +52,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn generates_request_id_when_not_provided() {
+    async fn generates_request_id_when_not_provided() -> anyhow::Result<()> {
         let server = TestServer::new(test_app());
         let response = server.get("/").await;
         assert_eq!(response.status_code(), StatusCode::OK);
         let header = response
             .headers()
             .get("x-request-id")
-            .expect("expected x-request-id header in response");
-        let value = header.to_str().expect("expected valid header value");
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
         assert!(
             Uuid::parse_str(value).is_ok(),
             "expected valid UUID, got: {value}"
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn propagates_request_id_from_request() {
+    async fn propagates_request_id_from_request() -> anyhow::Result<()> {
         let server = TestServer::new(test_app());
         let response = server
             .get("/")
@@ -81,8 +82,9 @@ mod tests {
         let header = response
             .headers()
             .get("x-request-id")
-            .expect("expected x-request-id header in response");
-        let value = header.to_str().expect("expected valid header value");
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
         assert_eq!(value, "my-custom-id");
+        Ok(())
     }
 }

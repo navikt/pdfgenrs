@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
         compile_semaphore,
     };
 
-    let metrics_handle = metrics::setup_metrics_recorder();
+    let metrics_handle = metrics::setup_metrics_recorder()?;
 
     let app = build_router(state, metrics_handle);
 

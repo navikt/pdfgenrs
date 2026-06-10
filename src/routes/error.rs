@@ -130,105 +130,114 @@ impl IntoResponse for ApiError {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use anyhow::{Context, anyhow};
     use axum::http::StatusCode;
     use http_body_util::BodyExt;
 
-    async fn status_and_body(error: ApiError) -> (StatusCode, serde_json::Value) {
+    async fn status_and_body(error: ApiError) -> anyhow::Result<(StatusCode, serde_json::Value)> {
         let response = error.into_response();
         let status = response.status();
-        assert_eq!(
-            response
-                .headers()
-                .get("content-type")
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            "application/problem+json; charset=utf-8"
-        );
-        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .ok_or_else(|| anyhow!("missing content-type header"))?
+            .to_str()
+            .context("invalid content-type header")?;
+        assert_eq!(content_type, "application/problem+json; charset=utf-8");
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .context("failed to read response body")?
+            .to_bytes();
         let json: serde_json::Value =
-            serde_json::from_slice(&body).expect("response body must be valid JSON");
-        (status, json)
+            serde_json::from_slice(&body).context("response body must be valid JSON")?;
+        Ok((status, json))
     }
 
     #[tokio::test]
-    async fn not_found_returns_404() {
-        let (status, body) = status_and_body(ApiError::NotFound).await;
+    async fn not_found_returns_404() -> anyhow::Result<()> {
+        let (status, body) = status_and_body(ApiError::NotFound).await?;
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(body["type"], "about:blank");
         assert_eq!(body["title"], "Not Found");
         assert_eq!(body["status"], 404);
         assert_eq!(body["detail"], "Template or application not found");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn generation_failed_returns_500_with_template() {
+    async fn generation_failed_returns_500_with_template() -> anyhow::Result<()> {
         let error = ApiError::GenerationFailed {
             app_name: "myapp".to_string(),
             template_name: Some("template1".to_string()),
-            source: anyhow::anyhow!("render error"),
+            source: anyhow!("render error"),
         };
-        let (status, body) = status_and_body(error).await;
+        let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(body["type"], "about:blank");
         assert_eq!(body["title"], "Internal Server Error");
         assert_eq!(body["status"], 500);
         assert_eq!(body["detail"], "Internal server error");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn generation_failed_returns_500_without_template() {
+    async fn generation_failed_returns_500_without_template() -> anyhow::Result<()> {
         let error = ApiError::GenerationFailed {
             app_name: "myapp".to_string(),
             template_name: None,
-            source: anyhow::anyhow!("render error"),
+            source: anyhow!("render error"),
         };
-        let (status, body) = status_and_body(error).await;
+        let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(body["type"], "about:blank");
         assert_eq!(body["title"], "Internal Server Error");
         assert_eq!(body["status"], 500);
         assert_eq!(body["detail"], "Internal server error");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn unsupported_media_type_returns_415() {
-        let (status, body) = status_and_body(ApiError::UnsupportedMediaType).await;
+    async fn unsupported_media_type_returns_415() -> anyhow::Result<()> {
+        let (status, body) = status_and_body(ApiError::UnsupportedMediaType).await?;
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
         assert_eq!(body["type"], "about:blank");
         assert_eq!(body["title"], "Unsupported Media Type");
         assert_eq!(body["status"], 415);
         assert_eq!(body["detail"], "Unsupported media type");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn request_timeout_returns_408_with_template() {
+    async fn request_timeout_returns_408_with_template() -> anyhow::Result<()> {
         let error = ApiError::RequestTimeout {
             app_name: "myapp".to_string(),
             template_name: Some("template1".to_string()),
         };
-        let (status, body) = status_and_body(error).await;
+        let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
         assert_eq!(body["type"], "about:blank");
         assert_eq!(body["title"], "Request Timeout");
         assert_eq!(body["status"], 408);
         assert_eq!(body["detail"], "Request timed out");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn request_timeout_returns_408_without_template() {
+    async fn request_timeout_returns_408_without_template() -> anyhow::Result<()> {
         let error = ApiError::RequestTimeout {
             app_name: "myapp".to_string(),
             template_name: None,
         };
-        let (status, body) = status_and_body(error).await;
+        let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
         assert_eq!(body["type"], "about:blank");
         assert_eq!(body["title"], "Request Timeout");
         assert_eq!(body["status"], 408);
         assert_eq!(body["detail"], "Request timed out");
+        Ok(())
     }
 }

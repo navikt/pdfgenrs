@@ -60,19 +60,18 @@ mod imp {
     }
 
     #[cfg(test)]
-    #[allow(clippy::unwrap_used, clippy::expect_used)]
     mod tests {
         use super::*;
+        use anyhow::anyhow;
         use axum::http::{HeaderValue, Method, Uri, Version};
         use opentelemetry::propagation::TextMapPropagator;
         use opentelemetry::trace::TraceContextExt;
         use opentelemetry_sdk::propagation::TraceContextPropagator;
 
         #[test]
-        fn header_extractor_reads_valid_headers_and_skips_non_utf8_values() {
+        fn header_extractor_reads_valid_headers_and_skips_non_utf8_values() -> anyhow::Result<()> {
             let mut headers = HeaderMap::new();
-            let invalid_header =
-                HeaderValue::from_bytes(b"\xFF").expect("expected opaque header value");
+            let invalid_header = HeaderValue::from_bytes(b"\xFF")?;
             headers.insert(
                 "traceparent",
                 HeaderValue::from_static("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"),
@@ -90,6 +89,7 @@ mod imp {
             let keys = extractor.keys();
             assert!(keys.contains(&"traceparent"));
             assert!(keys.contains(&"x-invalid"));
+            Ok(())
         }
 
         #[test]
@@ -107,8 +107,8 @@ mod imp {
         }
 
         #[test]
-        fn make_otel_span_creates_http_request_span() {
-            let request_result = Request::builder()
+        fn make_otel_span_creates_http_request_span() -> anyhow::Result<()> {
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(Uri::from_static("/api/v1/genpdf"))
                 .version(Version::HTTP_11)
@@ -116,14 +116,16 @@ mod imp {
                     "traceparent",
                     "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
                 )
-                .body(Body::empty());
-            let request = request_result.expect("expected valid request");
+                .body(Body::empty())?;
 
             let span = make_otel_span(&request);
-            let metadata = span.metadata().expect("expected span metadata");
+            let metadata = span
+                .metadata()
+                .ok_or_else(|| anyhow!("expected span metadata"))?;
 
             assert_eq!(metadata.name(), "HTTP request");
             assert_eq!(metadata.level(), &tracing::Level::INFO);
+            Ok(())
         }
 
         #[test]

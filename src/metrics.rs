@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::time::Instant;
 
 use axum::{body::Body, extract::MatchedPath, http::Request, middleware::Next, response::Response};
@@ -7,12 +8,11 @@ use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 /// Installs the global Prometheus metrics recorder and returns a handle for rendering.
 ///
 /// Must be called once at application startup before any metrics are recorded.
-#[allow(clippy::expect_used)]
-pub fn setup_metrics_recorder() -> PrometheusHandle {
+pub fn setup_metrics_recorder() -> anyhow::Result<PrometheusHandle> {
     let builder = PrometheusBuilder::new();
     builder
         .install_recorder()
-        .expect("Failed to install Prometheus recorder")
+        .context("Failed to install Prometheus recorder")
 }
 
 /// Creates a [`PrometheusHandle`] without installing a global recorder.
@@ -50,12 +50,18 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use axum::http::StatusCode;
     use axum::{Router, middleware, routing::get};
     use axum_test::TestServer;
+
+    fn build_runtime() -> anyhow::Result<tokio::runtime::Runtime> {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .context("failed to build runtime")
+    }
 
     async fn handler() -> StatusCode {
         StatusCode::OK
@@ -73,14 +79,11 @@ mod tests {
     }
 
     #[test]
-    fn records_request_counter_with_correct_labels() {
+    fn records_request_counter_with_correct_labels() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("failed to build runtime");
+            let rt = build_runtime()?;
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/hello").await;
@@ -102,19 +105,19 @@ mod tests {
                     output.contains(r#"status="200""#),
                     "expected status=200 label: {output}"
                 );
-            });
-        });
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok::<(), anyhow::Error>(())
     }
 
     #[test]
-    fn records_histogram_with_correct_labels() {
+    fn records_histogram_with_correct_labels() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("failed to build runtime");
+            let rt = build_runtime()?;
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/hello").await;
@@ -124,19 +127,19 @@ mod tests {
                     output.contains("http_request_duration_seconds"),
                     "expected http_request_duration_seconds in output: {output}"
                 );
-            });
-        });
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok::<(), anyhow::Error>(())
     }
 
     #[test]
-    fn records_non_200_status_label() {
+    fn records_non_200_status_label() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("failed to build runtime");
+            let rt = build_runtime()?;
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/missing").await;
@@ -146,19 +149,19 @@ mod tests {
                     output.contains(r#"status="404""#),
                     "expected status=404 label: {output}"
                 );
-            });
-        });
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok::<(), anyhow::Error>(())
     }
 
     #[test]
-    fn unknown_path_when_no_matched_path() {
+    fn unknown_path_when_no_matched_path() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("failed to build runtime");
+            let rt = build_runtime()?;
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/nonexistent").await;
@@ -168,19 +171,19 @@ mod tests {
                     output.contains(r#"path="unknown""#),
                     "expected path=unknown for unmatched route: {output}"
                 );
-            });
-        });
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok::<(), anyhow::Error>(())
     }
 
     #[test]
-    fn counter_increments_on_multiple_requests() {
+    fn counter_increments_on_multiple_requests() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("failed to build runtime");
+            let rt = build_runtime()?;
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/hello").await;
@@ -197,10 +200,14 @@ mod tests {
                     matching_line.is_some(),
                     "http_requests_total metric line not found in output: {output}"
                 );
-                let line =
-                    matching_line.expect("matching metric line should exist after assertion");
+                let Some(line) = matching_line else {
+                    anyhow::bail!("matching metric line should exist after assertion");
+                };
                 assert!(line.ends_with(" 3"), "expected counter value 3: {line}");
-            });
-        });
+                Ok::<_, anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok(())
     }
 }
