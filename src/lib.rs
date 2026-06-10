@@ -95,3 +95,55 @@ async fn fallback_handler(State(state): State<AppState>) -> impl IntoResponse {
 
     (StatusCode::NOT_FOUND, body)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use axum::http::StatusCode;
+    use axum_test::TestServer;
+
+    use super::*;
+    use crate::testutil::make_state;
+
+    #[tokio::test]
+    async fn fallback_returns_404_with_template_list() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("appa".to_string(), "doc".to_string()),
+            "Hello\n".to_string(),
+        );
+        templates.insert(
+            ("appb".to_string(), "letter".to_string()),
+            "World\n".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let metrics_handle = metrics::test_metrics_handle();
+        let router = build_router(state, metrics_handle);
+        let server = TestServer::new(router);
+
+        let response = server.get("/nonexistent/path").await;
+
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        let body = response.text();
+        assert!(body.contains("Unknown path. Known templates:"));
+        assert!(body.contains("appa/doc"));
+        assert!(body.contains("appb/letter"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn fallback_returns_404_with_empty_template_list() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let metrics_handle = metrics::test_metrics_handle();
+        let router = build_router(state, metrics_handle);
+        let server = TestServer::new(router);
+
+        let response = server.get("/does-not-exist").await;
+
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        let body = response.text();
+        assert!(body.contains("Unknown path. Known templates:"));
+        Ok(())
+    }
+}
