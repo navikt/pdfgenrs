@@ -62,3 +62,8 @@ unsafe_op_in_unsafe_fn = "warn"
 [lints.clippy]
 unwrap_used = "warn"
 expect_used = "warn"
+panic = "warn"
+todo = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
