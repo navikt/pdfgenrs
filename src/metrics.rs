@@ -197,7 +197,8 @@ mod tests {
                     matching_line.is_some(),
                     "http_requests_total metric line not found in output: {output}"
                 );
-                let line = matching_line.expect("matching metric line should exist after assertion");
+                let line =
+                    matching_line.expect("matching metric line should exist after assertion");
                 assert!(line.ends_with(" 3"), "expected counter value 3: {line}");
             });
         });
