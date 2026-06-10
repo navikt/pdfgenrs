@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781096751876,
+  "lastUpdate": 1781096756638,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -575,6 +575,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 645345,
             "range": "± 13813",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "31866e0d6f91713c13f19686e5fdaa0b52511bde",
+          "message": "Merge pull request #265 from navikt/copilot/add-rfc-9457-uris\n\nImplementing RFC 9457 problem type URIs",
+          "timestamp": "2026-06-10T15:00:54+02:00",
+          "tree_id": "94e05931cb6e15e57a4b8837ce61fa98929a0ae5",
+          "url": "https://github.com/navikt/pdfgenrs/commit/31866e0d6f91713c13f19686e5fdaa0b52511bde"
+        },
+        "date": 1781096750522,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 848205,
+            "range": "± 33717",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1076490,
+            "range": "± 22725",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167356495,
+            "range": "± 851252",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 677149,
+            "range": "± 12595",
             "unit": "ns/iter"
           }
         ]
