@@ -60,6 +60,7 @@ mod imp {
     }
 
     #[cfg(test)]
+    #[allow(clippy::unwrap_used, clippy::expect_used)]
     mod tests {
         use super::*;
         use axum::http::{HeaderValue, Method, Uri, Version};
@@ -70,10 +71,8 @@ mod imp {
         #[test]
         fn header_extractor_reads_valid_headers_and_skips_non_utf8_values() {
             let mut headers = HeaderMap::new();
-            let invalid_header = match HeaderValue::from_bytes(b"\xFF") {
-                Ok(value) => value,
-                Err(error) => panic!("expected opaque header value: {error}"),
-            };
+            let invalid_header =
+                HeaderValue::from_bytes(b"\xFF").expect("expected opaque header value");
             headers.insert(
                 "traceparent",
                 HeaderValue::from_static("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"),
@@ -118,16 +117,10 @@ mod imp {
                     "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
                 )
                 .body(Body::empty());
-            let request = match request_result {
-                Ok(request) => request,
-                Err(error) => panic!("expected valid request: {error}"),
-            };
+            let request = request_result.expect("expected valid request");
 
             let span = make_otel_span(&request);
-            let metadata = match span.metadata() {
-                Some(metadata) => metadata,
-                None => panic!("expected span metadata"),
-            };
+            let metadata = span.metadata().expect("expected span metadata");
 
             assert_eq!(metadata.name(), "HTTP request");
             assert_eq!(metadata.level(), &tracing::Level::INFO);

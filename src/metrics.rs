@@ -7,11 +7,12 @@ use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 /// Installs the global Prometheus metrics recorder and returns a handle for rendering.
 ///
 /// Must be called once at application startup before any metrics are recorded.
+#[allow(clippy::expect_used)]
 pub fn setup_metrics_recorder() -> PrometheusHandle {
     let builder = PrometheusBuilder::new();
     builder
         .install_recorder()
-        .unwrap_or_else(|e| panic!("Failed to install Prometheus recorder: {e}"))
+        .expect("Failed to install Prometheus recorder")
 }
 
 /// Creates a [`PrometheusHandle`] without installing a global recorder.
@@ -49,6 +50,7 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use axum::http::StatusCode;
@@ -78,7 +80,7 @@ mod tests {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap_or_else(|e| panic!("failed to build runtime: {e}"));
+                .expect("failed to build runtime");
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/hello").await;
@@ -112,7 +114,7 @@ mod tests {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap_or_else(|e| panic!("failed to build runtime: {e}"));
+                .expect("failed to build runtime");
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/hello").await;
@@ -134,7 +136,7 @@ mod tests {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap_or_else(|e| panic!("failed to build runtime: {e}"));
+                .expect("failed to build runtime");
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/missing").await;
@@ -156,7 +158,7 @@ mod tests {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap_or_else(|e| panic!("failed to build runtime: {e}"));
+                .expect("failed to build runtime");
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/nonexistent").await;
@@ -178,7 +180,7 @@ mod tests {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap_or_else(|e| panic!("failed to build runtime: {e}"));
+                .expect("failed to build runtime");
             rt.block_on(async {
                 let server = TestServer::new(test_app());
                 server.get("/hello").await;
@@ -186,16 +188,17 @@ mod tests {
                 server.get("/hello").await;
 
                 let output = handle.render();
-                for line in output.lines() {
-                    if line.starts_with("http_requests_total{")
+                let matching_line = output.lines().find(|line| {
+                    line.starts_with("http_requests_total{")
                         && line.contains(r#"path="/hello""#)
                         && line.contains(r#"status="200""#)
-                    {
-                        assert!(line.ends_with(" 3"), "expected counter value 3: {line}");
-                        return;
-                    }
-                }
-                panic!("http_requests_total metric line not found in output: {output}");
+                });
+                assert!(
+                    matching_line.is_some(),
+                    "http_requests_total metric line not found in output: {output}"
+                );
+                let line = matching_line.expect("matching metric line should exist after assertion");
+                assert!(line.ends_with(" 3"), "expected counter value 3: {line}");
             });
         });
     }
