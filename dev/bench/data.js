@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781094568125,
+  "lastUpdate": 1781096751876,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -527,6 +527,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 582103,
             "range": "± 20444",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d30f32c2fb3db09f175ae2ac6c5631b605043449",
+          "message": "Merge pull request #266 from navikt/copilot/add-request-response-size-metrics\n\nAdd request/response body size histogram metrics",
+          "timestamp": "2026-06-10T15:01:08+02:00",
+          "tree_id": "632e369aa35a1709c3d2bdeab1fc35143ef27955",
+          "url": "https://github.com/navikt/pdfgenrs/commit/d30f32c2fb3db09f175ae2ac6c5631b605043449"
+        },
+        "date": 1781096748540,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 809458,
+            "range": "± 8302",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1033813,
+            "range": "± 12267",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1177614051,
+            "range": "± 1048436",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 645345,
+            "range": "± 13813",
             "unit": "ns/iter"
           }
         ]
