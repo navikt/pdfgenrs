@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780923869022,
+  "lastUpdate": 1781089488406,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -431,6 +431,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 629655,
             "range": "± 8385",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "91937e1910d97ca4721b763afac2b4c60080e5e0",
+          "message": "Merge pull request #264 from navikt/copilot/check-unit-tests-coverage\n\nAdd unit tests for compile_blocking timeout, semaphore concurrency, and fallback handler",
+          "timestamp": "2026-06-10T13:00:12+02:00",
+          "tree_id": "790e618f773e52f45b33861105afd80c72efd070",
+          "url": "https://github.com/navikt/pdfgenrs/commit/91937e1910d97ca4721b763afac2b4c60080e5e0"
+        },
+        "date": 1781089485899,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 799214,
+            "range": "± 6068",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1063354,
+            "range": "± 22028",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168986293,
+            "range": "± 789306",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 620479,
+            "range": "± 17845",
             "unit": "ns/iter"
           }
         ]
