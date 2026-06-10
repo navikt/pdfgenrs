@@ -73,17 +73,21 @@ pub(crate) fn lookup_template_with_data(
 }
 
 /// Acquires a compilation semaphore permit if a limit is configured.
-/// When no semaphore is set (unlimited mode), returns `None` immediately.
-pub(crate) async fn acquire_compile_permit(state: &AppState) -> Option<OwnedSemaphorePermit> {
+/// When no semaphore is set (unlimited mode), returns `Ok(None)` immediately.
+/// Returns `Err(ApiError::ServiceOverloaded)` if the permit cannot be acquired
+/// within the configured timeout.
+pub(crate) async fn acquire_compile_permit(
+    state: &AppState,
+) -> Result<Option<OwnedSemaphorePermit>, ApiError> {
     if let Some(ref semaphore) = state.compile_semaphore {
-        Some(
-            Arc::clone(semaphore)
-                .acquire_owned()
-                .await
-                .unwrap_or_else(|_| unreachable!("semaphore is never closed")),
-        )
+        let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
+        match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
+            Ok(Ok(permit)) => Ok(Some(permit)),
+            Ok(Err(_)) => unreachable!("semaphore is never closed"),
+            Err(_elapsed) => Err(ApiError::ServiceOverloaded),
+        }
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -102,7 +106,7 @@ where
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state).await;
+    let permit = acquire_compile_permit(state).await?;
 
     let result = tokio::time::timeout(
         timeout_duration,
@@ -217,6 +221,49 @@ mod tests {
         };
         assert_eq!(value, 42);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_returns_503_when_semaphore_acquire_times_out() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 10;
+        state.config.semaphore_acquire_timeout_seconds = 1;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let state1 = state.clone();
+        let task1 = tokio::spawn(async move {
+            compile_blocking(&state1, "app".to_string(), None, move || {
+                started_tx.send(()).ok();
+                rx.blocking_recv().ok();
+                Ok(42)
+            })
+            .await
+        });
+
+        started_rx
+            .await
+            .context("failed to receive task1 start signal")?;
+
+        let result: Result<(), _> =
+            compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
+
+        assert!(result.is_err());
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected compile_blocking to return ServiceOverloaded"),
+            Err(err) => err,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::SERVICE_UNAVAILABLE
+        );
+
+        tx.send(()).ok();
+        let _ = task1.await.context("task1 join error")?;
         Ok(())
     }
 }
