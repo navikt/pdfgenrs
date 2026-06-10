@@ -68,11 +68,11 @@ fn current_trace_id() -> Option<String> {
 
 /// Builds an RFC 9457 Problem Details JSON response.
 ///
-/// The `type` member is always `"about:blank"` which signals that the `title`
-/// carries the same semantics as the HTTP status phrase (§4.2.1 of RFC 9457).
-fn problem_response(status: StatusCode, detail: &str) -> Response {
+/// The `type` member is a machine-readable URI identifying the problem type,
+/// allowing clients to programmatically distinguish error categories.
+fn problem_response(status: StatusCode, problem_type: &str, detail: &str) -> Response {
     let mut body = serde_json::json!({
-        "type": "about:blank",
+        "type": problem_type,
         "title": status.canonical_reason().unwrap_or("Error"),
         "status": status.as_u16(),
         "detail": detail,
@@ -96,9 +96,11 @@ fn problem_response(status: StatusCode, detail: &str) -> Response {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
-            Self::NotFound => {
-                problem_response(StatusCode::NOT_FOUND, "Template or application not found")
-            }
+            Self::NotFound => problem_response(
+                StatusCode::NOT_FOUND,
+                "urn:pdfgenrs:error:not-found",
+                "Template or application not found",
+            ),
             Self::GenerationFailed {
                 ref app_name,
                 ref template_name,
@@ -109,11 +111,17 @@ impl IntoResponse for ApiError {
                 } else {
                     error!(app_name = %app_name, error = %source, "Document generation failed");
                 }
-                problem_response(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+                problem_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "urn:pdfgenrs:error:generation-failed",
+                    "Internal server error",
+                )
             }
-            Self::UnsupportedMediaType => {
-                problem_response(StatusCode::UNSUPPORTED_MEDIA_TYPE, "Unsupported media type")
-            }
+            Self::UnsupportedMediaType => problem_response(
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "urn:pdfgenrs:error:unsupported-media-type",
+                "Unsupported media type",
+            ),
             Self::RequestTimeout {
                 ref app_name,
                 ref template_name,
@@ -123,7 +131,11 @@ impl IntoResponse for ApiError {
                 } else {
                     error!(app_name = %app_name, "Compilation timed out");
                 }
-                problem_response(StatusCode::REQUEST_TIMEOUT, "Request timed out")
+                problem_response(
+                    StatusCode::REQUEST_TIMEOUT,
+                    "urn:pdfgenrs:error:timeout",
+                    "Request timed out",
+                )
             }
         }
     }
@@ -161,7 +173,7 @@ mod tests {
     async fn not_found_returns_404() -> anyhow::Result<()> {
         let (status, body) = status_and_body(ApiError::NotFound).await?;
         assert_eq!(status, StatusCode::NOT_FOUND);
-        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["type"], "urn:pdfgenrs:error:not-found");
         assert_eq!(body["title"], "Not Found");
         assert_eq!(body["status"], 404);
         assert_eq!(body["detail"], "Template or application not found");
@@ -177,7 +189,7 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["type"], "urn:pdfgenrs:error:generation-failed");
         assert_eq!(body["title"], "Internal Server Error");
         assert_eq!(body["status"], 500);
         assert_eq!(body["detail"], "Internal server error");
@@ -193,7 +205,7 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["type"], "urn:pdfgenrs:error:generation-failed");
         assert_eq!(body["title"], "Internal Server Error");
         assert_eq!(body["status"], 500);
         assert_eq!(body["detail"], "Internal server error");
@@ -204,7 +216,7 @@ mod tests {
     async fn unsupported_media_type_returns_415() -> anyhow::Result<()> {
         let (status, body) = status_and_body(ApiError::UnsupportedMediaType).await?;
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
-        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["type"], "urn:pdfgenrs:error:unsupported-media-type");
         assert_eq!(body["title"], "Unsupported Media Type");
         assert_eq!(body["status"], 415);
         assert_eq!(body["detail"], "Unsupported media type");
@@ -219,7 +231,7 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
-        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["type"], "urn:pdfgenrs:error:timeout");
         assert_eq!(body["title"], "Request Timeout");
         assert_eq!(body["status"], 408);
         assert_eq!(body["detail"], "Request timed out");
@@ -234,7 +246,7 @@ mod tests {
         };
         let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
-        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["type"], "urn:pdfgenrs:error:timeout");
         assert_eq!(body["title"], "Request Timeout");
         assert_eq!(body["status"], 408);
         assert_eq!(body["detail"], "Request timed out");
