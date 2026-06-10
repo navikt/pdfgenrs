@@ -337,6 +337,7 @@ cargo clippy --all-targets -- -D warnings
 cargo build
 cargo test
 cargo bench --bench performance
+cargo bench --bench criterion_bench
 cargo run
 ```
 
