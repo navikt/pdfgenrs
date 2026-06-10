@@ -88,8 +88,12 @@ pub async fn post_html(
 }
 
 fn html_response(html: String) -> Response {
+    let content_length = html.len().to_string();
     (
-        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        [
+            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            (header::CONTENT_LENGTH, content_length.as_str()),
+        ],
         Body::from(html),
     )
         .into_response()

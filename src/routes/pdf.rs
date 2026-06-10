@@ -135,10 +135,12 @@ pub async fn post_pdf_from_image(
 }
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
+    let content_length = pdf_bytes.len().to_string();
     (
         [
             (header::CONTENT_TYPE, "application/pdf"),
             (header::CONTENT_DISPOSITION, "inline"),
+            (header::CONTENT_LENGTH, content_length.as_str()),
         ],
         Bytes::from(pdf_bytes),
     )
