@@ -10,10 +10,7 @@ use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let tracer_provider = tracing_setup::setup_tracing().map_err(|e| {
-        eprintln!("Failed to initialise tracing: {e}");
-        e
-    })?;
+    let tracer_provider = tracing_setup::setup_tracing().context("Failed to initialise tracing")?;
 
     let cfg = config::Config::default();
 
@@ -101,7 +98,7 @@ async fn main() -> Result<()> {
         compile_semaphore,
     };
 
-    let metrics_handle = metrics::setup_metrics_recorder();
+    let metrics_handle = metrics::setup_metrics_recorder()?;
 
     let app = build_router(state, metrics_handle);
 

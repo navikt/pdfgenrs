@@ -253,6 +253,7 @@ fn setup_tracing_with(
 }
 
 #[cfg(test)]
+#[allow(clippy::panic)]
 mod tests {
     use super::*;
     use serde_json::Value;

@@ -36,6 +36,7 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::anyhow;
     use axum::http::StatusCode;
     use axum::{Router, middleware, routing::get};
     use axum_test::TestServer;
@@ -51,26 +52,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn generates_request_id_when_not_provided() {
+    async fn generates_request_id_when_not_provided() -> anyhow::Result<()> {
         let server = TestServer::new(test_app());
         let response = server.get("/").await;
         assert_eq!(response.status_code(), StatusCode::OK);
-        let header = match response.headers().get("x-request-id") {
-            Some(v) => v,
-            None => panic!("expected x-request-id header in response"),
-        };
-        let value = match header.to_str() {
-            Ok(v) => v,
-            Err(e) => panic!("expected valid header value: {e}"),
-        };
+        let header = response
+            .headers()
+            .get("x-request-id")
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
         assert!(
             Uuid::parse_str(value).is_ok(),
             "expected valid UUID, got: {value}"
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn propagates_request_id_from_request() {
+    async fn propagates_request_id_from_request() -> anyhow::Result<()> {
         let server = TestServer::new(test_app());
         let response = server
             .get("/")
@@ -80,14 +79,12 @@ mod tests {
             )
             .await;
         assert_eq!(response.status_code(), StatusCode::OK);
-        let header = match response.headers().get("x-request-id") {
-            Some(v) => v,
-            None => panic!("expected x-request-id header in response"),
-        };
-        let value = match header.to_str() {
-            Ok(v) => v,
-            Err(e) => panic!("expected valid header value: {e}"),
-        };
+        let header = response
+            .headers()
+            .get("x-request-id")
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
         assert_eq!(value, "my-custom-id");
+        Ok(())
     }
 }

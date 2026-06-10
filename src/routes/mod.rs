@@ -133,12 +133,12 @@ where
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
     use std::time::Duration;
 
+    use anyhow::Context;
     use tokio::sync::Semaphore;
 
     use super::compile_blocking;
@@ -161,7 +161,10 @@ mod tests {
         .await;
 
         assert!(result.is_err());
-        let err = result.unwrap_err();
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected compile_blocking to time out"),
+            Err(err) => err,
+        };
         let response = axum::response::IntoResponse::into_response(err);
         assert_eq!(response.status(), axum::http::StatusCode::REQUEST_TIMEOUT);
         Ok(())
@@ -188,7 +191,9 @@ mod tests {
             .await
         });
 
-        started_rx.await.unwrap();
+        started_rx
+            .await
+            .context("failed to receive task1 start signal")?;
 
         let task2 = tokio::spawn(async move {
             tokio::time::timeout(
@@ -198,15 +203,19 @@ mod tests {
             .await
         });
 
-        let task2_result = task2.await.unwrap();
+        let task2_result = task2.await.context("task2 join error")?;
         assert!(
             task2_result.is_err(),
             "Expected task2 to time out while task1 holds the semaphore"
         );
 
         tx.send(()).ok();
-        let task1_result = task1.await.unwrap();
-        assert_eq!(task1_result.unwrap(), 42);
+        let task1_result = task1.await.context("task1 join error")?;
+        let value = match task1_result {
+            Ok(value) => value,
+            Err(error) => anyhow::bail!("task1 failed: {error:?}"),
+        };
+        assert_eq!(value, 42);
 
         Ok(())
     }
