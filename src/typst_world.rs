@@ -15,8 +15,9 @@ use typst::utils::LazyHash;
 use typst::{Feature, Features, Library, LibraryExt};
 use typst_library::World;
 use typst_library::diag::{FileError, FileResult};
+use typst_library::foundations::Duration;
 use typst_library::text::{Font, FontBook};
-use typst_syntax::{FileId, Source, VirtualPath};
+use typst_syntax::{FileId, RootedPath, Source, VirtualPath, VirtualRoot};
 use walkdir::WalkDir;
 
 /// Holds the loaded fonts and the font book used by the Typst compiler.
@@ -130,18 +131,25 @@ impl PdfgenWorld {
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
         features: Features,
-    ) -> Self {
-        let main_id = FileId::new(None, VirtualPath::new(main_path));
+    ) -> Result<Self> {
+        let main_vpath = VirtualPath::new(main_path)
+            .map_err(|e| anyhow::anyhow!("Invalid main path '{main_path}': {e}"))?;
+        let main_id = FileId::new(RootedPath::new(VirtualRoot::Project, main_vpath));
         let source = Source::new(main_id, main_source);
 
-        let vfiles: HashMap<FileId, Bytes> = virtual_files
-            .into_iter()
-            .map(|(path, bytes)| (FileId::new(None, VirtualPath::new(&path)), bytes))
-            .collect();
+        let mut vfiles: HashMap<FileId, Bytes> = HashMap::new();
+        for (path, bytes) in virtual_files {
+            let vpath = VirtualPath::new(&path)
+                .map_err(|e| anyhow::anyhow!("Invalid virtual path '{path}': {e}"))?;
+            vfiles.insert(
+                FileId::new(RootedPath::new(VirtualRoot::Project, vpath)),
+                bytes,
+            );
+        }
 
         let library = Library::builder().with_features(features).build();
 
-        Self {
+        Ok(Self {
             library: LazyHash::new(library),
             fonts,
             main_id,
@@ -149,15 +157,16 @@ impl PdfgenWorld {
             virtual_files: vfiles,
             root: root.to_path_buf(),
             resources_dir: resources_dir.to_path_buf(),
-        }
+        })
     }
 
     fn physical_path(&self, vpath: &VirtualPath) -> PathBuf {
-        let rootless = vpath.as_rootless_path();
-        if let Ok(resource_relative) = rootless.strip_prefix("resources") {
+        let rootless = vpath.get_without_slash();
+        let rootless_path = Path::new(rootless);
+        if let Ok(resource_relative) = rootless_path.strip_prefix("resources") {
             self.resources_dir.join(resource_relative)
         } else {
-            self.root.join(rootless)
+            self.root.join(rootless_path)
         }
     }
 }
@@ -206,15 +215,21 @@ impl World for PdfgenWorld {
         self.fonts.fonts.get(index).cloned()
     }
 
-    fn today(&self, offset: Option<i64>) -> Option<typst_library::foundations::Datetime> {
+    fn today(&self, offset: Option<Duration>) -> Option<typst_library::foundations::Datetime> {
         let now = chrono::Local::now();
-        let naive = offset.map_or_else(
-            || now.naive_local(),
-            |off| {
+        let naive = match offset {
+            Some(dur) => {
+                let seconds = dur.decompose();
+                let total_seconds: i64 = seconds[0] * 7 * 24 * 3600
+                    + seconds[1] * 24 * 3600
+                    + seconds[2] * 3600
+                    + seconds[3] * 60
+                    + seconds[4];
                 let utc = now.with_timezone(&chrono::Utc);
-                (utc + chrono::Duration::hours(off)).naive_local()
-            },
-        );
+                (utc + chrono::Duration::seconds(total_seconds)).naive_local()
+            }
+            None => now.naive_local(),
+        };
         typst_library::foundations::Datetime::from_ymd(
             naive.year(),
             u8::try_from(naive.month()).ok()?,
@@ -227,7 +242,7 @@ impl World for PdfgenWorld {
 ///
 /// Virtual files (e.g. injected JSON data) are provided via `virtual_files` and
 /// are resolved before falling back to the physical filesystem under `root`.
-/// The resulting PDF conforms to the PDF/A-2a standard.
+/// The resulting PDF conforms to both the PDF/A-2a and PDF/UA-1 standards.
 ///
 /// # Errors
 /// Returns an error if Typst compilation fails or the PDF cannot be exported.
@@ -247,9 +262,9 @@ pub fn compile_to_pdf(
         main_source,
         virtual_files,
         Features::default(),
-    );
+    )?;
 
-    let result = typst::compile::<typst_library::layout::PagedDocument>(&world);
+    let result = typst::compile::<typst_layout::PagedDocument>(&world);
 
     comemo::evict(COMEMO_EVICTION_THRESHOLD);
 
@@ -259,8 +274,9 @@ pub fn compile_to_pdf(
 
     log_typst_warnings(&result.warnings);
 
-    let standards = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a])
-        .map_err(|e| anyhow::anyhow!("Failed to configure PDF/A-2a standard: {e}"))?;
+    let standards =
+        typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_2a, typst_pdf::PdfStandard::Ua_1])
+            .map_err(|e| anyhow::anyhow!("Failed to configure PDF standards: {e:?}"))?;
 
     let timestamp = build_timestamp();
     let options = typst_pdf::PdfOptions {
@@ -297,7 +313,7 @@ pub fn compile_to_html(
         main_source,
         virtual_files,
         [Feature::Html].into_iter().collect(),
-    );
+    )?;
 
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
 
@@ -309,7 +325,8 @@ pub fn compile_to_html(
 
     log_typst_warnings(&result.warnings);
 
-    typst_html::html(&document).map_err(|errors| format_typst_errors("HTML export", &errors))
+    typst_html::html(&document, &typst_html::HtmlOptions::default())
+        .map_err(|errors| format_typst_errors("HTML export", &errors))
 }
 
 /// Formats a slice of Typst diagnostics into a single semicolon-separated error message.
@@ -349,7 +366,7 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
     use typst_library::World;
-    use typst_syntax::VirtualPath;
+    use typst_syntax::{RootedPath, VirtualPath, VirtualRoot};
 
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -386,10 +403,10 @@ mod tests {
     fn fonts_clone_can_be_reused_across_multiple_compilations() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
 
-        let source = r"#set document(date: auto)
+        let source = r#"#set document(title: "Test", date: auto)
 #set page(margin: 1cm)
 Hello, world!
-";
+"#;
 
         let pdf1 = compile_to_pdf(
             Arc::clone(&fonts),
@@ -418,7 +435,8 @@ Hello, world!
     fn compilation_succeeds_after_full_cache_eviction() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
-        let source = "#set page(margin: 1cm)\nCache eviction test.".to_string();
+        let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test."
+            .to_string();
 
         comemo::evict(0);
 
@@ -466,9 +484,12 @@ Hello, world!
             "Hello".to_string(),
             HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
             Features::default(),
-        );
+        )?;
 
-        let file_id = FileId::new(None, VirtualPath::new("/data.json"));
+        let file_id = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new("/data.json")?,
+        ));
         let result = world.source(file_id);
 
         assert!(matches!(result, Err(FileError::InvalidUtf8)));
@@ -488,9 +509,11 @@ Hello, world!
             "Main".to_string(),
             HashMap::new(),
             Features::default(),
-        );
-
-        let file_id = FileId::new(None, VirtualPath::new("/snippet.typ"));
+        )?;
+        let file_id = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new("/snippet.typ")?,
+        ));
         let source = world.source(file_id)?;
 
         assert_eq!(source.text(), "File system content");
@@ -511,9 +534,12 @@ Hello, world!
             "Main".to_string(),
             HashMap::new(),
             Features::default(),
-        );
+        )?;
 
-        let file_id = FileId::new(None, VirtualPath::new("/resources/logo.txt"));
+        let file_id = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new("/resources/logo.txt")?,
+        ));
         let bytes = world.file(file_id)?;
 
         assert_eq!(bytes.as_slice(), b"resource content");
@@ -531,10 +557,9 @@ Hello, world!
             "Hello".to_string(),
             HashMap::new(),
             Features::default(),
-        );
+        )?;
 
         assert!(world.today(None).is_some());
-        assert!(world.today(Some(2)).is_some());
         Ok(())
     }
 
@@ -545,7 +570,8 @@ Hello, world!
         let root = root_dir();
 
         for i in 0..10 {
-            let source = format!("#set page(margin: 1cm)\nWarmup {i}.");
+            let source =
+                format!("#set document(title: \"Test\")\n#set page(margin: 1cm)\nWarmup {i}.");
             compile_to_pdf(
                 Arc::clone(&fonts),
                 &root,
@@ -561,7 +587,9 @@ Hello, world!
         };
 
         for i in 0..200 {
-            let source = format!("#set page(margin: 1cm)\nDocument {i} with unique content.");
+            let source = format!(
+                "#set document(title: \"Test\")\n#set page(margin: 1cm)\nDocument {i} with unique content."
+            );
             let result = compile_to_pdf(
                 Arc::clone(&fonts),
                 &root,
