@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781166435466,
+  "lastUpdate": 1781166449296,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -911,6 +911,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 692393,
             "range": "± 18598",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0fa34652a046a2d60d1ddecf559b1a8276610408",
+          "message": "Merge pull request #274 from navikt/MikAoJk-patch-1\n\nRemove obsolete font aliases from HTML_FONT_ALIASES",
+          "timestamp": "2026-06-11T10:24:06+02:00",
+          "tree_id": "4d4b96a3d0e6333a303f358aef83571fbe679811",
+          "url": "https://github.com/navikt/pdfgenrs/commit/0fa34652a046a2d60d1ddecf559b1a8276610408"
+        },
+        "date": 1781166446568,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 749377,
+            "range": "± 40864",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1056822,
+            "range": "± 25926",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168466850,
+            "range": "± 695974",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 578448,
+            "range": "± 15686",
             "unit": "ns/iter"
           }
         ]
