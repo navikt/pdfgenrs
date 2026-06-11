@@ -5,7 +5,7 @@
 [![Build main](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml)
 ![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
-`pdfgenrs` is a Rust application for generating PDFs through an API.
+`pdfgenrs` is a Rust application for generating PDFs through an API. It supports both PDF/A-2a and PDF/UA-1.
 
 ## Table of contents
 
