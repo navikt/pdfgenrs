@@ -3,7 +3,7 @@ use ironpress::HtmlConverter;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
-use tracing::debug;
+use tracing::warn;
 use typst::foundations::Bytes;
 
 use crate::typst_world::{self, Fonts};
@@ -39,7 +39,7 @@ fn load_font_aliases(fonts_dir: &Path) -> &'static [(&'static str, Vec<u8>)] {
                     loaded.push((*family, font_bytes));
                 }
                 Err(error) => {
-                    debug!(
+                    warn!(
                         font_path = %font_path.display(),
                         font_family = family,
                         "Failed to load HTML font alias: {error}"
