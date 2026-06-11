@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781165473213,
+  "lastUpdate": 1781166435466,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -863,6 +863,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 675871,
             "range": "± 12093",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "584c0fd5f5f61707ad80c116e916a9a9580584bf",
+          "message": "Merge pull request #276 from navikt/revert-273-copilot/drop-failed-load-font-log\n\nRevert \"Downgrade font alias file-not-found log from warn to debug\"",
+          "timestamp": "2026-06-11T10:23:41+02:00",
+          "tree_id": "19dc1f7599cc416fc5ed0250a3edb1107b907345",
+          "url": "https://github.com/navikt/pdfgenrs/commit/584c0fd5f5f61707ad80c116e916a9a9580584bf"
+        },
+        "date": 1781166432460,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 855079,
+            "range": "± 73941",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1095226,
+            "range": "± 61204",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1166925326,
+            "range": "± 444119",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 692393,
+            "range": "± 18598",
             "unit": "ns/iter"
           }
         ]
