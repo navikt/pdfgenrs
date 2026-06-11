@@ -9,9 +9,6 @@ use typst::foundations::Bytes;
 use crate::typst_world::{self, Fonts};
 
 const HTML_FONT_ALIASES: &[(&str, &str)] = &[
-    ("Source Sans Pro", "SourceSans3-Regular.ttf"),
-    ("Source Sans Pro__bold", "SourceSans3-Bold.ttf"),
-    ("Source Sans Pro__italic", "SourceSans3-Italic.ttf"),
     ("Source Sans 3", "SourceSans3-Regular.ttf"),
     ("Source Sans 3__bold", "SourceSans3-Bold.ttf"),
     ("Source Sans 3__italic", "SourceSans3-Italic.ttf"),
