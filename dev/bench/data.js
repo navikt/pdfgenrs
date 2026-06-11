@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781166449296,
+  "lastUpdate": 1781172453672,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -959,6 +959,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 578448,
             "range": "± 15686",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd47be8606e59e5f94196bb81fa4d13dd2f92e08",
+          "message": "Merge pull request #277 from navikt/copilot/support-pdfa-2a-pdfua-1\n\nfeat: support both PDF/A-2a and PDF/UA-1 by upgrading typst to 0.15.0-rc.1",
+          "timestamp": "2026-06-11T11:59:03+02:00",
+          "tree_id": "b801370851fdab923e377bef8a4f4e212b2305a9",
+          "url": "https://github.com/navikt/pdfgenrs/commit/dd47be8606e59e5f94196bb81fa4d13dd2f92e08"
+        },
+        "date": 1781172449454,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 868280,
+            "range": "± 23746",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1078017,
+            "range": "± 12515",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1166783835,
+            "range": "± 862480",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 772549,
+            "range": "± 5730",
             "unit": "ns/iter"
           }
         ]
