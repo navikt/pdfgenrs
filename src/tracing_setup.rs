@@ -163,6 +163,22 @@ fn resolve_service_name(name: Option<&str>) -> String {
         .unwrap_or_else(|| "pdfgenrs".to_string())
 }
 
+/// Reads `LOG_LEVEL` and returns the corresponding tracing level.
+/// Falls back to `INFO` when the variable is absent or contains an unrecognised value.
+fn resolve_log_level() -> tracing::Level {
+    std::env::var("LOG_LEVEL")
+        .ok()
+        .and_then(|val| match val.to_ascii_lowercase().as_str() {
+            "trace" => Some(tracing::Level::TRACE),
+            "debug" => Some(tracing::Level::DEBUG),
+            "info" => Some(tracing::Level::INFO),
+            "warn" | "warning" => Some(tracing::Level::WARN),
+            "error" => Some(tracing::Level::ERROR),
+            _ => None,
+        })
+        .unwrap_or(tracing::Level::INFO)
+}
+
 /// Initialises the global tracing subscriber with OpenTelemetry and NAIS-style JSON logging.
 ///
 /// When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (injected by the NAIS platform via
@@ -171,6 +187,11 @@ fn resolve_service_name(name: Option<&str>) -> String {
 /// `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_EXPORTER_OTLP_INSECURE`, …) are consumed
 /// automatically by the SDK. `service.name=pdfgenrs` is used as a fallback when
 /// `OTEL_SERVICE_NAME` is not present (i.e. local development).
+///
+/// The default log level is `INFO` but can be overridden by setting the `LOG_LEVEL`
+/// environment variable to one of: `trace`, `debug`, `info`, `warn`, `error`.
+/// For more fine-grained control (per-crate filtering), use the `RUST_LOG`
+/// environment variable which takes precedence over `LOG_LEVEL`.
 ///
 /// Log records emitted by third-party crates via the `log` crate are bridged
 /// into tracing so they appear in the same JSON output.
@@ -234,8 +255,9 @@ fn setup_tracing_with(
     let provider_for_shutdown = tracer_provider.clone();
     global::set_tracer_provider(tracer_provider);
 
+    let default_level = resolve_log_level();
     tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with(EnvFilter::from_default_env().add_directive(default_level.into()))
         .with(OpenTelemetryLayer::new(tracer))
         .with(fmt_layer)
         .init();

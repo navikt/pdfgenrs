@@ -287,12 +287,23 @@ All configuration is done through environment variables. If an environment varia
 | `COMPILE_TIMEOUT_SECONDS`     | Maximum time in seconds allowed for a single compilation task. Requests exceeding this timeout are aborted with `408 Request Timeout`.                   | `30`              |
 | `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` means no limit.                                                                              | `0`               |
+| `LOG_LEVEL`                   | Default log level (`trace`, `debug`, `info`, `warn`, `error`). Overridden by `RUST_LOG` when set.                                                        | `info`            |
 
 ### Logging and tracing
 
-`pdfgenrs` uses [`tracing`](https://docs.rs/tracing) with an [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) that reads the standard `RUST_LOG` environment variable to control log verbosity. The default level is `INFO`.
+`pdfgenrs` uses [`tracing`](https://docs.rs/tracing) with an [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) that reads the standard `RUST_LOG` environment variable to control log verbosity. The default level is `INFO` but can be changed with the `LOG_LEVEL` environment variable.
 
-Examples:
+For simple use cases, set `LOG_LEVEL`:
+
+```bash
+# Show debug logs
+LOG_LEVEL=debug
+
+# Show only warnings and errors
+LOG_LEVEL=warn
+```
+
+For more fine-grained control (per-crate filtering), use `RUST_LOG` which takes precedence over `LOG_LEVEL`:
 
 ```bash
 # Show debug logs for pdfgenrs only
