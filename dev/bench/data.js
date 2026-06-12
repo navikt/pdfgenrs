@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781270921256,
+  "lastUpdate": 1781290167130,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1151,6 +1151,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 790032,
             "range": "± 14954",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "601fd39ba667da79d231b24fa6da7b2a40997a16",
+          "message": "Merge pull request #282 from navikt/copilot/add-inline-to-small-functions\n\nAdd #[inline] to hot-path small functions",
+          "timestamp": "2026-06-12T20:46:01+02:00",
+          "tree_id": "29ce0205f442ee28f534284fc43c033a691f3b30",
+          "url": "https://github.com/navikt/pdfgenrs/commit/601fd39ba667da79d231b24fa6da7b2a40997a16"
+        },
+        "date": 1781290164572,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 870988,
+            "range": "± 6018",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1106293,
+            "range": "± 18660",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1171026225,
+            "range": "± 1404273",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 773228,
+            "range": "± 10673",
             "unit": "ns/iter"
           }
         ]
