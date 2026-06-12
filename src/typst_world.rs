@@ -211,6 +211,7 @@ impl World for PdfgenWorld {
         Ok(Bytes::new(bytes))
     }
 
+    #[inline]
     fn font(&self, index: usize) -> Option<Font> {
         self.fonts.fonts.get(index).cloned()
     }
