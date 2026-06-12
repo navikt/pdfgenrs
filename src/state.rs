@@ -56,11 +56,13 @@ impl AppAliveness {
     }
 
     /// Returns `true` if the application is currently alive.
+    #[inline]
     pub fn is_alive(&self) -> bool {
         self.alive.load(Ordering::Relaxed)
     }
 
     /// Returns `true` if the application is currently ready to serve traffic.
+    #[inline]
     pub fn is_ready(&self) -> bool {
         self.ready.load(Ordering::Relaxed)
     }
