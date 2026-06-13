@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781290167130,
+  "lastUpdate": 1781332677164,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1199,6 +1199,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 773228,
             "range": "± 10673",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "991c3e47caad1b4625b01f3af7181a3a0aff4fce",
+          "message": "Merge pull request #283 from navikt/copilot/reduce-repeated-pathbuf-cloning\n\nReduce repeated PathBuf cloning in route handlers by wrapping paths in Arc",
+          "timestamp": "2026-06-13T08:34:15+02:00",
+          "tree_id": "3b56810e5702578be54831ca96fa43a009aca00e",
+          "url": "https://github.com/navikt/pdfgenrs/commit/991c3e47caad1b4625b01f3af7181a3a0aff4fce"
+        },
+        "date": 1781332674480,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 876398,
+            "range": "± 39202",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1109384,
+            "range": "± 16755",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168633549,
+            "range": "± 831105",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 778064,
+            "range": "± 27492",
             "unit": "ns/iter"
           }
         ]
