@@ -220,6 +220,7 @@ impl World for PdfgenWorld {
         let now = chrono::Local::now();
         let naive = match offset {
             Some(dur) => {
+                // decompose() returns [weeks, days, hours, minutes, seconds]
                 let seconds = dur.decompose();
                 let total_seconds: i64 = seconds[0] * 7 * 24 * 3600
                     + seconds[1] * 24 * 3600
