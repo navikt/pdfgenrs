@@ -41,6 +41,8 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
         aliveness: state::AppAliveness::new(),
         fonts,
         html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
+        root_dir: Arc::new(cfg.root_dir.clone()),
+        resources_dir: Arc::new(cfg.resource_root()),
         config: cfg,
         compile_semaphore: None,
     })

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -25,6 +26,10 @@ pub struct AppState {
     /// Semaphore to limit the number of concurrent compilation tasks.
     /// When `None`, no limit is enforced.
     pub compile_semaphore: Option<Arc<Semaphore>>,
+    /// Pre-computed root directory path, shared via Arc to avoid per-request cloning.
+    pub root_dir: Arc<PathBuf>,
+    /// Pre-computed resource root path, shared via Arc to avoid per-request cloning.
+    pub resources_dir: Arc<PathBuf>,
 }
 
 /// Tracks the liveness and readiness state of the application.
