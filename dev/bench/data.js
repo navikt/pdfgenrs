@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781332677164,
+  "lastUpdate": 1781355217553,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1247,6 +1247,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 778064,
             "range": "± 27492",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "91b6e5e905f52983e8812a53e68b514d5dddae95",
+          "message": "Merge pull request #284 from navikt/MikAoJk-patch-1\n\nchore: Add comment to explain offset decomposition",
+          "timestamp": "2026-06-13T14:49:52+02:00",
+          "tree_id": "205aab71cfc075e0dc37edef1d15c48cf1907c6f",
+          "url": "https://github.com/navikt/pdfgenrs/commit/91b6e5e905f52983e8812a53e68b514d5dddae95"
+        },
+        "date": 1781355214365,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 873446,
+            "range": "± 19237",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1108306,
+            "range": "± 6910",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167728366,
+            "range": "± 610793",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 780258,
+            "range": "± 12407",
             "unit": "ns/iter"
           }
         ]
