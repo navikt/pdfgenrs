@@ -122,8 +122,8 @@ pub async fn post_pdf_from_image(
     };
 
     let fonts = Arc::clone(&state.fonts);
-    let root = state.config.root_dir.clone();
-    let resources_dir = state.config.resource_root();
+    let root = Arc::clone(&state.root_dir);
+    let resources_dir = Arc::clone(&state.resources_dir);
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
         gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)

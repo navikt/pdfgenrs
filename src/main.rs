@@ -92,6 +92,8 @@ async fn main() -> Result<()> {
         templates,
         data: Arc::new(RwLock::new(data)),
         aliveness: aliveness.clone(),
+        root_dir: Arc::new(cfg.root_dir.clone()),
+        resources_dir: Arc::new(cfg.resource_root()),
         config: cfg.clone(),
         fonts,
         html_converter,

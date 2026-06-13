@@ -20,8 +20,8 @@ pub(crate) struct CompileParams {
     pub source: Arc<String>,
     pub data: Value,
     pub fonts: Arc<Fonts>,
-    pub root: PathBuf,
-    pub resources_dir: PathBuf,
+    pub root: Arc<PathBuf>,
+    pub resources_dir: Arc<PathBuf>,
 }
 
 /// Looks up the template source and pre-loaded test data for the given key (used by GET handlers).
@@ -45,8 +45,8 @@ pub(crate) async fn lookup_template_and_data(
         source,
         data,
         fonts: Arc::clone(&state.fonts),
-        root: state.config.root_dir.clone(),
-        resources_dir: state.config.resource_root(),
+        root: Arc::clone(&state.root_dir),
+        resources_dir: Arc::clone(&state.resources_dir),
     })
 }
 
@@ -67,8 +67,8 @@ pub(crate) fn lookup_template_with_data(
         source,
         data,
         fonts: Arc::clone(&state.fonts),
-        root: state.config.root_dir.clone(),
-        resources_dir: state.config.resource_root(),
+        root: Arc::clone(&state.root_dir),
+        resources_dir: Arc::clone(&state.resources_dir),
     })
 }
 
