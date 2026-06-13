@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781364917649,
+  "lastUpdate": 1781366690366,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1343,6 +1343,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 780240,
             "range": "± 6895",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25ce42c76cafe93cbabf4ce5e860ee59d0534533",
+          "message": "Merge pull request #286 from navikt/MikAoJk-patch-1\n\nUpdate Rust version in Cargo.toml",
+          "timestamp": "2026-06-13T18:01:22+02:00",
+          "tree_id": "0a7af1b85d53f3be8462098d87d62035dca58a62",
+          "url": "https://github.com/navikt/pdfgenrs/commit/25ce42c76cafe93cbabf4ce5e860ee59d0534533"
+        },
+        "date": 1781366687402,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 875828,
+            "range": "± 19546",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1109875,
+            "range": "± 14885",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1169711624,
+            "range": "± 633430",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 776429,
+            "range": "± 16831",
             "unit": "ns/iter"
           }
         ]
