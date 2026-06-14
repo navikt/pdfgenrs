@@ -35,7 +35,7 @@ pub async fn is_alive(State(state): State<AppState>) -> Response {
 /// Handles `GET /internal/is_ready`.
 ///
 /// Returns 200 OK when the application is ready to serve traffic, or 503 Service Unavailable otherwise.
-/// In addition to the readiness flag, verifies that templates and fonts were successfully loaded.
+/// In addition to the readiness flag, verifies that templates were successfully loaded.
 pub async fn is_ready(State(state): State<AppState>) -> Response {
     if !state.aliveness.is_ready() {
         return (
@@ -47,10 +47,6 @@ pub async fn is_ready(State(state): State<AppState>) -> Response {
 
     if state.templates.is_empty() {
         return (StatusCode::SERVICE_UNAVAILABLE, "No templates loaded").into_response();
-    }
-
-    if state.fonts.fonts.is_empty() {
-        return (StatusCode::SERVICE_UNAVAILABLE, "No fonts loaded").into_response();
     }
 
     (StatusCode::OK, "I'm ready").into_response()
