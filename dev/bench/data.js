@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781449428183,
+  "lastUpdate": 1781588086799,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1439,6 +1439,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 771131,
             "range": "± 4223",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ac65c3951f05a44c79d2d3c3b6d24fce8d82d5f",
+          "message": "Merge pull request #288 from navikt/copilot/update-typst-version-0-15-0\n\nUpdate typst version from 0.15.0-rc.1 to 0.15.0",
+          "timestamp": "2026-06-16T07:29:48+02:00",
+          "tree_id": "73e105dac1a8614f8a889212e64f6ffcf44d85d5",
+          "url": "https://github.com/navikt/pdfgenrs/commit/1ac65c3951f05a44c79d2d3c3b6d24fce8d82d5f"
+        },
+        "date": 1781588083825,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 877732,
+            "range": "± 21308",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1114492,
+            "range": "± 15169",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167363963,
+            "range": "± 644712",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 779402,
+            "range": "± 10967",
             "unit": "ns/iter"
           }
         ]
