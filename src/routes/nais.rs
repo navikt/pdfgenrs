@@ -162,8 +162,7 @@ mod tests {
     #[tokio::test]
     async fn metrics_endpoint_returns_prometheus_output() -> anyhow::Result<()> {
         let handle = metrics::test_metrics_handle();
-        let server =
-            TestServer::new(nais_router(handle.clone()).with_state(test_state(true, true)?));
+        let server = TestServer::new(crate::build_router(test_state(true, true)?, handle.clone()));
         server.get("/internal/is_alive").await;
         let response = server.get("/internal/metrics").await;
         let body = response.text();
