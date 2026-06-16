@@ -5,13 +5,13 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
-use metrics_exporter_prometheus::PrometheusHandle;
 
+use crate::metrics::MetricsHandle;
 use crate::state::AppState;
 
 /// Builds the NAIS health check router with `/internal/is_alive`,
 /// `/internal/is_ready`, and `/internal/metrics` endpoints.
-pub fn nais_router(metrics_handle: PrometheusHandle) -> Router<AppState> {
+pub fn nais_router(metrics_handle: MetricsHandle) -> Router<AppState> {
     Router::new()
         .route("/internal/is_alive", get(is_alive))
         .route("/internal/is_ready", get(is_ready))
@@ -161,17 +161,15 @@ mod tests {
 
     #[tokio::test]
     async fn metrics_endpoint_returns_prometheus_output() -> anyhow::Result<()> {
-        let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
-        let handle = recorder.handle();
-        ::metrics::with_local_recorder(&recorder, || {
-            ::metrics::counter!("test_counter").increment(1);
-        });
-        let server = TestServer::new(nais_router(handle).with_state(test_state(true, true)?));
+        let handle = metrics::test_metrics_handle();
+        let server =
+            TestServer::new(nais_router(handle.clone()).with_state(test_state(true, true)?));
+        server.get("/internal/is_alive").await;
         let response = server.get("/internal/metrics").await;
         let body = response.text();
         assert!(
-            body.contains("test_counter"),
-            "expected prometheus metrics output to contain test_counter: {body}"
+            body.contains("http_requests_total"),
+            "expected prometheus metrics output to contain http_requests_total: {body}"
         );
         Ok(())
     }
