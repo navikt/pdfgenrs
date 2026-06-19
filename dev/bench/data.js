@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781850597518,
+  "lastUpdate": 1781855572947,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1583,6 +1583,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 764130,
             "range": "± 4656",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f10a23f822f4a213a1b3967703c250afd2da380c",
+          "message": "Merge pull request #293 from navikt/MikAoJk-patch-1\n\nchore: Add more lint warnings",
+          "timestamp": "2026-06-19T09:49:16+02:00",
+          "tree_id": "69e21d01387de2ed398871b0cf71621f81bde66b",
+          "url": "https://github.com/navikt/pdfgenrs/commit/f10a23f822f4a213a1b3967703c250afd2da380c"
+        },
+        "date": 1781855568639,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 864114,
+            "range": "± 52886",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1074568,
+            "range": "± 39353",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1165959298,
+            "range": "± 462395",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 769474,
+            "range": "± 9604",
             "unit": "ns/iter"
           }
         ]
