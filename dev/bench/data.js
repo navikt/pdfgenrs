@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781634827224,
+  "lastUpdate": 1781850597518,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1535,6 +1535,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 769152,
             "range": "± 12593",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f393b72c248db6ab5ff4dc04afb0cb4ec8fea0df",
+          "message": "Merge pull request #291 from navikt/copilot/create-unit-tests\n\nAdd unit tests for image parsers, symlink handling, HTTP flows, and config edge cases",
+          "timestamp": "2026-06-19T08:26:23+02:00",
+          "tree_id": "423ceed0408f4c174cd747a80d3bd39a7f6bad91",
+          "url": "https://github.com/navikt/pdfgenrs/commit/f393b72c248db6ab5ff4dc04afb0cb4ec8fea0df"
+        },
+        "date": 1781850594488,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 863725,
+            "range": "± 73559",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1068074,
+            "range": "± 16252",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168005140,
+            "range": "± 705805",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 764130,
+            "range": "± 4656",
             "unit": "ns/iter"
           }
         ]
