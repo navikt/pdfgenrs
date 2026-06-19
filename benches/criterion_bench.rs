@@ -38,6 +38,7 @@ Hello, world!
                 &resources_dir(),
                 "bench",
                 "simple",
+                15,
             );
         });
     });
@@ -69,6 +70,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
                 &resources_dir(),
                 "bench",
                 "template",
+                15,
             );
         });
     });
@@ -106,6 +108,7 @@ fn bench_image_to_pdf(c: &mut Criterion) {
                 Arc::clone(&fonts),
                 &root_dir(),
                 &resources_dir(),
+                15,
             );
         });
     });

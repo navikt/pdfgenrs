@@ -35,6 +35,7 @@ pub fn make_state(
         shutdown_drain_seconds: 5,
         max_concurrent_compilations: 0,
         semaphore_acquire_timeout_seconds: 10,
+        comemo_eviction_threshold: 15,
     };
     Ok(AppState {
         templates: Arc::new(templates),

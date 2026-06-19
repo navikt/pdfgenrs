@@ -27,6 +27,7 @@ pub async fn get_pdf(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_and_data(&state, &template_key).await?;
+    let eviction_threshold = state.config.comemo_eviction_threshold;
 
     let pdf_bytes = compile_blocking(
         &state,
@@ -41,6 +42,7 @@ pub async fn get_pdf(
                 &params.resources_dir,
                 &app_name,
                 &template_name,
+                eviction_threshold,
             )
         },
     )
@@ -64,6 +66,7 @@ pub async fn post_pdf(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
+    let eviction_threshold = state.config.comemo_eviction_threshold;
 
     let pdf_bytes = compile_blocking(
         &state,
@@ -78,6 +81,7 @@ pub async fn post_pdf(
                 &params.resources_dir,
                 &app_name,
                 &template_name,
+                eviction_threshold,
             )
         },
     )
@@ -124,9 +128,17 @@ pub async fn post_pdf_from_image(
     let fonts = Arc::clone(&state.fonts);
     let root = Arc::clone(&state.root_dir);
     let resources_dir = Arc::clone(&state.resources_dir);
+    let eviction_threshold = state.config.comemo_eviction_threshold;
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::image_to_pdf(image_bytes, image_path, fonts, &root, &resources_dir)
+        gen_pdf::image_to_pdf(
+            image_bytes,
+            image_path,
+            fonts,
+            &root,
+            &resources_dir,
+            eviction_threshold,
+        )
     })
     .await?;
 

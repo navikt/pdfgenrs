@@ -81,6 +81,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
 #[must_use = "this returns a Result that should be handled"]
+#[allow(clippy::too_many_arguments)]
 pub fn typst_to_pdf(
     template_source: String,
     json_data: &serde_json::Value,
@@ -89,6 +90,7 @@ pub fn typst_to_pdf(
     resources_dir: &Path,
     app_name: &str,
     template_name: &str,
+    comemo_eviction_threshold: usize,
 ) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
@@ -101,6 +103,7 @@ pub fn typst_to_pdf(
         "/main.typ",
         template_source,
         vfiles,
+        comemo_eviction_threshold,
     )
 }
 
@@ -122,6 +125,7 @@ pub fn image_to_pdf<B>(
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
+    comemo_eviction_threshold: usize,
 ) -> Result<Vec<u8>>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
@@ -141,7 +145,15 @@ where
 "#
     );
 
-    typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", source, vfiles)
+    typst_world::compile_to_pdf(
+        fonts,
+        root,
+        resources_dir,
+        "/main.typ",
+        source,
+        vfiles,
+        comemo_eviction_threshold,
+    )
 }
 
 /// Extracts (width, height) from PNG or JPEG image bytes by parsing headers.
@@ -235,6 +247,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "simple",
+            15,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -255,6 +268,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "app",
+            15,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -272,6 +286,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "invalid",
+            15,
         );
         assert!(
             result.is_err(),
@@ -319,6 +334,7 @@ Hello, world!
             test_fonts()?,
             &root_dir(),
             &resources_dir(),
+            15,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -337,6 +353,7 @@ Hello, world!
             test_fonts()?,
             &root_dir(),
             &resources_dir(),
+            15,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -563,6 +580,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "resource",
+            15,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())

@@ -15,6 +15,7 @@ const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
 const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
 const SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV: &str = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS";
+const COMEMO_EVICTION_THRESHOLD_ENV: &str = "COMEMO_EVICTION_THRESHOLD";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -27,6 +28,7 @@ const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 0;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
+const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -70,6 +72,11 @@ pub struct Config {
     /// When the timeout is exceeded, the server responds with `503 Service Unavailable`.
     /// Defaults to `10` (`SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS`).
     pub semaphore_acquire_timeout_seconds: u64,
+    /// Maximum number of evictions to perform on the comemo memoization cache after
+    /// each compilation. This bounds memory growth while preserving frequently-used
+    /// cache entries to maintain a good hit rate. Defaults to `15`
+    /// (`COMEMO_EVICTION_THRESHOLD`).
+    pub comemo_eviction_threshold: usize,
 }
 
 impl Default for Config {
@@ -141,6 +148,8 @@ impl Config {
                 .unwrap_or(DEFAULT_MAX_CONCURRENT_COMPILATIONS),
             semaphore_acquire_timeout_seconds: parse_u64(SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV)
                 .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
+            comemo_eviction_threshold: parse_usize(COMEMO_EVICTION_THRESHOLD_ENV)
+                .unwrap_or(DEFAULT_COMEMO_EVICTION_THRESHOLD),
         }
     }
 
@@ -212,6 +221,10 @@ mod tests {
             config.semaphore_acquire_timeout_seconds,
             DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS
         );
+        assert_eq!(
+            config.comemo_eviction_threshold,
+            DEFAULT_COMEMO_EVICTION_THRESHOLD
+        );
     }
 
     #[test]
@@ -229,6 +242,7 @@ mod tests {
             (SHUTDOWN_DRAIN_SECONDS_ENV, "10"),
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
             (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "15"),
+            (COMEMO_EVICTION_THRESHOLD_ENV, "20"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -243,6 +257,7 @@ mod tests {
         assert_eq!(config.shutdown_drain_seconds, 10);
         assert_eq!(config.max_concurrent_compilations, 4);
         assert_eq!(config.semaphore_acquire_timeout_seconds, 15);
+        assert_eq!(config.comemo_eviction_threshold, 20);
     }
 
     #[test]
@@ -332,6 +347,7 @@ mod tests {
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
+            comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -352,6 +368,7 @@ mod tests {
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
+            comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -372,6 +389,7 @@ mod tests {
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
+            comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -392,6 +410,7 @@ mod tests {
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
+            comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
         };
 
         assert_eq!(

@@ -2,11 +2,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// Maximum number of evictions to perform on the comemo memoization cache after
-/// each compilation. This bounds memory growth while preserving frequently-used
-/// cache entries to maintain a good hit rate.
-const COMEMO_EVICTION_THRESHOLD: usize = 15;
-
 use anyhow::{Context, Result};
 use chrono::Datelike;
 use chrono::Timelike;
@@ -255,6 +250,7 @@ pub fn compile_to_pdf(
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
+    comemo_eviction_threshold: usize,
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(
         fonts,
@@ -268,7 +264,7 @@ pub fn compile_to_pdf(
 
     let result = typst::compile::<typst_layout::PagedDocument>(&world);
 
-    comemo::evict(COMEMO_EVICTION_THRESHOLD);
+    comemo::evict(comemo_eviction_threshold);
 
     let document = result
         .output
@@ -306,6 +302,7 @@ pub fn compile_to_html(
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
+    comemo_eviction_threshold: usize,
 ) -> Result<String> {
     let world = PdfgenWorld::new(
         fonts,
@@ -319,7 +316,7 @@ pub fn compile_to_html(
 
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
 
-    comemo::evict(COMEMO_EVICTION_THRESHOLD);
+    comemo::evict(comemo_eviction_threshold);
 
     let document = result
         .output
@@ -370,6 +367,8 @@ mod tests {
     use typst_library::World;
     use typst_syntax::{RootedPath, VirtualPath, VirtualRoot};
 
+    const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
+
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
@@ -417,6 +416,7 @@ Hello, world!
             "/main.typ",
             source.to_string(),
             HashMap::new(),
+            DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
@@ -427,6 +427,7 @@ Hello, world!
             "/main.typ",
             source.to_string(),
             HashMap::new(),
+            DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
 
@@ -449,6 +450,7 @@ Hello, world!
             "/main.typ",
             source,
             HashMap::new(),
+            DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(
             is_pdf(&pdf),
@@ -581,6 +583,7 @@ Hello, world!
                 "/main.typ",
                 source,
                 HashMap::new(),
+                DEFAULT_COMEMO_EVICTION_THRESHOLD,
             )?;
         }
 
@@ -599,6 +602,7 @@ Hello, world!
                 "/main.typ",
                 source,
                 HashMap::new(),
+                DEFAULT_COMEMO_EVICTION_THRESHOLD,
             );
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }

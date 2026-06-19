@@ -27,6 +27,7 @@ pub async fn get_html(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_and_data(&state, &template_key).await?;
+    let eviction_threshold = state.config.comemo_eviction_threshold;
 
     let html_string = compile_blocking(
         &state,
@@ -41,6 +42,7 @@ pub async fn get_html(
                 &params.resources_dir,
                 &app_name,
                 &template_name,
+                eviction_threshold,
             )
         },
     )
@@ -64,6 +66,7 @@ pub async fn post_html(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
+    let eviction_threshold = state.config.comemo_eviction_threshold;
 
     let html_string = compile_blocking(
         &state,
@@ -78,6 +81,7 @@ pub async fn post_html(
                 &params.resources_dir,
                 &app_name,
                 &template_name,
+                eviction_threshold,
             )
         },
     )

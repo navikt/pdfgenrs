@@ -15,6 +15,7 @@ use crate::typst_world::{self, Fonts};
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
+#[allow(clippy::too_many_arguments)]
 pub fn typst_to_html(
     template_source: String,
     json_data: &serde_json::Value,
@@ -23,6 +24,7 @@ pub fn typst_to_html(
     resources_dir: &Path,
     app_name: &str,
     template_name: &str,
+    comemo_eviction_threshold: usize,
 ) -> Result<String> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
@@ -35,6 +37,7 @@ pub fn typst_to_html(
         "/main.typ",
         template_source,
         vfiles,
+        comemo_eviction_threshold,
     )
 }
 
@@ -69,6 +72,7 @@ mod tests {
             &resources_dir(),
             "test",
             "simple",
+            15,
         )?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -92,6 +96,7 @@ mod tests {
             &resources_dir(),
             "test",
             "app",
+            15,
         )?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -109,6 +114,7 @@ mod tests {
             &resources_dir(),
             "test",
             "invalid",
+            15,
         );
         assert!(
             result.is_err(),
