@@ -19,7 +19,7 @@ use crate::state::AppState;
 /// Looks up the template source and preloaded test JSON data for the given
 /// `app_name` / `template` combination and returns an HTML response.
 /// Returns `404` if the template or its test data cannot be found.
-pub async fn get_html(
+pub(crate) async fn get_html(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Result<Response, ApiError> {
@@ -55,7 +55,7 @@ pub async fn get_html(
 /// Accepts a JSON body and compiles the named Typst template with that data,
 /// returning the result as `text/html`.
 /// Returns `404` if the template is not found, or `500` if compilation fails.
-pub async fn post_html(
+pub(crate) async fn post_html(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
     Json(json_data): Json<Value>,

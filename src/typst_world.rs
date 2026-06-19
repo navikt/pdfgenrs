@@ -112,6 +112,29 @@ pub struct PdfgenWorld {
     resources_dir: PathBuf,
 }
 
+impl std::fmt::Debug for Fonts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Fonts")
+            .field("fonts", &self.fonts.len())
+            .field("book", &self.book)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for PdfgenWorld {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PdfgenWorld")
+            .field("library", &self.library)
+            .field("fonts", &self.fonts)
+            .field("main_id", &self.main_id)
+            .field("main_source", &self.main_source)
+            .field("virtual_files", &self.virtual_files)
+            .field("root", &self.root)
+            .field("resources_dir", &self.resources_dir)
+            .finish()
+    }
+}
+
 impl PdfgenWorld {
     /// Creates a new `PdfgenWorld`.
     ///

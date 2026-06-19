@@ -19,7 +19,7 @@ use crate::state::AppState;
 /// Looks up the template source and pre-loaded test JSON data for the given
 /// `app_name` / `template` combination and returns a PDF response.
 /// Returns `404` if the template or its test data cannot be found.
-pub async fn get_pdf(
+pub(crate) async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
 ) -> Result<Response, ApiError> {
@@ -55,7 +55,7 @@ pub async fn get_pdf(
 /// Accepts a JSON body and compiles the named Typst template with that data,
 /// returning the result as `application/pdf`.
 /// Returns `404` if the template is not found, or `500` if compilation fails.
-pub async fn post_pdf(
+pub(crate) async fn post_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
     Json(json_data): Json<Value>,
@@ -90,7 +90,7 @@ pub async fn post_pdf(
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
 ///
 /// Accepts an HTML body and converts it to PDF.
-pub async fn post_pdf_from_html(
+pub(crate) async fn post_pdf_from_html(
     State(state): State<AppState>,
     Path(app_name): Path<String>,
     html: String,
@@ -110,7 +110,7 @@ pub async fn post_pdf_from_html(
 /// Handles `POST /api/v1/genpdf/image/{app_name}`.
 ///
 /// Accepts a PNG or JPEG body and converts it to PDF.
-pub async fn post_pdf_from_image(
+pub(crate) async fn post_pdf_from_image(
     State(state): State<AppState>,
     Path(app_name): Path<String>,
     headers: HeaderMap,
