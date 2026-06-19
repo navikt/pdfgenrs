@@ -266,4 +266,83 @@ mod tests {
         let _ = task1.await.context("task1 join error")?;
         Ok(())
     }
+
+    #[tokio::test]
+    async fn compile_blocking_with_zero_timeout_returns_timeout_immediately() -> anyhow::Result<()>
+    {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 0;
+
+        let result: Result<(), _> = compile_blocking(
+            &state,
+            "myapp".to_string(),
+            Some("mytemplate".to_string()),
+            || {
+                std::thread::sleep(Duration::from_millis(50));
+                Ok(())
+            },
+        )
+        .await;
+
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected timeout"),
+            Err(err) => err,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(response.status(), axum::http::StatusCode::REQUEST_TIMEOUT);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_returns_500_when_task_returns_error() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+
+        let result: Result<(), _> = compile_blocking(
+            &state,
+            "myapp".to_string(),
+            Some("mytemplate".to_string()),
+            || Err(anyhow::anyhow!("compilation failed")),
+        )
+        .await;
+
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected error"),
+            Err(err) => err,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_succeeds_without_semaphore() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+
+        let result = compile_blocking(&state, "app".to_string(), None, || Ok(42)).await;
+
+        let value = match result {
+            Ok(v) => v,
+            Err(e) => anyhow::bail!("unexpected error: {e:?}"),
+        };
+        assert_eq!(value, 42);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_succeeds_with_semaphore() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(2)));
+
+        let result = compile_blocking(&state, "app".to_string(), None, || Ok("ok")).await;
+
+        let value = match result {
+            Ok(v) => v,
+            Err(e) => anyhow::bail!("unexpected error: {e:?}"),
+        };
+        assert_eq!(value, "ok");
+        Ok(())
+    }
 }
