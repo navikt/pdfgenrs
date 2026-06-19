@@ -370,6 +370,133 @@ mod tests {
     }
 
     #[test]
+    fn test_load_templates_follows_symlinked_file() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+        let app = dir.path().join("myapp");
+        fs::create_dir_all(&app)?;
+        fs::write(app.join("real.typ"), "Real template")?;
+
+        let link_app = dir.path().join("linkapp");
+        fs::create_dir_all(&link_app)?;
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(app.join("real.typ"), link_app.join("linked.typ"))?;
+        #[cfg(not(unix))]
+        {
+            fs::write(link_app.join("linked.typ"), "Real template")?;
+        }
+
+        let templates = load_templates_from_dir(dir.path())?;
+
+        assert!(templates.contains_key(&("myapp".to_string(), "real".to_string())));
+        assert!(templates.contains_key(&("linkapp".to_string(), "linked".to_string())));
+        assert_eq!(
+            templates[&("linkapp".to_string(), "linked".to_string())].as_str(),
+            "Real template"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_templates_follows_symlinked_directory() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+        let real_app = dir.path().join("realapp");
+        fs::create_dir_all(&real_app)?;
+        fs::write(real_app.join("template.typ"), "From real dir")?;
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&real_app, dir.path().join("symlinkapp"))?;
+        #[cfg(not(unix))]
+        {
+            let sym_app = dir.path().join("symlinkapp");
+            fs::create_dir_all(&sym_app)?;
+            fs::write(sym_app.join("template.typ"), "From real dir")?;
+        }
+
+        let templates = load_templates_from_dir(dir.path())?;
+
+        assert!(templates.contains_key(&("realapp".to_string(), "template".to_string())));
+        assert!(templates.contains_key(&("symlinkapp".to_string(), "template".to_string())));
+        assert_eq!(
+            templates[&("symlinkapp".to_string(), "template".to_string())].as_str(),
+            "From real dir"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_templates_rejects_too_deep_nesting() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+        let deep = dir.path().join("app").join("sub").join("deep");
+        fs::create_dir_all(&deep)?;
+        fs::write(deep.join("template.typ"), "Deep template")?;
+
+        let result = load_templates_from_dir(dir.path());
+
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected error for deeply nested template"),
+            Err(e) => e,
+        };
+        let err_msg = err.to_string();
+        assert!(
+            err_msg.contains("exactly"),
+            "Error should mention path structure: {err_msg}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_templates_dangling_symlink_returns_error() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+        let app = dir.path().join("myapp");
+        fs::create_dir_all(&app)?;
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink("/nonexistent/file.typ", app.join("dangling.typ"))?;
+            let result = load_templates_from_dir(dir.path());
+            assert!(
+                result.is_err(),
+                "Dangling symlink should cause an error during traversal"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_test_data_follows_symlinked_json() -> anyhow::Result<()> {
+        let dir = TempDir::new()?;
+        let app = dir.path().join("myapp");
+        fs::create_dir_all(&app)?;
+        fs::write(app.join("real.json"), r#"{"source": "real"}"#)?;
+
+        let link_app = dir.path().join("linkapp");
+        fs::create_dir_all(&link_app)?;
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(app.join("real.json"), link_app.join("linked.json"))?;
+        #[cfg(not(unix))]
+        {
+            fs::write(link_app.join("linked.json"), r#"{"source": "real"}"#)?;
+        }
+
+        let result = load_test_data(dir.path());
+
+        assert!(result.diagnostics.is_empty());
+        assert!(
+            result
+                .data
+                .contains_key(&("linkapp".to_string(), "linked".to_string()))
+        );
+        assert_eq!(
+            result.data[&("linkapp".to_string(), "linked".to_string())]["source"],
+            "real"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn test_error_summary_groups_multiple_error_kinds() {
         let result = TestDataLoadResult {
             data: HashMap::new(),

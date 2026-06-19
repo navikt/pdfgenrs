@@ -362,6 +362,192 @@ Hello, world!
         assert_eq!(image_dimensions(b"GIF89a"), None);
     }
 
+    // --- Fuzz-style edge case tests for PNG parser ---
+
+    #[test]
+    fn png_dimensions_returns_none_for_valid_magic_but_truncated_ihdr() {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        assert_eq!(image_dimensions(&data), None);
+    }
+
+    #[test]
+    fn png_dimensions_handles_exactly_24_bytes() {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        data.extend_from_slice(&100u32.to_be_bytes());
+        data.extend_from_slice(&200u32.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((100, 200)));
+    }
+
+    #[test]
+    fn png_dimensions_zero_width_and_height() {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        data.extend_from_slice(&0u32.to_be_bytes());
+        data.extend_from_slice(&0u32.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((0, 0)));
+    }
+
+    #[test]
+    fn png_dimensions_max_u32_values() {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        data.extend_from_slice(&u32::MAX.to_be_bytes());
+        data.extend_from_slice(&u32::MAX.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((u32::MAX, u32::MAX)));
+    }
+
+    #[test]
+    fn png_dimensions_square_image_not_landscape() {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        data.extend_from_slice(&500u32.to_be_bytes());
+        data.extend_from_slice(&500u32.to_be_bytes());
+        assert!(
+            image_dimensions(&data).is_some_and(|(w, h)| w <= h),
+            "Square image should not be detected as landscape"
+        );
+    }
+
+    #[test]
+    fn png_dimensions_portrait_image() {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        data.extend_from_slice(&100u32.to_be_bytes());
+        data.extend_from_slice(&200u32.to_be_bytes());
+        assert!(
+            image_dimensions(&data).is_some_and(|(w, h)| h > w),
+            "Image should be portrait"
+        );
+    }
+
+    // --- Fuzz-style edge case tests for JPEG parser ---
+
+    #[test]
+    fn jpeg_dimensions_returns_none_for_soi_only() {
+        assert_eq!(image_dimensions(&[0xFF, 0xD8]), None);
+    }
+
+    #[test]
+    fn jpeg_dimensions_returns_none_for_immediate_eoi() {
+        assert_eq!(image_dimensions(&[0xFF, 0xD8, 0xFF, 0xD9]), None);
+    }
+
+    #[test]
+    fn jpeg_dimensions_returns_none_when_non_ff_byte_encountered() {
+        assert_eq!(image_dimensions(&[0xFF, 0xD8, 0x00, 0xC0]), None);
+    }
+
+    #[test]
+    fn jpeg_dimensions_returns_none_for_sof_marker_with_truncated_data() {
+        let data = [0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x11, 0x08];
+        assert_eq!(image_dimensions(&data), None);
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof0_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC0];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&480u16.to_be_bytes());
+        data.extend_from_slice(&640u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((640, 480)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof1_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC1];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&100u16.to_be_bytes());
+        data.extend_from_slice(&200u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((200, 100)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof2_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC2];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&300u16.to_be_bytes());
+        data.extend_from_slice(&400u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((400, 300)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof3_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC3];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&768u16.to_be_bytes());
+        data.extend_from_slice(&1024u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((1024, 768)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_skips_non_sof_segments_before_sof() {
+        let mut data = vec![0xFF, 0xD8];
+        data.extend_from_slice(&[0xFF, 0xE0, 0x00, 0x10]);
+        data.extend_from_slice(&[0x00; 14]);
+        data.extend_from_slice(&[0xFF, 0xC0, 0x00, 0x11, 0x08]);
+        data.extend_from_slice(&1080u16.to_be_bytes());
+        data.extend_from_slice(&1920u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((1920, 1080)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_returns_none_for_truncated_segment_length() {
+        let data = [0xFF, 0xD8, 0xFF, 0xE0];
+        assert_eq!(image_dimensions(&data), None);
+    }
+
+    #[test]
+    fn jpeg_dimensions_zero_dimensions() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC0];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&0u16.to_be_bytes());
+        data.extend_from_slice(&0u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((0, 0)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_landscape_detection() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC0];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&480u16.to_be_bytes());
+        data.extend_from_slice(&640u16.to_be_bytes());
+        assert!(
+            image_dimensions(&data).is_some_and(|(w, h)| w > h),
+            "640x480 should be landscape"
+        );
+    }
+
+    // --- Malformed image edge cases ---
+
+    #[test]
+    fn image_dimensions_returns_none_for_single_byte() {
+        assert_eq!(image_dimensions(&[0xFF]), None);
+        assert_eq!(image_dimensions(&[0x89]), None);
+    }
+
+    #[test]
+    fn image_dimensions_returns_none_for_partial_png_magic() {
+        assert_eq!(image_dimensions(b"\x89PNG\r\n"), None);
+    }
+
+    #[test]
+    fn image_dimensions_returns_none_for_all_zeros() {
+        assert_eq!(image_dimensions(&[0u8; 100]), None);
+    }
+
+    #[test]
+    fn image_dimensions_returns_none_for_all_0xff() {
+        assert_eq!(image_dimensions(&[0xFF; 100]), None);
+    }
+
     #[test]
     fn typst_to_pdf_with_resource_image_returns_pdf_bytes() -> Result<()> {
         let source = r#"#set document(title: "Test", date: auto)

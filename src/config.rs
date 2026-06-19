@@ -399,4 +399,110 @@ mod tests {
             PathBuf::from("/tmp/shared/resources")
         );
     }
+
+    #[test]
+    fn zero_compile_timeout_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(COMPILE_TIMEOUT_SECONDS_ENV, "0")]));
+
+        assert_eq!(config.compile_timeout_seconds, 0);
+    }
+
+    #[test]
+    fn zero_shutdown_drain_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(SHUTDOWN_DRAIN_SECONDS_ENV, "0")]));
+
+        assert_eq!(config.shutdown_drain_seconds, 0);
+    }
+
+    #[test]
+    fn zero_semaphore_acquire_timeout_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "0")]));
+
+        assert_eq!(config.semaphore_acquire_timeout_seconds, 0);
+    }
+
+    #[test]
+    fn zero_request_body_limit_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(REQUEST_BODY_LIMIT_BYTES_ENV, "0")]));
+
+        assert_eq!(config.request_body_limit_bytes, 0);
+    }
+
+    #[test]
+    fn zero_port_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(SERVER_PORT_ENV, "0")]));
+
+        assert_eq!(config.port, 0);
+    }
+
+    #[test]
+    fn negative_values_fall_back_to_defaults() {
+        let config = Config::from_env_fn(env_from(&[
+            (COMPILE_TIMEOUT_SECONDS_ENV, "-1"),
+            (SHUTDOWN_DRAIN_SECONDS_ENV, "-5"),
+            (REQUEST_BODY_LIMIT_BYTES_ENV, "-100"),
+            (SERVER_PORT_ENV, "-1"),
+        ]));
+
+        assert_eq!(
+            config.compile_timeout_seconds,
+            DEFAULT_COMPILE_TIMEOUT_SECONDS
+        );
+        assert_eq!(
+            config.shutdown_drain_seconds,
+            DEFAULT_SHUTDOWN_DRAIN_SECONDS
+        );
+        assert_eq!(
+            config.request_body_limit_bytes,
+            DEFAULT_REQUEST_BODY_LIMIT_BYTES
+        );
+        assert_eq!(config.port, DEFAULT_PORT);
+    }
+
+    #[test]
+    fn empty_string_env_values_use_defaults_for_numeric_fields() {
+        let config = Config::from_env_fn(env_from(&[
+            (SERVER_PORT_ENV, ""),
+            (COMPILE_TIMEOUT_SECONDS_ENV, ""),
+            (REQUEST_BODY_LIMIT_BYTES_ENV, ""),
+        ]));
+
+        assert_eq!(config.port, DEFAULT_PORT);
+        assert_eq!(
+            config.compile_timeout_seconds,
+            DEFAULT_COMPILE_TIMEOUT_SECONDS
+        );
+        assert_eq!(
+            config.request_body_limit_bytes,
+            DEFAULT_REQUEST_BODY_LIMIT_BYTES
+        );
+    }
+
+    #[test]
+    fn empty_string_root_dir_creates_empty_path() {
+        let config = Config::from_env_fn(env_from(&[(ROOT_DIR_ENV, "")]));
+
+        assert_eq!(config.root_dir, PathBuf::from(""));
+    }
+
+    #[test]
+    fn dev_mode_empty_string_is_false() {
+        let config = Config::from_env_fn(env_from(&[(DEV_MODE_ENV, "")]));
+
+        assert!(!config.dev_mode);
+    }
+
+    #[test]
+    fn dev_mode_yes_is_false() {
+        let config = Config::from_env_fn(env_from(&[(DEV_MODE_ENV, "yes")]));
+
+        assert!(!config.dev_mode);
+    }
+
+    #[test]
+    fn dev_mode_1_is_false() {
+        let config = Config::from_env_fn(env_from(&[(DEV_MODE_ENV, "1")]));
+
+        assert!(!config.dev_mode);
+    }
 }
