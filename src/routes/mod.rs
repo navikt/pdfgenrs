@@ -10,10 +10,10 @@ use self::error::ApiError;
 use crate::state::AppState;
 use crate::typst_world::Fonts;
 
-pub mod error;
-pub mod html;
-pub mod nais;
-pub mod pdf;
+pub(crate) mod error;
+pub(crate) mod html;
+pub(crate) mod nais;
+pub(crate) mod pdf;
 
 /// Common parameters extracted from state for template compilation.
 pub(crate) struct CompileParams {

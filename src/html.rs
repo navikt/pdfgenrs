@@ -15,7 +15,7 @@ use crate::typst_world::{self, Fonts};
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
-pub fn typst_to_html(
+pub(crate) fn typst_to_html(
     template_source: String,
     json_data: &serde_json::Value,
     fonts: Arc<Fonts>,

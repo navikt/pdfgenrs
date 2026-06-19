@@ -36,7 +36,7 @@ pub struct AppState {
 ///
 /// Both flags are stored as atomic booleans and can be shared across threads
 /// via [`Clone`]. Cloning this struct creates a new handle to the same shared state.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct AppAliveness {
     /// Whether the application process is alive (i.e. not shutting down).
     alive: Arc<AtomicBool>,
@@ -70,6 +70,22 @@ impl AppAliveness {
     #[inline]
     pub fn is_ready(&self) -> bool {
         self.ready.load(Ordering::Relaxed)
+    }
+}
+
+impl std::fmt::Debug for AppState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppState")
+            .field("templates", &self.templates)
+            .field("data", &self.data)
+            .field("aliveness", &self.aliveness)
+            .field("config", &self.config)
+            .field("fonts", &self.fonts)
+            .field("html_converter", &"HtmlConverter")
+            .field("compile_semaphore", &self.compile_semaphore)
+            .field("root_dir", &self.root_dir)
+            .field("resources_dir", &self.resources_dir)
+            .finish()
     }
 }
 

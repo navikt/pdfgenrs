@@ -177,7 +177,7 @@ fn resolve_service_name(name: Option<&str>) -> String {
 ///
 /// Returns the `SdkTracerProvider` so the caller can call `.shutdown()` for a
 /// graceful flush before the process exits.
-pub fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
+pub(crate) fn setup_tracing() -> Result<opentelemetry_sdk::trace::SdkTracerProvider> {
     setup_tracing_with(
         std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok().as_deref(),
         std::env::var("OTEL_SERVICE_NAME").ok().as_deref(),

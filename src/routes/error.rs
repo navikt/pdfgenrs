@@ -13,7 +13,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 ///
 /// Responses use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem
 /// Details format (`application/problem+json`).
-pub enum ApiError {
+pub(crate) enum ApiError {
     /// The requested template or application was not found.
     NotFound,
     /// An internal error occurred during document generation.

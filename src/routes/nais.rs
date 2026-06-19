@@ -11,7 +11,7 @@ use crate::state::AppState;
 
 /// Builds the NAIS health check router with `/internal/is_alive`,
 /// `/internal/is_ready`, and `/internal/metrics` endpoints.
-pub fn nais_router(metrics_handle: PrometheusHandle) -> Router<AppState> {
+pub(crate) fn nais_router(metrics_handle: PrometheusHandle) -> Router<AppState> {
     Router::new()
         .route("/internal/is_alive", get(is_alive))
         .route("/internal/is_ready", get(is_ready))
@@ -24,7 +24,7 @@ pub fn nais_router(metrics_handle: PrometheusHandle) -> Router<AppState> {
 /// Handles `GET /internal/is_alive`.
 ///
 /// Returns 200 OK when the application is alive, or 503 Service Unavailable otherwise.
-pub async fn is_alive(State(state): State<AppState>) -> Response {
+pub(crate) async fn is_alive(State(state): State<AppState>) -> Response {
     if state.aliveness.is_alive() {
         (StatusCode::OK, "I'm alive").into_response()
     } else {
@@ -36,7 +36,7 @@ pub async fn is_alive(State(state): State<AppState>) -> Response {
 ///
 /// Returns 200 OK when the application is ready to serve traffic, or 503 Service Unavailable otherwise.
 /// In addition to the readiness flag, verifies that templates were successfully loaded.
-pub async fn is_ready(State(state): State<AppState>) -> Response {
+pub(crate) async fn is_ready(State(state): State<AppState>) -> Response {
     if !state.aliveness.is_ready() {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
