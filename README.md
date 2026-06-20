@@ -254,10 +254,12 @@ Exposes Prometheus metrics for operational monitoring.
 
 **Metrics exposed:**
 
-| Metric                          | Type      | Labels               | Description                   |
-|---------------------------------|-----------|----------------------|-------------------------------|
-| `http_requests_total`           | Counter   | method, path, status | Total number of HTTP requests |
-| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution  |
+| Metric                          | Type      | Labels               | Description                    |
+|---------------------------------|-----------|----------------------|--------------------------------|
+| `http_requests_total`           | Counter   | method, path, status | Total number of HTTP requests  |
+| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution   |
+| `http_request_body_size_bytes`  | Histogram | method, path, status | Request body size distribution |
+| `http_response_body_size_bytes` | Histogram | method, path, status | Response body size distribution|
 
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 
@@ -287,6 +289,7 @@ All configuration is done through environment variables. If an environment varia
 | `COMPILE_TIMEOUT_SECONDS`     | Maximum time in seconds allowed for a single compilation task. Requests exceeding this timeout are aborted with `408 Request Timeout`.                   | `30`              |
 | `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` means no limit.                                                                              | `0`               |
+| `SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS` | Maximum time in seconds to wait for a compilation semaphore permit. Exceeded timeout returns `503 Service Unavailable`.                              | `10`              |
 
 ### Logging and tracing
 
