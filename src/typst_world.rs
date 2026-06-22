@@ -8,8 +8,7 @@ use std::sync::Arc;
 const COMEMO_EVICTION_THRESHOLD: usize = 15;
 
 use anyhow::{Context, Result};
-use chrono::Datelike;
-use chrono::Timelike;
+use time::OffsetDateTime;
 use typst::foundations::Bytes;
 use typst::utils::LazyHash;
 use typst::{Feature, Features, Library, LibraryExt};
@@ -240,25 +239,24 @@ impl World for PdfgenWorld {
     }
 
     fn today(&self, offset: Option<Duration>) -> Option<typst_library::foundations::Datetime> {
-        let now = chrono::Local::now();
+        let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
         let naive = match offset {
             Some(dur) => {
-                // decompose() returns [weeks, days, hours, minutes, seconds]
                 let seconds = dur.decompose();
                 let total_seconds: i64 = seconds[0] * 7 * 24 * 3600
                     + seconds[1] * 24 * 3600
                     + seconds[2] * 3600
                     + seconds[3] * 60
                     + seconds[4];
-                let utc = now.with_timezone(&chrono::Utc);
-                (utc + chrono::Duration::seconds(total_seconds)).naive_local()
+                let utc = now.to_offset(time::UtcOffset::UTC);
+                utc + time::Duration::seconds(total_seconds)
             }
-            None => now.naive_local(),
+            None => now,
         };
         typst_library::foundations::Datetime::from_ymd(
             naive.year(),
-            u8::try_from(naive.month()).ok()?,
-            u8::try_from(naive.day()).ok()?,
+            naive.month() as u8,
+            naive.day(),
         )
     }
 }
@@ -372,14 +370,14 @@ fn log_typst_warnings(warnings: &[typst_library::diag::SourceDiagnostic]) {
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
-    let now = chrono::Utc::now();
+    let now = OffsetDateTime::now_utc();
     let datetime = typst_library::foundations::Datetime::from_ymd_hms(
         now.year(),
-        u8::try_from(now.month()).ok()?,
-        u8::try_from(now.day()).ok()?,
-        u8::try_from(now.hour()).ok()?,
-        u8::try_from(now.minute()).ok()?,
-        u8::try_from(now.second()).ok()?,
+        now.month() as u8,
+        now.day(),
+        now.hour(),
+        now.minute(),
+        now.second(),
     )?;
     Some(typst_pdf::Timestamp::new_utc(datetime))
 }

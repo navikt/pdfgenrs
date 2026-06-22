@@ -9,6 +9,8 @@ use opentelemetry_sdk::{
     trace::Sampler,
 };
 use std::time::Duration;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -42,7 +44,11 @@ where
 
         log_object.insert(
             "timestamp".to_string(),
-            Value::String(chrono::Utc::now().to_rfc3339()),
+            Value::String(
+                OffsetDateTime::now_utc()
+                    .format(&Rfc3339)
+                    .unwrap_or_default(),
+            ),
         );
         log_object.insert(
             "log_level".to_string(),
@@ -127,7 +133,7 @@ where
         let serialized = serde_json::to_string(&log_object)
             .or_else(|err| {
                 serde_json::to_string(&serde_json::json!({
-                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "timestamp": OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default(),
                     "log_level": "ERROR",
                     "target": "tracing_setup",
                     "message": "failed to serialize log object",
@@ -516,7 +522,7 @@ mod tests {
         };
         // Validate it parses as a valid RFC3339 / ISO8601 datetime
         assert!(
-            chrono::DateTime::parse_from_rfc3339(ts).is_ok(),
+            OffsetDateTime::parse(ts, &Rfc3339).is_ok(),
             "timestamp should be valid RFC3339: {ts}"
         );
     }
