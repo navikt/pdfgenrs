@@ -7,11 +7,6 @@ on:
       - '**.md'
       - '**.MD'
       - '.gitignore'
-  pull_request:
-    paths-ignore:
-      - '**.md'
-      - '**.MD'
-      - '.gitignore'
 
 permissions:
   contents: write
