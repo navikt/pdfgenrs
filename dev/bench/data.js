@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782150620534,
+  "lastUpdate": 1782371198921,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1679,6 +1679,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 773163,
             "range": "± 12502",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e29321fc0230e50c01afbb5769a84caede67e785",
+          "message": "Merge pull request #297 from navikt/copilot/image-format-support\n\nAdd WebP and SVG image format support and upgrade dependencies",
+          "timestamp": "2026-06-25T08:56:57+02:00",
+          "tree_id": "e96a8dca3f2bcea90d0f5ce8a78de2c75c35a066",
+          "url": "https://github.com/navikt/pdfgenrs/commit/e29321fc0230e50c01afbb5769a84caede67e785"
+        },
+        "date": 1782371195671,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 871172,
+            "range": "± 38598",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1106965,
+            "range": "± 5052",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167761574,
+            "range": "± 674336",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 777312,
+            "range": "± 4562",
             "unit": "ns/iter"
           }
         ]
