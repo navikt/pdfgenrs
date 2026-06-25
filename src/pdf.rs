@@ -112,7 +112,7 @@ pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
         .context("Failed to convert HTML to PDF")
 }
 
-/// Converts a PNG or JPEG image into PDF bytes.
+/// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes.
 ///
 /// Landscape images (width > height) are automatically placed on a
 /// landscape-oriented page so they fill the page without distortion.
@@ -144,7 +144,7 @@ where
     typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", source, vfiles)
 }
 
-/// Extracts (width, height) from PNG or JPEG image bytes by parsing headers.
+/// Extracts (width, height) from PNG, JPEG, WebP, or SVG image bytes by parsing headers.
 ///
 /// Returns `None` if the format is unrecognised or the header is too short.
 fn image_dimensions(data: &[u8]) -> Option<(u32, u32)> {
@@ -152,6 +152,10 @@ fn image_dimensions(data: &[u8]) -> Option<(u32, u32)> {
         png_dimensions(data)
     } else if data.starts_with(&[0xFF, 0xD8]) {
         jpeg_dimensions(data)
+    } else if data.starts_with(b"RIFF") && data.len() >= 30 && &data[8..12] == b"WEBP" {
+        webp_dimensions(data)
+    } else if is_svg(data) {
+        svg_dimensions(data)
     } else {
         None
     }
@@ -191,6 +195,142 @@ fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
         i += 2 + seg_len;
     }
     None
+}
+
+fn webp_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    if data.len() < 30 {
+        return None;
+    }
+    // VP8 lossy format
+    if &data[12..16] == b"VP8 " && data.len() >= 30 {
+        // VP8 bitstream header starts at offset 20 (after the chunk header)
+        // Frame tag at bytes 23..26 contains width/height
+        if data.len() < 30 {
+            return None;
+        }
+        let width = u32::from(u16::from_le_bytes([data[26], data[27]])) & 0x3FFF;
+        let height = u32::from(u16::from_le_bytes([data[28], data[29]])) & 0x3FFF;
+        return Some((width, height));
+    }
+    // VP8L lossless format
+    if &data[12..16] == b"VP8L" && data.len() >= 25 {
+        // Signature byte at offset 21, then 4 bytes of width/height
+        let b0 = u32::from(data[21]);
+        let b1 = u32::from(data[22]);
+        let b2 = u32::from(data[23]);
+        let b3 = u32::from(data[24]);
+        let width = (b0 | (b1 << 8)) & 0x3FFF;
+        let height = ((b1 >> 6) | (b2 << 2) | (b3 << 10)) & 0x3FFF;
+        return Some((width + 1, height + 1));
+    }
+    // VP8X extended format
+    if &data[12..16] == b"VP8X" && data.len() >= 30 {
+        let width = u32::from(data[24]) | (u32::from(data[25]) << 8) | (u32::from(data[26]) << 16);
+        let height = u32::from(data[27]) | (u32::from(data[28]) << 8) | (u32::from(data[29]) << 16);
+        return Some((width + 1, height + 1));
+    }
+    None
+}
+
+/// Checks whether bytes start with an SVG document (XML declaration or `<svg` tag).
+fn is_svg(data: &[u8]) -> bool {
+    let trimmed = trim_leading_whitespace(data);
+    trimmed.starts_with(b"<?xml") || trimmed.starts_with(b"<svg")
+}
+
+/// Extracts width and height from an SVG root element.
+///
+/// Parses the `viewBox`, `width`, and `height` attributes. If `width`/`height`
+/// are present as unitless numbers or pixel values they take priority; otherwise
+/// falls back to the viewBox dimensions.
+fn svg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    let text = std::str::from_utf8(data).ok()?;
+    let svg_start = text.find("<svg")?;
+    let svg_tag_end = text[svg_start..].find('>')? + svg_start;
+    let svg_tag = &text[svg_start..=svg_tag_end];
+
+    let width_attr = extract_svg_attr(svg_tag, "width");
+    let height_attr = extract_svg_attr(svg_tag, "height");
+
+    // Try width/height attributes first (only unitless or px values)
+    if let (Some(w), Some(h)) = (
+        width_attr.and_then(parse_svg_length),
+        height_attr.and_then(parse_svg_length),
+    ) {
+        return Some((w, h));
+    }
+
+    // Fall back to viewBox
+    if let Some(vb) = extract_svg_attr(svg_tag, "viewBox") {
+        let parts: Vec<&str> = vb.split_whitespace().collect();
+        if parts.len() == 4 {
+            let w: f64 = parts[2].parse().ok()?;
+            let h: f64 = parts[3].parse().ok()?;
+            if w > 0.0 && h > 0.0 {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                return Some((w as u32, h as u32));
+            }
+        }
+        // Also handle comma-separated viewBox values
+        let parts: Vec<&str> = vb
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if parts.len() == 4 {
+            let w: f64 = parts[2].parse().ok()?;
+            let h: f64 = parts[3].parse().ok()?;
+            if w > 0.0 && h > 0.0 {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                return Some((w as u32, h as u32));
+            }
+        }
+    }
+
+    None
+}
+
+/// Extracts the value of an attribute from an SVG/XML tag string.
+fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
+    // Match attr_name followed by = and a quoted value
+    let search = format!("{attr_name}=");
+    let pos = tag.find(&search)?;
+    let after_eq = &tag[pos + search.len()..];
+    let quote = after_eq.as_bytes().first()?;
+    if *quote != b'"' && *quote != b'\'' {
+        return None;
+    }
+    let value_start = 1;
+    let value_end = after_eq[value_start..].find(*quote as char)? + value_start;
+    Some(&after_eq[value_start..value_end])
+}
+
+/// Parses a unitless or pixel SVG length value to a u32.
+fn parse_svg_length(value: &str) -> Option<u32> {
+    let trimmed = value.trim();
+    let numeric = if let Some(stripped) = trimmed.strip_suffix("px") {
+        stripped.trim()
+    } else if trimmed.ends_with(|c: char| c.is_alphabetic() || c == '%') {
+        // Other units (em, pt, cm, etc.) - can't reliably convert to pixels
+        return None;
+    } else {
+        trimmed
+    };
+    let f: f64 = numeric.parse().ok()?;
+    if f > 0.0 {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        Some(f as u32)
+    } else {
+        None
+    }
+}
+
+/// Trims leading ASCII whitespace bytes.
+fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
+    let start = data
+        .iter()
+        .position(|b| !b.is_ascii_whitespace())
+        .unwrap_or(data.len());
+    &data[start..]
 }
 
 #[cfg(test)]
@@ -546,6 +686,109 @@ Hello, world!
     #[test]
     fn image_dimensions_returns_none_for_all_0xff() {
         assert_eq!(image_dimensions(&[0xFF; 100]), None);
+    }
+
+    // --- WebP dimension tests ---
+
+    #[test]
+    fn webp_vp8_lossy_dimensions() {
+        // Minimal VP8 lossy WebP: RIFF header + VP8 chunk
+        let mut data = Vec::new();
+        data.extend_from_slice(b"RIFF");
+        data.extend_from_slice(&100u32.to_le_bytes()); // file size (not validated)
+        data.extend_from_slice(b"WEBP");
+        data.extend_from_slice(b"VP8 ");
+        data.extend_from_slice(&18u32.to_le_bytes()); // chunk size
+        // VP8 bitstream: 3-byte frame tag
+        data.extend_from_slice(&[0x00, 0x00, 0x00]); // frame tag (offset 20-22)
+        // 3-byte sync code
+        data.extend_from_slice(&[0x9D, 0x01, 0x2A]); // sync code (offset 23-25)
+        // width and height (little-endian 14 bits each)
+        data.extend_from_slice(&320u16.to_le_bytes()); // width=320 (offset 26-27)
+        data.extend_from_slice(&240u16.to_le_bytes()); // height=240 (offset 28-29)
+        assert_eq!(image_dimensions(&data), Some((320, 240)));
+    }
+
+    #[test]
+    fn webp_vp8x_extended_dimensions() {
+        let mut data = Vec::new();
+        data.extend_from_slice(b"RIFF");
+        data.extend_from_slice(&100u32.to_le_bytes());
+        data.extend_from_slice(b"WEBP");
+        data.extend_from_slice(b"VP8X");
+        data.extend_from_slice(&10u32.to_le_bytes()); // chunk size
+        data.extend_from_slice(&[0u8; 4]); // flags (offset 20..24)
+        // Canvas width - 1 (3 bytes LE): 799 = width 800
+        let w_minus_1: u32 = 800 - 1;
+        data.push((w_minus_1 & 0xFF) as u8);
+        data.push(((w_minus_1 >> 8) & 0xFF) as u8);
+        data.push(((w_minus_1 >> 16) & 0xFF) as u8);
+        // Canvas height - 1 (3 bytes LE): 599 = height 600
+        let h_minus_1: u32 = 600 - 1;
+        data.push((h_minus_1 & 0xFF) as u8);
+        data.push(((h_minus_1 >> 8) & 0xFF) as u8);
+        data.push(((h_minus_1 >> 16) & 0xFF) as u8);
+        assert_eq!(image_dimensions(&data), Some((800, 600)));
+    }
+
+    #[test]
+    fn webp_returns_none_for_truncated_data() {
+        let data = b"RIFF\x00\x00\x00\x00WEBP";
+        assert_eq!(image_dimensions(data), None);
+    }
+
+    // --- SVG dimension tests ---
+
+    #[test]
+    fn svg_dimensions_from_width_height_attrs() {
+        let svg = br#"<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((800, 600)));
+    }
+
+    #[test]
+    fn svg_dimensions_from_viewbox() {
+        let svg = br#"<svg viewBox="0 0 1024 768" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((1024, 768)));
+    }
+
+    #[test]
+    fn svg_dimensions_with_px_suffix() {
+        let svg = br#"<svg width="400px" height="300px" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((400, 300)));
+    }
+
+    #[test]
+    fn svg_dimensions_with_xml_declaration() {
+        let svg = br#"<?xml version="1.0" encoding="UTF-8"?><svg width="200" height="100"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((200, 100)));
+    }
+
+    #[test]
+    fn svg_dimensions_with_leading_whitespace() {
+        let svg = b"  \n  <svg width=\"50\" height=\"75\"></svg>";
+        assert_eq!(image_dimensions(svg), Some((50, 75)));
+    }
+
+    #[test]
+    fn svg_dimensions_returns_none_for_em_units() {
+        let svg = br#"<svg width="10em" height="10em"></svg>"#;
+        assert_eq!(image_dimensions(svg), None);
+    }
+
+    #[test]
+    fn svg_dimensions_falls_back_to_viewbox_when_units_present() {
+        let svg =
+            br#"<svg width="10cm" height="5cm" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((300, 150)));
+    }
+
+    #[test]
+    fn svg_landscape_detected() {
+        let svg = br#"<svg width="1920" height="1080"></svg>"#;
+        assert!(
+            image_dimensions(svg).is_some_and(|(w, h)| w > h),
+            "Wide SVG should be landscape"
+        );
     }
 
     #[test]
