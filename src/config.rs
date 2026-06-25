@@ -144,6 +144,40 @@ impl Config {
         }
     }
 
+    /// Logs warnings for configuration values that are technically valid but likely
+    /// degenerate (e.g. zero timeouts that would cause immediate failures).
+    /// Call this at startup so operators are alerted to potential misconfigurations.
+    pub fn warn_degenerate_values(&self) {
+        if self.compile_timeout_seconds == 0 {
+            warn!(
+                env = COMPILE_TIMEOUT_SECONDS_ENV,
+                value = self.compile_timeout_seconds,
+                "compile_timeout_seconds is 0, all compilations will time out immediately"
+            );
+        }
+        if self.semaphore_acquire_timeout_seconds == 0 {
+            warn!(
+                env = SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV,
+                value = self.semaphore_acquire_timeout_seconds,
+                "semaphore_acquire_timeout_seconds is 0, semaphore acquisition will time out immediately"
+            );
+        }
+        if self.shutdown_drain_seconds == 0 {
+            warn!(
+                env = SHUTDOWN_DRAIN_SECONDS_ENV,
+                value = self.shutdown_drain_seconds,
+                "shutdown_drain_seconds is 0, no graceful drain period before shutdown"
+            );
+        }
+        if self.request_body_limit_bytes == 0 {
+            warn!(
+                env = REQUEST_BODY_LIMIT_BYTES_ENV,
+                value = self.request_body_limit_bytes,
+                "request_body_limit_bytes is 0, all requests with a body will be rejected"
+            );
+        }
+    }
+
     /// Returns the absolute resource directory used to resolve `/resources/...` Typst paths.
     /// Relative paths in `resources_dir` are resolved from `root_dir`.
     #[must_use]
@@ -504,5 +538,24 @@ mod tests {
         let config = Config::from_env_fn(env_from(&[(DEV_MODE_ENV, "1")]));
 
         assert!(!config.dev_mode);
+    }
+
+    #[test]
+    fn warn_degenerate_values_does_not_panic_with_zero_values() {
+        let config = Config::from_env_fn(env_from(&[
+            (COMPILE_TIMEOUT_SECONDS_ENV, "0"),
+            (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "0"),
+            (SHUTDOWN_DRAIN_SECONDS_ENV, "0"),
+            (REQUEST_BODY_LIMIT_BYTES_ENV, "0"),
+        ]));
+
+        config.warn_degenerate_values();
+    }
+
+    #[test]
+    fn warn_degenerate_values_does_not_panic_with_defaults() {
+        let config = Config::from_env_fn(|_| None);
+
+        config.warn_degenerate_values();
     }
 }
