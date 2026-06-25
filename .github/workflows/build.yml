@@ -18,10 +18,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.3
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
       - name: Audit dependencies
-        uses: rustsec/audit-check@v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo audit --deny warnings
   build:
     name: Test and build application
     runs-on: ubuntu-latest
