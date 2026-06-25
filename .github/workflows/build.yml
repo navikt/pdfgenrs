@@ -21,7 +21,7 @@ jobs:
       - name: Install cargo-audit
         run: cargo install cargo-audit
       - name: Audit dependencies
-        run: cargo audit --deny errors
+        run: cargo audit --deny unsound
   build:
     name: Test and build application
     runs-on: ubuntu-latest
