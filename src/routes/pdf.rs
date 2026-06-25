@@ -109,7 +109,7 @@ pub(crate) async fn post_pdf_from_html(
 
 /// Handles `POST /api/v1/genpdf/image/{app_name}`.
 ///
-/// Accepts a PNG or JPEG body and converts it to PDF.
+/// Accepts a PNG, JPEG, WebP, or SVG body and converts it to PDF.
 pub(crate) async fn post_pdf_from_image(
     State(state): State<AppState>,
     Path(app_name): Path<String>,
@@ -158,6 +158,8 @@ fn image_virtual_path(content_type: Option<&HeaderValue>) -> Option<&'static str
     match content_type {
         "image/png" => Some("/image.png"),
         "image/jpeg" => Some("/image.jpg"),
+        "image/webp" => Some("/image.webp"),
+        "image/svg+xml" => Some("/image.svg"),
         _ => None,
     }
 }
@@ -484,6 +486,14 @@ mod tests {
         assert_eq!(
             image_virtual_path(Some(&HeaderValue::from_static("image/jpeg"))),
             Some("/image.jpg")
+        );
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("image/webp"))),
+            Some("/image.webp")
+        );
+        assert_eq!(
+            image_virtual_path(Some(&HeaderValue::from_static("image/svg+xml"))),
+            Some("/image.svg")
         );
         assert_eq!(
             image_virtual_path(Some(&HeaderValue::from_static("image/png; charset=utf-8"))),
