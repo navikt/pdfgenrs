@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782371198921,
+  "lastUpdate": 1782378912654,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1727,6 +1727,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 777312,
             "range": "± 4562",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2b4f08b01fbdab317c999f9df805a1a038c5056",
+          "message": "Merge pull request #299 from navikt/copilot/add-startup-warning-degenerate-values\n\nAdd startup warnings for degenerate configuration values",
+          "timestamp": "2026-06-25T11:11:29+02:00",
+          "tree_id": "68135589685855b5a1f4e5f09ca55bfa0b8823d4",
+          "url": "https://github.com/navikt/pdfgenrs/commit/e2b4f08b01fbdab317c999f9df805a1a038c5056"
+        },
+        "date": 1782378909530,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 871627,
+            "range": "± 40393",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1108706,
+            "range": "± 5344",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1170203120,
+            "range": "± 752365",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 769448,
+            "range": "± 6648",
             "unit": "ns/iter"
           }
         ]
