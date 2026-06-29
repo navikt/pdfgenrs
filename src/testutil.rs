@@ -8,6 +8,7 @@ use tokio::sync::RwLock;
 use crate::pdf::build_html_converter;
 use crate::state::AppState;
 use crate::{config, state, typst_world};
+use typst::{Feature, Features};
 
 /// Creates an [`AppState`] for use in tests.
 ///
@@ -46,6 +47,10 @@ pub fn make_state(
         fonts: Arc::new(typst_world::load_fonts(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
         )?),
+        pdf_library: Arc::new(typst_world::build_library(Features::default())),
+        html_library: Arc::new(typst_world::build_library(
+            [Feature::Html].into_iter().collect(),
+        )),
         compile_semaphore: None,
         html_converter: Arc::new(
             build_html_converter(

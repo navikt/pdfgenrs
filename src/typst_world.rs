@@ -11,13 +11,21 @@ use anyhow::{Context, Result};
 use time::OffsetDateTime;
 use typst::foundations::Bytes;
 use typst::utils::LazyHash;
-use typst::{Feature, Features, Library, LibraryExt};
+use typst::{Features, Library, LibraryExt};
 use typst_library::World;
 use typst_library::diag::{FileError, FileResult};
 use typst_library::foundations::Duration;
 use typst_library::text::{Font, FontBook};
 use typst_syntax::{FileId, RootedPath, Source, VirtualPath, VirtualRoot};
 use walkdir::WalkDir;
+
+/// Pre-builds a Typst [`Library`] with the given feature set.
+///
+/// The resulting value is wrapped in [`LazyHash`] so it can be shared across
+/// multiple compilations without being rebuilt each time.
+pub fn build_library(features: Features) -> LazyHash<Library> {
+    LazyHash::new(Library::builder().with_features(features).build())
+}
 
 /// Holds the loaded fonts and the font book used by the Typst compiler.
 #[derive(Clone)]
@@ -102,7 +110,7 @@ fn is_supported_font_file(path: &Path) -> bool {
 /// It resolves files from a combination of in-memory virtual files (e.g. JSON
 /// data injected at compile time) and the physical filesystem rooted at `root`.
 pub struct PdfgenWorld {
-    library: LazyHash<Library>,
+    library: Arc<LazyHash<Library>>,
     fonts: Arc<Fonts>,
     main_id: FileId,
     main_source: Source,
@@ -144,7 +152,7 @@ impl PdfgenWorld {
     /// - `main_source` - Source text of the main Typst file.
     /// - `virtual_files` - Map of virtual path to byte content for in-memory files
     ///   (e.g. `"/data.json"` to JSON bytes).
-    /// - `features` - In-development Typst features to enable (e.g. [`Feature::Html`]).
+    /// - `library` - Pre-built Typst library (see [`build_library`]).
     pub fn new(
         fonts: Arc<Fonts>,
         root: &Path,
@@ -152,7 +160,7 @@ impl PdfgenWorld {
         main_path: &str,
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
-        features: Features,
+        library: Arc<LazyHash<Library>>,
     ) -> Result<Self> {
         let main_vpath = VirtualPath::new(main_path)
             .map_err(|e| anyhow::anyhow!("Invalid main path '{main_path}': {e}"))?;
@@ -169,10 +177,8 @@ impl PdfgenWorld {
             );
         }
 
-        let library = Library::builder().with_features(features).build();
-
         Ok(Self {
-            library: LazyHash::new(library),
+            library,
             fonts,
             main_id,
             main_source: source,
@@ -277,6 +283,7 @@ pub fn compile_to_pdf(
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
+    library: Arc<LazyHash<Library>>,
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(
         fonts,
@@ -285,7 +292,7 @@ pub fn compile_to_pdf(
         main_path,
         main_source,
         virtual_files,
-        Features::default(),
+        library,
     )?;
 
     let result = typst::compile::<typst_layout::PagedDocument>(&world);
@@ -328,6 +335,7 @@ pub fn compile_to_html(
     main_path: &str,
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
+    library: Arc<LazyHash<Library>>,
 ) -> Result<String> {
     let world = PdfgenWorld::new(
         fonts,
@@ -336,7 +344,7 @@ pub fn compile_to_html(
         main_path,
         main_source,
         virtual_files,
-        [Feature::Html].into_iter().collect(),
+        library,
     )?;
 
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
@@ -400,6 +408,10 @@ mod tests {
         root_dir().join("resources")
     }
 
+    fn pdf_library() -> Arc<LazyHash<Library>> {
+        Arc::new(build_library(Features::default()))
+    }
+
     fn is_pdf(bytes: &[u8]) -> bool {
         bytes.starts_with(b"%PDF")
     }
@@ -426,6 +438,7 @@ mod tests {
     #[test]
     fn fonts_clone_can_be_reused_across_multiple_compilations() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let library = pdf_library();
 
         let source = r#"#set document(title: "Test", date: auto)
 #set page(margin: 1cm)
@@ -439,6 +452,7 @@ Hello, world!
             "/main.typ",
             source.to_string(),
             HashMap::new(),
+            Arc::clone(&library),
         )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
@@ -449,6 +463,7 @@ Hello, world!
             "/main.typ",
             source.to_string(),
             HashMap::new(),
+            Arc::clone(&library),
         )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
 
@@ -471,6 +486,7 @@ Hello, world!
             "/main.typ",
             source,
             HashMap::new(),
+            pdf_library(),
         )?;
         assert!(
             is_pdf(&pdf),
@@ -507,7 +523,7 @@ Hello, world!
             "/main.typ",
             "Hello".to_string(),
             HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
-            Features::default(),
+            pdf_library(),
         )?;
 
         let file_id = FileId::new(RootedPath::new(
@@ -532,7 +548,7 @@ Hello, world!
             "/main.typ",
             "Main".to_string(),
             HashMap::new(),
-            Features::default(),
+            pdf_library(),
         )?;
         let file_id = FileId::new(RootedPath::new(
             VirtualRoot::Project,
@@ -557,7 +573,7 @@ Hello, world!
             "/main.typ",
             "Main".to_string(),
             HashMap::new(),
-            Features::default(),
+            pdf_library(),
         )?;
 
         let file_id = FileId::new(RootedPath::new(
@@ -580,7 +596,7 @@ Hello, world!
             "/main.typ",
             "Hello".to_string(),
             HashMap::new(),
-            Features::default(),
+            pdf_library(),
         )?;
 
         assert!(world.today(None).is_some());
@@ -591,6 +607,7 @@ Hello, world!
     fn repeated_compilations_do_not_grow_memory_unboundedly() -> Result<()> {
         let _guard = crate::memory_sensitive_test_lock().blocking_lock();
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let library = pdf_library();
         let root = root_dir();
 
         for i in 0..10 {
@@ -603,6 +620,7 @@ Hello, world!
                 "/main.typ",
                 source,
                 HashMap::new(),
+                Arc::clone(&library),
             )?;
         }
 
@@ -621,6 +639,7 @@ Hello, world!
                 "/main.typ",
                 source,
                 HashMap::new(),
+                Arc::clone(&library),
             );
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }

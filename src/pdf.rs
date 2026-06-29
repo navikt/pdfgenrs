@@ -7,6 +7,8 @@ use tracing::warn;
 use typst::foundations::Bytes;
 
 use crate::typst_world::{self, Fonts};
+use typst::Library;
+use typst::utils::LazyHash;
 
 const HTML_FONT_ALIASES: &[(&str, &str)] = &[
     ("Source Sans 3", "SourceSans3-Regular.ttf"),
@@ -81,6 +83,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
 #[must_use = "this returns a Result that should be handled"]
+#[allow(clippy::too_many_arguments)]
 pub fn typst_to_pdf(
     template_source: String,
     json_data: &serde_json::Value,
@@ -89,6 +92,7 @@ pub fn typst_to_pdf(
     resources_dir: &Path,
     app_name: &str,
     template_name: &str,
+    library: Arc<LazyHash<Library>>,
 ) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
@@ -101,6 +105,7 @@ pub fn typst_to_pdf(
         "/main.typ",
         template_source,
         vfiles,
+        library,
     )
 }
 
@@ -122,6 +127,7 @@ pub fn image_to_pdf<B>(
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
+    library: Arc<LazyHash<Library>>,
 ) -> Result<Vec<u8>>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
@@ -141,7 +147,15 @@ where
 "#
     );
 
-    typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", source, vfiles)
+    typst_world::compile_to_pdf(
+        fonts,
+        root,
+        resources_dir,
+        "/main.typ",
+        source,
+        vfiles,
+        library,
+    )
 }
 
 /// Extracts (width, height) from PNG, JPEG, WebP, or SVG image bytes by parsing headers.
@@ -336,9 +350,10 @@ fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::typst_world::load_fonts;
+    use crate::typst_world::{build_library, load_fonts};
     use std::path::PathBuf;
     use std::sync::Arc;
+    use typst::Features;
 
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -354,6 +369,10 @@ mod tests {
 
     fn test_fonts() -> Result<Arc<Fonts>> {
         Ok(Arc::new(load_fonts(&fonts_dir())?))
+    }
+
+    fn pdf_library() -> Arc<LazyHash<Library>> {
+        Arc::new(build_library(Features::default()))
     }
 
     fn is_pdf(bytes: &[u8]) -> bool {
@@ -375,6 +394,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "simple",
+            pdf_library(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -395,6 +415,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "app",
+            pdf_library(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -412,6 +433,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "invalid",
+            pdf_library(),
         );
         assert!(
             result.is_err(),
@@ -459,6 +481,7 @@ Hello, world!
             test_fonts()?,
             &root_dir(),
             &resources_dir(),
+            pdf_library(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -477,6 +500,7 @@ Hello, world!
             test_fonts()?,
             &root_dir(),
             &resources_dir(),
+            pdf_library(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -806,6 +830,7 @@ Hello, world!
             &resources_dir(),
             "test",
             "resource",
+            pdf_library(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())

@@ -5,6 +5,8 @@ use std::sync::Arc;
 use typst::foundations::Bytes;
 
 use crate::typst_world::{self, Fonts};
+use typst::Library;
+use typst::utils::LazyHash;
 
 /// Compiles a Typst template with JSON data and returns the resulting HTML string.
 ///
@@ -15,6 +17,7 @@ use crate::typst_world::{self, Fonts};
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn typst_to_html(
     template_source: String,
     json_data: &serde_json::Value,
@@ -23,6 +26,7 @@ pub(crate) fn typst_to_html(
     resources_dir: &Path,
     app_name: &str,
     template_name: &str,
+    library: Arc<LazyHash<Library>>,
 ) -> Result<String> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
@@ -35,15 +39,17 @@ pub(crate) fn typst_to_html(
         "/main.typ",
         template_source,
         vfiles,
+        library,
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::typst_world::load_fonts;
+    use crate::typst_world::{build_library, load_fonts};
     use std::path::PathBuf;
     use std::sync::Arc;
+    use typst::Feature;
 
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -55,6 +61,10 @@ mod tests {
 
     fn resources_dir() -> PathBuf {
         root_dir().join("resources")
+    }
+
+    fn html_library() -> Arc<LazyHash<Library>> {
+        Arc::new(build_library([Feature::Html].into_iter().collect()))
     }
 
     #[test]
@@ -69,6 +79,7 @@ mod tests {
             &resources_dir(),
             "test",
             "simple",
+            html_library(),
         )?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -92,6 +103,7 @@ mod tests {
             &resources_dir(),
             "test",
             "app",
+            html_library(),
         )?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -109,6 +121,7 @@ mod tests {
             &resources_dir(),
             "test",
             "invalid",
+            html_library(),
         );
         assert!(
             result.is_err(),

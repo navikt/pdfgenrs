@@ -9,6 +9,8 @@ use tracing::error;
 use self::error::ApiError;
 use crate::state::AppState;
 use crate::typst_world::Fonts;
+use typst::Library;
+use typst::utils::LazyHash;
 
 pub(crate) mod error;
 pub(crate) mod html;
@@ -20,6 +22,8 @@ pub(crate) struct CompileParams {
     pub source: Arc<String>,
     pub data: Value,
     pub fonts: Arc<Fonts>,
+    pub pdf_library: Arc<LazyHash<Library>>,
+    pub html_library: Arc<LazyHash<Library>>,
     pub root: Arc<PathBuf>,
     pub resources_dir: Arc<PathBuf>,
 }
@@ -45,6 +49,8 @@ pub(crate) async fn lookup_template_and_data(
         source,
         data,
         fonts: Arc::clone(&state.fonts),
+        pdf_library: Arc::clone(&state.pdf_library),
+        html_library: Arc::clone(&state.html_library),
         root: Arc::clone(&state.root_dir),
         resources_dir: Arc::clone(&state.resources_dir),
     })
@@ -67,6 +73,8 @@ pub(crate) fn lookup_template_with_data(
         source,
         data,
         fonts: Arc::clone(&state.fonts),
+        pdf_library: Arc::clone(&state.pdf_library),
+        html_library: Arc::clone(&state.html_library),
         root: Arc::clone(&state.root_dir),
         resources_dir: Arc::clone(&state.resources_dir),
     })

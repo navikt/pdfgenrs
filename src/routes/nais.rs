@@ -67,6 +67,7 @@ mod tests {
     use crate::state::AppAliveness;
     use crate::state::AppState;
     use crate::{build_html_converter, typst_world};
+    use typst::{Feature, Features};
 
     fn test_state(alive: bool, ready: bool) -> anyhow::Result<AppState> {
         test_state_with_templates(alive, ready, true)
@@ -94,6 +95,10 @@ mod tests {
             data: Arc::new(RwLock::new(HashMap::new())),
             aliveness,
             fonts,
+            pdf_library: Arc::new(typst_world::build_library(Features::default())),
+            html_library: Arc::new(typst_world::build_library(
+                [Feature::Html].into_iter().collect(),
+            )),
             html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
             root_dir: Arc::new(cfg.root_dir.clone()),
             resources_dir: Arc::new(cfg.resource_root()),

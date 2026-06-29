@@ -7,6 +7,7 @@ use pdfgenrs::{build_html_converter, build_router, config, template, typst_world
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
+use typst::{Feature, Features};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -97,6 +98,10 @@ async fn main() -> Result<()> {
         resources_dir: Arc::new(cfg.resource_root()),
         config: cfg.clone(),
         fonts,
+        pdf_library: Arc::new(typst_world::build_library(Features::default())),
+        html_library: Arc::new(typst_world::build_library(
+            [Feature::Html].into_iter().collect(),
+        )),
         html_converter,
         compile_semaphore,
     };

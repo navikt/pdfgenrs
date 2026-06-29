@@ -4,6 +4,9 @@ use std::sync::Arc;
 use criterion::{Criterion, criterion_group, criterion_main};
 use pdfgenrs::pdf::{build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
+use typst::Features;
+use typst::Library;
+use typst::utils::LazyHash;
 
 fn root_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -17,11 +20,16 @@ fn resources_dir() -> PathBuf {
     root_dir().join("resources")
 }
 
+fn pdf_library() -> Arc<LazyHash<Library>> {
+    Arc::new(typst_world::build_library(Features::default()))
+}
+
 fn bench_typst_to_pdf(c: &mut Criterion) {
     let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
         return;
     };
     let fonts = Arc::new(fonts);
+    let library = pdf_library();
     let source = r"#set document(date: auto)
 #set page(margin: 1cm)
 Hello, world!
@@ -38,6 +46,7 @@ Hello, world!
                 &resources_dir(),
                 "bench",
                 "simple",
+                Arc::clone(&library),
             );
         });
     });
@@ -48,6 +57,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
         return;
     };
     let fonts = Arc::new(fonts);
+    let library = pdf_library();
     let source = r#"#set document(date: auto)
 #set page(margin: 1cm)
 #let data = json("/data/bench/template.json")
@@ -69,6 +79,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
                 &resources_dir(),
                 "bench",
                 "template",
+                Arc::clone(&library),
             );
         });
     });
@@ -94,6 +105,7 @@ fn bench_image_to_pdf(c: &mut Criterion) {
         return;
     };
     let fonts = Arc::new(fonts);
+    let library = pdf_library();
     let Ok(image_bytes) = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png")) else {
         return;
     };
@@ -106,6 +118,7 @@ fn bench_image_to_pdf(c: &mut Criterion) {
                 Arc::clone(&fonts),
                 &root_dir(),
                 &resources_dir(),
+                Arc::clone(&library),
             );
         });
     });
