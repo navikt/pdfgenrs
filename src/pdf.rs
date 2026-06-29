@@ -12,11 +12,10 @@ use typst::utils::LazyHash;
 
 const HTML_FONT_ALIASES: &[(&str, &str)] = &[
     ("Source Sans 3", "SourceSans3-Regular.ttf"),
-    ("Source Sans 3__bold", "SourceSans3-Bold.ttf"),
-    ("Source Sans 3__italic", "SourceSans3-Italic.ttf"),
-    ("SourceSans3", "SourceSans3-Regular.ttf"),
-    ("SourceSans3__bold", "SourceSans3-Bold.ttf"),
-    ("SourceSans3__italic", "SourceSans3-Italic.ttf"),
+    ("Source Sans 3 bold", "SourceSans3-Bold.ttf"),
+    ("Source Sans 3 italic", "SourceSans3-Italic.ttf"),
+    ("Source Sans 3 ligth", "SourceSans3-Light.ttf"),
+    ("Source Sans 3 semi bold", "SourceSans3-SemiBold.ttf"),
     ("Noto Color Emoji", "NotoColorEmoji-Regular.ttf"),
     ("Noto Emoji", "NotoColorEmoji-Regular.ttf"),
 ];
