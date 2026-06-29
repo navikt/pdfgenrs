@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782729303596,
+  "lastUpdate": 1782730242811,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2015,6 +2015,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 777036,
             "range": "± 8291",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "48701e1b8d9cc659d480691bb585be681b3c2d05",
+          "message": "Merge pull request #304 from navikt/MikAoJk-patch-1\n\nAdd new lints for panic_in_result_fn and cognitive_complexity",
+          "timestamp": "2026-06-29T12:46:44+02:00",
+          "tree_id": "253ddd0ecff0fe46b3bc093fd9eba520fca0458c",
+          "url": "https://github.com/navikt/pdfgenrs/commit/48701e1b8d9cc659d480691bb585be681b3c2d05"
+        },
+        "date": 1782730237793,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 880145,
+            "range": "± 40880",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1083355,
+            "range": "± 15109",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1170226689,
+            "range": "± 703405",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 785567,
+            "range": "± 39409",
             "unit": "ns/iter"
           }
         ]
