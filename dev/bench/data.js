@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782730242811,
+  "lastUpdate": 1782733937529,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2063,6 +2063,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 785567,
             "range": "± 39409",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d2bf5951a8cc9d7af600f9f4b5d1fb61ba300b6d",
+          "message": "Merge pull request #306 from navikt/MikAoJk-patch-1\n\nUpdate lints in Cargo.toml for Clippy warnings",
+          "timestamp": "2026-06-29T13:48:37+02:00",
+          "tree_id": "f6c560ab8e75d62b2c56b255ee117710fab3eb9d",
+          "url": "https://github.com/navikt/pdfgenrs/commit/d2bf5951a8cc9d7af600f9f4b5d1fb61ba300b6d"
+        },
+        "date": 1782733933888,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 872908,
+            "range": "± 19219",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1110070,
+            "range": "± 15355",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168633664,
+            "range": "± 573692",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 770325,
+            "range": "± 8288",
             "unit": "ns/iter"
           }
         ]
