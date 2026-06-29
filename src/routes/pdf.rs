@@ -940,4 +940,90 @@ mod tests {
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
         Ok(())
     }
+
+    #[tokio::test]
+    async fn post_pdf_returns_422_for_non_json_content_type() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .content_type("text/plain")
+            .bytes(Bytes::from_static(b"not json"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Non-JSON content type should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_returns_422_for_malformed_json() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(Bytes::from_static(b"{invalid json"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Malformed JSON should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_415_for_text_html_content_type() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("text/html")
+            .bytes(Bytes::from_static(b"<html></html>"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_500_for_corrupted_webp() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/webp")
+            .bytes(Bytes::from_static(b"not a valid webp file"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
 }

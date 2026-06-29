@@ -622,4 +622,313 @@ Dev mode: #data.at("mode", default: "unknown")
         assert_eq!(response.status_code(), StatusCode::OK);
         Ok(())
     }
+
+    // --- Error scenario integration tests ---
+
+    #[tokio::test]
+    async fn build_router_post_html_invalid_json_returns_error() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genhtml/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from_static(b"not valid json"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Invalid JSON should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_pdf_non_json_content_type_returns_error() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("text/plain")
+            .bytes(axum::body::Bytes::from_static(b"plain text"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Non-JSON content type should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_html_non_json_content_type_returns_error() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genhtml/myapp/mytemplate")
+            .content_type("text/plain")
+            .bytes(axum::body::Bytes::from_static(b"plain text"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Non-JSON content type should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_pdf_invalid_template_returns_500() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            "#this-is-not-valid-typst-syntax(((".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/broken")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_html_invalid_template_returns_500() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            "#this-is-not-valid-typst-syntax(((".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genhtml/myapp/broken")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_image_corrupted_data_returns_500() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/image/myapp")
+            .content_type("image/png")
+            .bytes(axum::body::Bytes::from_static(b"not a valid png"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_image_no_content_type_returns_415() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/image/myapp")
+            .bytes(axum::body::Bytes::from_static(b"some bytes"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_enforces_body_limit_on_html_to_pdf() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+        let oversized = "x".repeat(3 * 1024 * 1024);
+
+        let response = server
+            .post("/api/v1/genpdf/html/myapp")
+            .content_type("text/plain")
+            .bytes(axum::body::Bytes::from(oversized))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_enforces_body_limit_on_image_to_pdf() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+        let oversized = vec![0u8; 3 * 1024 * 1024];
+
+        let response = server
+            .post("/api/v1/genpdf/image/myapp")
+            .content_type("image/png")
+            .bytes(axum::body::Bytes::from(oversized))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_pdf_404_returns_problem_json() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/nonexistent")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?,
+            "application/problem+json; charset=utf-8"
+        );
+        let body: serde_json::Value = serde_json::from_slice(response.as_bytes())?;
+        assert_eq!(body["type"], "urn:pdfgenrs:error:not-found");
+        assert_eq!(body["status"], 404);
+        assert_eq!(body["detail"], "Template or application not found");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_html_404_returns_problem_json() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genhtml/myapp/nonexistent")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?,
+            "application/problem+json; charset=utf-8"
+        );
+        let body: serde_json::Value = serde_json::from_slice(response.as_bytes())?;
+        assert_eq!(body["type"], "urn:pdfgenrs:error:not-found");
+        assert_eq!(body["status"], 404);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_image_415_returns_problem_json() -> anyhow::Result<()> {
+        let state = make_empty_state(false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/image/myapp")
+            .content_type("image/gif")
+            .bytes(axum::body::Bytes::from_static(b"GIF89a..."))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?,
+            "application/problem+json; charset=utf-8"
+        );
+        let body: serde_json::Value = serde_json::from_slice(response.as_bytes())?;
+        assert_eq!(body["type"], "urn:pdfgenrs:error:unsupported-media-type");
+        assert_eq!(body["status"], 415);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_post_pdf_500_returns_problem_json() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            "#this-is-not-valid-typst-syntax(((".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/broken")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?,
+            "application/problem+json; charset=utf-8"
+        );
+        let body: serde_json::Value = serde_json::from_slice(response.as_bytes())?;
+        assert_eq!(body["type"], "urn:pdfgenrs:error:generation-failed");
+        assert_eq!(body["status"], 500);
+        assert_eq!(body["detail"], "Internal server error");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_get_pdf_invalid_template_returns_500_in_dev_mode() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            "#this-is-not-valid-typst-syntax(((".to_string(),
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            serde_json::json!({}),
+        );
+        let state = make_state(templates, data, true)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server.get("/api/v1/genpdf/myapp/broken").await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn build_router_get_html_invalid_template_returns_500_in_dev_mode() -> anyhow::Result<()>
+    {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            "#this-is-not-valid-typst-syntax(((".to_string(),
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            serde_json::json!({}),
+        );
+        let state = make_state(templates, data, true)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server.get("/api/v1/genhtml/myapp/broken").await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
 }
