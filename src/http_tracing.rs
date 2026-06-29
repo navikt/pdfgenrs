@@ -55,7 +55,11 @@ mod imp {
         if cfg!(test) {
             app
         } else {
-            app.layer(TraceLayer::new_for_http().make_span_with(make_otel_span))
+            app.layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(make_otel_span)
+                    .on_failure(()),
+            )
         }
     }
 
