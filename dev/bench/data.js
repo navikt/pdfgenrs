@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782744620933,
+  "lastUpdate": 1782754252602,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2255,6 +2255,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 126864,
             "range": "± 3613",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1fde640f223a10e9b93d419979d954afe3637085",
+          "message": "Merge pull request #311 from navikt/copilot/fix-503-status-logs\n\nfix: suppress duplicate \"response failed\" logging from tower-http on 503",
+          "timestamp": "2026-06-29T19:27:15+02:00",
+          "tree_id": "6c03f0e4949dba5255b9b015e07ee2aa677d327d",
+          "url": "https://github.com/navikt/pdfgenrs/commit/1fde640f223a10e9b93d419979d954afe3637085"
+        },
+        "date": 1782754249116,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 225459,
+            "range": "± 4528",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 422403,
+            "range": "± 11089",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1168372241,
+            "range": "± 840382",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 152968,
+            "range": "± 5505",
             "unit": "ns/iter"
           }
         ]
