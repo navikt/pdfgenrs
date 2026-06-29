@@ -338,4 +338,76 @@ mod tests {
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
         Ok(())
     }
+
+    #[tokio::test]
+    async fn get_html_returns_500_for_invalid_template() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            INVALID_TEMPLATE.to_string(),
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            serde_json::json!({}),
+        );
+        let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
+
+        let response = server.get("/myapp/mytemplate").await;
+
+        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_html_returns_422_for_non_json_content_type() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .content_type("text/plain")
+            .bytes(Bytes::from_static(b"not json"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Non-JSON content type should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_html_returns_422_for_malformed_json() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(Bytes::from_static(b"{invalid json"))
+            .await;
+
+        assert!(
+            response.status_code().is_client_error(),
+            "Malformed JSON should return a client error, got {}",
+            response.status_code()
+        );
+        Ok(())
+    }
 }
