@@ -8,6 +8,8 @@ use tokio::sync::{RwLock, Semaphore};
 
 use crate::config;
 use crate::typst_world::Fonts;
+use typst::Library;
+use typst::utils::LazyHash;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -21,6 +23,10 @@ pub struct AppState {
     pub config: config::Config,
     /// Shared font data used by the Typst compiler.
     pub fonts: Arc<Fonts>,
+    /// Pre-built Typst library for PDF compilation (default features).
+    pub pdf_library: Arc<LazyHash<Library>>,
+    /// Pre-built Typst library for HTML compilation (HTML feature enabled).
+    pub html_library: Arc<LazyHash<Library>>,
     /// Pre-built HTML-to-PDF converter with font aliases loaded at startup.
     pub html_converter: Arc<HtmlConverter>,
     /// Semaphore to limit the number of concurrent compilation tasks.
@@ -81,6 +87,8 @@ impl std::fmt::Debug for AppState {
             .field("aliveness", &self.aliveness)
             .field("config", &self.config)
             .field("fonts", &self.fonts)
+            .field("pdf_library", &"LazyHash<Library>")
+            .field("html_library", &"LazyHash<Library>")
             .field("html_converter", &"HtmlConverter")
             .field("compile_semaphore", &self.compile_semaphore)
             .field("root_dir", &self.root_dir)

@@ -41,6 +41,7 @@ pub(crate) async fn get_html(
                 &params.resources_dir,
                 &app_name,
                 &template_name,
+                params.html_library,
             )
         },
     )
@@ -78,6 +79,7 @@ pub(crate) async fn post_html(
                 &params.resources_dir,
                 &app_name,
                 &template_name,
+                params.html_library,
             )
         },
     )

@@ -7,6 +7,7 @@ use reqwest::header;
 use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
+use typst::{Feature, Features};
 
 const BENCH_HTML_BODY: &str = r#"<!DOCTYPE html>
 <html>
@@ -40,6 +41,10 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
         data: Arc::new(RwLock::new(data)),
         aliveness: state::AppAliveness::new(),
         fonts,
+        pdf_library: Arc::new(typst_world::build_library(Features::default())),
+        html_library: Arc::new(typst_world::build_library(
+            [Feature::Html].into_iter().collect(),
+        )),
         html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
         root_dir: Arc::new(cfg.root_dir.clone()),
         resources_dir: Arc::new(cfg.resource_root()),
