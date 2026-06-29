@@ -2,6 +2,10 @@
 *.iml
 .idea/
 
+DS_Store
+*.swp
+*.pdb
+
 # Cargo
 .cargo
 # will have compiled files and executables
