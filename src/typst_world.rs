@@ -243,11 +243,12 @@ impl World for PdfgenWorld {
         let naive = match offset {
             Some(dur) => {
                 let seconds = dur.decompose();
-                let total_seconds: i64 = seconds[0] * 7 * 24 * 3600
-                    + seconds[1] * 24 * 3600
-                    + seconds[2] * 3600
-                    + seconds[3] * 60
-                    + seconds[4];
+                let total_seconds: i64 = seconds[0]
+                    .saturating_mul(7 * 24 * 3600)
+                    .saturating_add(seconds[1].saturating_mul(24 * 3600))
+                    .saturating_add(seconds[2].saturating_mul(3600))
+                    .saturating_add(seconds[3].saturating_mul(60))
+                    .saturating_add(seconds[4]);
                 let utc = now.to_offset(time::UtcOffset::UTC);
                 utc + time::Duration::seconds(total_seconds)
             }
