@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782491858927,
+  "lastUpdate": 1782729303596,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -1967,6 +1967,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 770567,
             "range": "± 6643",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "db3ba9d929dfc9a7a3f1d0d0759fb3d79f52b3ab",
+          "message": "Merge pull request #305 from navikt/copilot/expand-integration-tests-for-error-scenarios\n\nExpanding integration tests for error scenarios in routes",
+          "timestamp": "2026-06-29T12:31:29+02:00",
+          "tree_id": "5eeb70ad45d22f8101167fa58cbad69804ae653f",
+          "url": "https://github.com/navikt/pdfgenrs/commit/db3ba9d929dfc9a7a3f1d0d0759fb3d79f52b3ab"
+        },
+        "date": 1782729300282,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 869635,
+            "range": "± 19150",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1076852,
+            "range": "± 11595",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1167377433,
+            "range": "± 937553",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 777036,
+            "range": "± 8291",
             "unit": "ns/iter"
           }
         ]
