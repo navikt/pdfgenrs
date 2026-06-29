@@ -83,6 +83,9 @@ pub(crate) async fn acquire_compile_permit(
         let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
         match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
             Ok(Ok(permit)) => Ok(Some(permit)),
+            // SAFETY: The semaphore lives inside an Arc in AppState for the entire application
+            // lifetime and is never explicitly closed, so acquire_owned() cannot fail with a
+            // closed error.
             Ok(Err(_)) => unreachable!("semaphore is never closed"),
             Err(_elapsed) => Err(ApiError::ServiceOverloaded),
         }
