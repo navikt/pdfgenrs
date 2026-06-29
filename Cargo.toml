@@ -67,6 +67,9 @@ trivial_numeric_casts = "warn"
 unused_lifetimes = "warn"
 unused_qualifications = "warn"
 unreachable_pub = "warn"
+panic_in_result_fn = "warn"
+inefficient_to_string = "warn"
+cognitive_complexity = "warn"
 
 [lints.clippy]
 unwrap_used = "warn"
