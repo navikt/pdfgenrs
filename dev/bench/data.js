@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782737472061,
+  "lastUpdate": 1782744620933,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2207,6 +2207,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 746445,
             "range": "± 4680",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9907b828a34a15209d3d8a56fda3c544d83836bc",
+          "message": "Merge pull request #310 from navikt/copilot/optimize-pdf-generation\n\nrefactor: pre-build Typst Library once and share via Arc",
+          "timestamp": "2026-06-29T16:46:46+02:00",
+          "tree_id": "354e5becdc87f2325f935f81dd7ce768032fd448",
+          "url": "https://github.com/navikt/pdfgenrs/commit/9907b828a34a15209d3d8a56fda3c544d83836bc"
+        },
+        "date": 1782744616523,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 193427,
+            "range": "± 9439",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 402741,
+            "range": "± 6862",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1175434303,
+            "range": "± 813566",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 126864,
+            "range": "± 3613",
             "unit": "ns/iter"
           }
         ]
