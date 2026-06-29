@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782733937529,
+  "lastUpdate": 1782735863707,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2111,6 +2111,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 770325,
             "range": "± 8288",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f5c6ec7c6ad187c229ba2b6287a97e8da3c55bd",
+          "message": "Merge pull request #307 from navikt/copilot/fix-integer-overflow-today-function\n\nfix: use saturating arithmetic in today() to prevent integer overflow",
+          "timestamp": "2026-06-29T14:20:43+02:00",
+          "tree_id": "34af4b6b035e3ae334fe40a3254bf6aa387868b2",
+          "url": "https://github.com/navikt/pdfgenrs/commit/3f5c6ec7c6ad187c229ba2b6287a97e8da3c55bd"
+        },
+        "date": 1782735860165,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 870227,
+            "range": "± 27175",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 1082082,
+            "range": "± 10125",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1166464295,
+            "range": "± 750612",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 816973,
+            "range": "± 11680",
             "unit": "ns/iter"
           }
         ]
