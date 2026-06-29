@@ -16,7 +16,7 @@ use crate::typst_world::{self, Fonts};
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
 pub(crate) fn typst_to_html(
-    template_source: String,
+    template_source: &str,
     json_data: &serde_json::Value,
     fonts: Arc<Fonts>,
     root: &Path,
@@ -62,7 +62,7 @@ mod tests {
         let source = "Hello, world!\n";
         let data = serde_json::json!({});
         let html = typst_to_html(
-            source.to_string(),
+            source,
             &data,
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
@@ -85,7 +85,7 @@ mod tests {
 "#;
         let data = serde_json::json!({"name": "Test User"});
         let html = typst_to_html(
-            source.to_string(),
+            source,
             &data,
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),
@@ -102,7 +102,7 @@ mod tests {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_html(
-            source.to_string(),
+            source,
             &data,
             Arc::new(load_fonts(&fonts_dir())?),
             &root_dir(),

@@ -82,7 +82,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
 /// compilation / PDF export fails.
 #[must_use = "this returns a Result that should be handled"]
 pub fn typst_to_pdf(
-    template_source: String,
+    template_source: &str,
     json_data: &serde_json::Value,
     fonts: Arc<Fonts>,
     root: &Path,
@@ -141,7 +141,7 @@ where
 "#
     );
 
-    typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", source, vfiles)
+    typst_world::compile_to_pdf(fonts, root, resources_dir, "/main.typ", &source, vfiles)
 }
 
 /// Extracts (width, height) from PNG, JPEG, WebP, or SVG image bytes by parsing headers.
@@ -368,7 +368,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),
@@ -388,7 +388,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({"name": "Test User"});
         let bytes = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),
@@ -405,7 +405,7 @@ Hello, world!
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),
@@ -799,7 +799,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),

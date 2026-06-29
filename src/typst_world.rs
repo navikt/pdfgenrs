@@ -150,14 +150,14 @@ impl PdfgenWorld {
         root: &Path,
         resources_dir: &Path,
         main_path: &str,
-        main_source: String,
+        main_source: &str,
         virtual_files: HashMap<String, Bytes>,
         features: Features,
     ) -> Result<Self> {
         let main_vpath = VirtualPath::new(main_path)
             .map_err(|e| anyhow::anyhow!("Invalid main path '{main_path}': {e}"))?;
         let main_id = FileId::new(RootedPath::new(VirtualRoot::Project, main_vpath));
-        let source = Source::new(main_id, main_source);
+        let source = Source::new(main_id, main_source.to_owned());
 
         let mut vfiles: HashMap<FileId, Bytes> = HashMap::new();
         for (path, bytes) in virtual_files {
@@ -275,7 +275,7 @@ pub fn compile_to_pdf(
     root: &Path,
     resources_dir: &Path,
     main_path: &str,
-    main_source: String,
+    main_source: &str,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(
@@ -326,7 +326,7 @@ pub fn compile_to_html(
     root: &Path,
     resources_dir: &Path,
     main_path: &str,
-    main_source: String,
+    main_source: &str,
     virtual_files: HashMap<String, Bytes>,
 ) -> Result<String> {
     let world = PdfgenWorld::new(
@@ -437,7 +437,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            source.to_string(),
+            source,
             HashMap::new(),
         )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
@@ -447,7 +447,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            source.to_string(),
+            source,
             HashMap::new(),
         )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
@@ -459,8 +459,7 @@ Hello, world!
     fn compilation_succeeds_after_full_cache_eviction() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
-        let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test."
-            .to_string();
+        let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test.";
 
         comemo::evict(0);
 
@@ -505,7 +504,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            "Hello".to_string(),
+            "Hello",
             HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
             Features::default(),
         )?;
@@ -530,7 +529,7 @@ Hello, world!
             dir.path(),
             &resources_dir(),
             "/main.typ",
-            "Main".to_string(),
+            "Main",
             HashMap::new(),
             Features::default(),
         )?;
@@ -555,7 +554,7 @@ Hello, world!
             root.path(),
             resources.path(),
             "/main.typ",
-            "Main".to_string(),
+            "Main",
             HashMap::new(),
             Features::default(),
         )?;
@@ -578,7 +577,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            "Hello".to_string(),
+            "Hello",
             HashMap::new(),
             Features::default(),
         )?;
@@ -601,7 +600,7 @@ Hello, world!
                 &root,
                 &resources_dir(),
                 "/main.typ",
-                source,
+                &source,
                 HashMap::new(),
             )?;
         }
@@ -619,7 +618,7 @@ Hello, world!
                 &root,
                 &resources_dir(),
                 "/main.typ",
-                source,
+                &source,
                 HashMap::new(),
             );
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());

@@ -31,7 +31,7 @@ Hello, world!
     c.bench_function("typst_to_pdf_simple", |b| {
         b.iter(|| {
             let _ = typst_to_pdf(
-                source.to_string(),
+                source,
                 &data,
                 Arc::clone(&fonts),
                 &root_dir(),
@@ -62,7 +62,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
     c.bench_function("typst_to_pdf_with_data", |b| {
         b.iter(|| {
             let _ = typst_to_pdf(
-                source.to_string(),
+                source,
                 &data,
                 Arc::clone(&fonts),
                 &root_dir(),
