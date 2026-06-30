@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782758235079,
+  "lastUpdate": 1782801458895,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2351,6 +2351,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 144768,
             "range": "± 5371",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17b0f514a549513311d80832d0d5c0d845989594",
+          "message": "Merge pull request #313 from navikt/copilot/drop-unnecessary-code-line\n\nrefactor: replace hardcoded HTML_FONT_ALIASES with dynamic font discovery",
+          "timestamp": "2026-06-30T08:33:42+02:00",
+          "tree_id": "a860bf52970e0b51394c9e866d535b2c717eb437",
+          "url": "https://github.com/navikt/pdfgenrs/commit/17b0f514a549513311d80832d0d5c0d845989594"
+        },
+        "date": 1782801454230,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 92031,
+            "range": "± 3216",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 196688,
+            "range": "± 1400",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1259763341,
+            "range": "± 1346070",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 65081,
+            "range": "± 5333",
             "unit": "ns/iter"
           }
         ]
