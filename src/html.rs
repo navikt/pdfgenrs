@@ -46,7 +46,7 @@ pub(crate) fn typst_to_html(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::typst_world::{build_library, load_fonts};
+    use crate::typst_world::{build_library, cached_fonts};
     use std::path::PathBuf;
     use std::sync::Arc;
     use typst::Feature;
@@ -74,7 +74,7 @@ mod tests {
         let html = typst_to_html(
             source.to_string(),
             &data,
-            Arc::new(load_fonts(&fonts_dir())?),
+            cached_fonts(&fonts_dir())?,
             &root_dir(),
             &resources_dir(),
             "test",
@@ -98,7 +98,7 @@ mod tests {
         let html = typst_to_html(
             source.to_string(),
             &data,
-            Arc::new(load_fonts(&fonts_dir())?),
+            cached_fonts(&fonts_dir())?,
             &root_dir(),
             &resources_dir(),
             "test",
@@ -116,7 +116,7 @@ mod tests {
         let result = typst_to_html(
             source.to_string(),
             &data,
-            Arc::new(load_fonts(&fonts_dir())?),
+            cached_fonts(&fonts_dir())?,
             &root_dir(),
             &resources_dir(),
             "test",

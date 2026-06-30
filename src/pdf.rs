@@ -422,7 +422,7 @@ fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::typst_world::{build_library, load_fonts};
+    use crate::typst_world::{build_library, cached_fonts};
     use std::path::PathBuf;
     use std::sync::Arc;
     use typst::Features;
@@ -440,7 +440,7 @@ mod tests {
     }
 
     fn test_fonts() -> Result<Arc<Fonts>> {
-        Ok(Arc::new(load_fonts(&fonts_dir())?))
+        cached_fonts(&fonts_dir())
     }
 
     fn pdf_library() -> Arc<LazyHash<Library>> {

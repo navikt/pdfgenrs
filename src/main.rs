@@ -56,14 +56,14 @@ async fn main() -> Result<()> {
     };
 
     info!(path = %cfg.fonts_dir.display(), "Loading fonts");
-    let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir).map_err(|e| {
+    let fonts = typst_world::cached_fonts(&cfg.fonts_dir).map_err(|e| {
         tracing::error!(
             error = %e,
             path = %cfg.fonts_dir.display(),
             "Failed to load fonts"
         );
         e
-    })?);
+    })?;
     info!(count = fonts.fonts.len(), "Loaded fonts");
 
     let (html_converter, html_font_count) =

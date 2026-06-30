@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// Maximum number of evictions to perform on the comemo memoization cache after
 /// each compilation. This bounds memory growth while preserving frequently-used
@@ -75,6 +75,24 @@ pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts> {
         fonts,
         book: LazyHash::new(book),
     })
+}
+
+/// Process-wide font cache.
+///
+/// Fonts are immutable after loading, so we cache them in a [`OnceLock`] to
+/// avoid redundant I/O and parsing on every request or test invocation.
+static FONT_CACHE: OnceLock<Arc<Fonts>> = OnceLock::new();
+
+/// Returns a process-wide cached [`Fonts`] instance, loading from `fonts_dir` on first call.
+///
+/// Subsequent calls return the same `Arc<Fonts>` regardless of the `fonts_dir` argument.
+/// This is safe because the font directory is fixed for the lifetime of the process.
+pub fn cached_fonts(fonts_dir: &Path) -> Result<Arc<Fonts>> {
+    if let Some(fonts) = FONT_CACHE.get() {
+        return Ok(Arc::clone(fonts));
+    }
+    let fonts = Arc::new(load_fonts(fonts_dir)?);
+    Ok(Arc::clone(FONT_CACHE.get_or_init(|| fonts)))
 }
 
 /// Walks `dir` and collects all supported font files.
@@ -437,7 +455,7 @@ mod tests {
 
     #[test]
     fn fonts_clone_can_be_reused_across_multiple_compilations() -> Result<()> {
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let library = pdf_library();
 
         let source = r#"#set document(title: "Test", date: auto)
@@ -472,7 +490,7 @@ Hello, world!
 
     #[test]
     fn compilation_succeeds_after_full_cache_eviction() -> Result<()> {
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let root = root_dir();
         let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test."
             .to_string();
@@ -515,7 +533,7 @@ Hello, world!
 
     #[test]
     fn source_returns_invalid_utf8_for_virtual_non_utf8_file() -> Result<()> {
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let world = PdfgenWorld::new(
             fonts,
             &root_dir(),
@@ -540,7 +558,7 @@ Hello, world!
     fn source_reads_physical_files_from_root() -> Result<()> {
         let dir = TempDir::new()?;
         fs::write(dir.path().join("snippet.typ"), "File system content")?;
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let world = PdfgenWorld::new(
             fonts,
             dir.path(),
@@ -565,7 +583,7 @@ Hello, world!
         let root = TempDir::new()?;
         let resources = TempDir::new()?;
         fs::write(resources.path().join("logo.txt"), b"resource content")?;
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let world = PdfgenWorld::new(
             fonts,
             root.path(),
@@ -588,7 +606,7 @@ Hello, world!
 
     #[test]
     fn today_supports_offset_argument() -> Result<()> {
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let world = PdfgenWorld::new(
             fonts,
             &root_dir(),
@@ -606,7 +624,7 @@ Hello, world!
     #[test]
     fn repeated_compilations_do_not_grow_memory_unboundedly() -> Result<()> {
         let _guard = crate::memory_sensitive_test_lock().blocking_lock();
-        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let fonts = cached_fonts(&root_dir().join("fonts"))?;
         let library = pdf_library();
         let root = root_dir();
 

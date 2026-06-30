@@ -44,9 +44,7 @@ pub fn make_state(
         root_dir: Arc::new(cfg.root_dir.clone()),
         resources_dir: Arc::new(cfg.resource_root()),
         config: cfg,
-        fonts: Arc::new(typst_world::load_fonts(
-            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
-        )?),
+        fonts: typst_world::cached_fonts(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"))?,
         pdf_library: Arc::new(typst_world::build_library(Features::default())),
         html_library: Arc::new(typst_world::build_library(
             [Feature::Html].into_iter().collect(),

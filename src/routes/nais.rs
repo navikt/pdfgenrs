@@ -82,7 +82,7 @@ mod tests {
         aliveness.set_alive(alive);
         aliveness.set_ready(ready);
         let cfg = Config::default();
-        let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir)?);
+        let fonts = typst_world::cached_fonts(&cfg.fonts_dir)?;
         let mut templates = HashMap::new();
         if with_templates {
             templates.insert(
