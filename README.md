@@ -272,6 +272,7 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 - https://github.com/navikt/pengeflyt-pdfgenrs
 - https://github.com/navikt/helse-sprinter
 - https://github.com/navikt/aap-pdfgenerator
+- https://github.com/navikt/tiltakspenger-pdfgenrs
 
 ## Environment variables
 
