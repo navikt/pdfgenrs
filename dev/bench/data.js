@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782801458895,
+  "lastUpdate": 1782805089217,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2399,6 +2399,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 65081,
             "range": "± 5333",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b8c8c874d98a1288c9e6d328f3ef80a1da0cfee",
+          "message": "Merge pull request #314 from navikt/copilot/fix-503-service-unavailable\n\nfix: exclude nais health check routes from tower-http trace layer",
+          "timestamp": "2026-06-30T09:34:07+02:00",
+          "tree_id": "479060406004ba5860aba53dd86c0a5526ad5f63",
+          "url": "https://github.com/navikt/pdfgenrs/commit/7b8c8c874d98a1288c9e6d328f3ef80a1da0cfee"
+        },
+        "date": 1782805084147,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 225177,
+            "range": "± 15003",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 415037,
+            "range": "± 2249",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1269348144,
+            "range": "± 659487",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 153563,
+            "range": "± 3817",
             "unit": "ns/iter"
           }
         ]
