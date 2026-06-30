@@ -123,11 +123,23 @@ fn is_supported_font_file(path: &Path) -> bool {
     }
 }
 
+/// Returns `true` if `name` looks like an emoji font that should be excluded
+/// from the HTML converter. Emoji fonts (e.g. NotoColorEmoji, 25 MB) are
+/// expensive to parse on every conversion and are rarely needed for
+/// HTML-to-PDF output.
+fn is_emoji_font(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.contains("emoji")
+}
+
 /// Builds a pre-configured [`HtmlConverter`] with fonts discovered from `fonts_dir`.
 ///
 /// Font data is cached in a process-wide [`OnceLock`] so that repeated calls
 /// (e.g. in tests) avoid redundant file I/O. The converter itself is constructed fresh
 /// each call with the given `base_path`, but the expensive disk reads happen at most once.
+///
+/// Emoji fonts (e.g. NotoColorEmoji) are excluded because they are very large
+/// and `ironpress` re-parses every registered font on each `convert()` call.
 ///
 /// Font files that cannot be read are skipped and logged as warnings (on first load only).
 ///
@@ -137,12 +149,17 @@ fn is_supported_font_file(path: &Path) -> bool {
 pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverter, usize) {
     let fonts = discover_fonts(fonts_dir);
     let mut converter = HtmlConverter::new().base_path(base_path);
+    let mut count = 0;
 
     for (name, font_bytes) in fonts {
+        if is_emoji_font(name) {
+            continue;
+        }
         converter = converter.add_font(name, font_bytes.clone());
+        count += 1;
     }
 
-    (converter, fonts.len())
+    (converter, count)
 }
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
@@ -906,5 +923,23 @@ Hello, world!
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
+    }
+
+    #[test]
+    fn is_emoji_font_detects_emoji_names() {
+        assert!(is_emoji_font("Noto Color Emoji"));
+        assert!(is_emoji_font("noto color emoji"));
+        assert!(is_emoji_font("Apple Color Emoji"));
+        assert!(!is_emoji_font("Source Sans 3"));
+        assert!(!is_emoji_font("Source Sans 3 bold"));
+    }
+
+    #[test]
+    fn build_html_converter_excludes_emoji_fonts() {
+        let (_, count) = build_html_converter(&fonts_dir(), &root_dir());
+        assert!(
+            count > 0 && count <= 7,
+            "Expected only non-emoji fonts, got {count}"
+        );
     }
 }
