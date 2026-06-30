@@ -1,0 +1,56 @@
+[package]
+name = "ironpress"
+version = "1.4.3"
+edition = "2024"
+rust-version = "1.85"
+description = "Pure Rust HTML/CSS/Markdown to PDF converter with layout engine, LaTeX math, tables, images, custom fonts, and streaming output. No browser, no system dependencies."
+license = "MIT"
+repository = "https://github.com/gastongouron/ironpress"
+documentation = "https://docs.rs/ironpress"
+readme = "README.md"
+keywords = ["pdf", "html", "css", "markdown", "converter"]
+categories = ["text-processing", "encoding", "template-engine"]
+exclude = [".github/", ".claude/", "target/", "docs/"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "ironpress"
+path = "src/bin/cli.rs"
+
+[features]
+default = []
+async = ["tokio"]
+remote = ["ureq"]
+wasm = ["wasm-bindgen", "js-sys", "getrandom/wasm_js"]
+
+[dependencies]
+html5ever = "0.38"
+lightningcss = { version = "1.0.0-alpha.71", default-features = false }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+png_decoder = { package = "png", version = "0.18" }
+pulldown-cmark = "0.13"
+markup5ever_rcdom = "0.38"
+fontdb = "0.23"
+flate2 = "1"
+resvg = "0.47"
+rustybuzz = "0.20"
+subsetter = "0.2.3"
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "rt"], optional = true }
+ureq = { version = "3", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+getrandom = { version = "0.3", optional = true }
+unicode-bidi = "0.3.18"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+proptest = "1"
+criterion = { version = "0.8", features = ["html_reports"] }
+serde_json = "1"
+
+[[bench]]
+name = "conversion"
+harness = false

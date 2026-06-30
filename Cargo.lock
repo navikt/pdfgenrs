@@ -1890,8 +1890,6 @@ checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 [[package]]
 name = "ironpress"
 version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22d0de31cc9c82636f4440263bb29e83ce3e58b142bb722038c9711025c4653e"
 dependencies = [
  "flate2",
  "fontdb",
