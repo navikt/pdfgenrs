@@ -5,71 +5,144 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use tracing::warn;
 use typst::foundations::Bytes;
+use typst_library::text::Font;
+use walkdir::WalkDir;
 
 use crate::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
-const HTML_FONT_ALIASES: &[(&str, &str)] = &[
-    ("Source Sans 3", "SourceSans3-Regular.ttf"),
-    ("Source Sans 3 bold", "SourceSans3-Bold.ttf"),
-    ("Source Sans 3 italic", "SourceSans3-Italic.ttf"),
-    ("Source Sans 3 ligth", "SourceSans3-Light.ttf"),
-    ("Source Sans 3 semi bold", "SourceSans3-SemiBold.ttf"),
-    ("Noto Color Emoji", "NotoColorEmoji-Regular.ttf"),
-    ("Noto Emoji", "NotoColorEmoji-Regular.ttf"),
-];
+/// Cached font data discovered from the fonts directory. Once loaded, subsequent
+/// calls to [`build_html_converter`] reuse the cached data instead of re-reading
+/// files from disk.
+type FontCache = (PathBuf, Vec<(String, Vec<u8>)>);
+static FONT_CACHE: OnceLock<FontCache> = OnceLock::new();
 
-/// Cached font alias bytes. Once loaded, subsequent calls to [`build_html_converter`]
-/// reuse the cached bytes instead of re-reading files from disk.
-type FontAliasCache = (PathBuf, Vec<(&'static str, Vec<u8>)>);
-static FONT_ALIAS_CACHE: OnceLock<FontAliasCache> = OnceLock::new();
+/// Derives a CSS-friendly font name from a font's family and variant.
+///
+/// For regular weight (400) and normal style, returns just the family name.
+/// For other variants, appends the weight/style descriptor (e.g. "bold", "italic").
+fn css_font_name(family: &str, variant: &typst_library::text::FontVariant) -> String {
+    use typst_library::text::{FontStyle, FontWeight};
 
-/// Loads font alias bytes from `fonts_dir`, using a process-wide cache to avoid
-/// redundant file I/O on repeated calls with the same directory.
-fn load_font_aliases(fonts_dir: &Path) -> &'static [(&'static str, Vec<u8>)] {
-    let (_, aliases) = FONT_ALIAS_CACHE.get_or_init(|| {
-        let mut loaded = Vec::new();
-        for (family, file_name) in HTML_FONT_ALIASES {
-            let font_path = fonts_dir.join(file_name);
-            match std::fs::read(&font_path) {
-                Ok(font_bytes) => {
-                    loaded.push((*family, font_bytes));
-                }
-                Err(error) => {
-                    warn!(
-                        font_path = %font_path.display(),
-                        font_family = family,
-                        "Failed to load HTML font alias: {error}"
-                    );
-                }
-            }
-        }
-        (fonts_dir.to_path_buf(), loaded)
-    });
-    aliases
+    let weight_suffix = match variant.weight {
+        FontWeight::THIN => Some("thin"),
+        FontWeight::EXTRALIGHT => Some("extra light"),
+        FontWeight::LIGHT => Some("light"),
+        FontWeight::REGULAR => None,
+        FontWeight::MEDIUM => Some("medium"),
+        FontWeight::SEMIBOLD => Some("semi bold"),
+        FontWeight::BOLD => Some("bold"),
+        FontWeight::EXTRABOLD => Some("extra bold"),
+        FontWeight::BLACK => Some("black"),
+        _ => None,
+    };
+
+    let style_suffix = match variant.style {
+        FontStyle::Normal => None,
+        FontStyle::Italic => Some("italic"),
+        FontStyle::Oblique => Some("oblique"),
+    };
+
+    match (weight_suffix, style_suffix) {
+        (None, None) => family.to_string(),
+        (Some(w), None) => format!("{family} {w}"),
+        (None, Some(s)) => format!("{family} {s}"),
+        (Some(w), Some(s)) => format!("{family} {w} {s}"),
+    }
 }
 
-/// Builds a pre-configured [`HtmlConverter`] with font aliases loaded from `fonts_dir`.
+/// Discovers all fonts in `fonts_dir` and returns `(css_name, font_bytes)` pairs,
+/// using a process-wide cache to avoid redundant file I/O.
+fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Vec<u8>)] {
+    let (_, fonts) = FONT_CACHE.get_or_init(|| {
+        let mut loaded: Vec<(String, Vec<u8>)> = Vec::new();
+
+        let entries = match WalkDir::new(fonts_dir)
+            .into_iter()
+            .collect::<std::result::Result<Vec<_>, _>>()
+        {
+            Ok(entries) => entries,
+            Err(error) => {
+                warn!(
+                    fonts_dir = %fonts_dir.display(),
+                    "Failed to read fonts directory: {error}"
+                );
+                return (fonts_dir.to_path_buf(), loaded);
+            }
+        };
+
+        for entry in entries {
+            let path = entry.path();
+            if !entry.file_type().is_file() || !is_supported_font_file(path) {
+                continue;
+            }
+
+            let font_bytes = match std::fs::read(path) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    warn!(
+                        font_path = %path.display(),
+                        "Failed to read font file: {error}"
+                    );
+                    continue;
+                }
+            };
+
+            let fonts_from_file: Vec<Font> = Font::iter(Bytes::new(font_bytes.clone())).collect();
+
+            if fonts_from_file.is_empty() {
+                warn!(
+                    font_path = %path.display(),
+                    "Font file did not contain any readable font faces"
+                );
+                continue;
+            }
+
+            for font in &fonts_from_file {
+                let info = font.info();
+                let name = css_font_name(&info.family, &info.variant);
+                loaded.push((name, font_bytes.clone()));
+            }
+        }
+
+        (fonts_dir.to_path_buf(), loaded)
+    });
+    fonts
+}
+
+/// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
+fn is_supported_font_file(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => {
+            ext.eq_ignore_ascii_case("ttf")
+                || ext.eq_ignore_ascii_case("otf")
+                || ext.eq_ignore_ascii_case("ttc")
+        }
+        None => false,
+    }
+}
+
+/// Builds a pre-configured [`HtmlConverter`] with fonts discovered from `fonts_dir`.
 ///
-/// Font alias bytes are cached in a process-wide [`OnceLock`] so that repeated calls
+/// Font data is cached in a process-wide [`OnceLock`] so that repeated calls
 /// (e.g. in tests) avoid redundant file I/O. The converter itself is constructed fresh
 /// each call with the given `base_path`, but the expensive disk reads happen at most once.
 ///
 /// Font files that cannot be read are skipped and logged as warnings (on first load only).
 ///
 /// Returns a tuple of `(converter, count)` where `count` is the number of
-/// font aliases successfully loaded.
+/// fonts successfully loaded.
 #[must_use]
 pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverter, usize) {
-    let aliases = load_font_aliases(fonts_dir);
+    let fonts = discover_fonts(fonts_dir);
     let mut converter = HtmlConverter::new().base_path(base_path);
 
-    for (family, font_bytes) in aliases {
-        converter = converter.add_font(family, font_bytes.clone());
+    for (name, font_bytes) in fonts {
+        converter = converter.add_font(name, font_bytes.clone());
     }
 
-    (converter, aliases.len())
+    (converter, fonts.len())
 }
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
