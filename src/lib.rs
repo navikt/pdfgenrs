@@ -62,17 +62,19 @@ pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router
         html_router = html_router.route("/{app_name}/{template}", get(routes::html::get_html));
     }
 
-    let app = Router::new()
+    let api_routes = Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
+        .fallback(fallback_handler);
+
+    let api_routes = http_tracing::apply_http_tracing_layer(api_routes);
+
+    api_routes
         .merge(routes::nais::nais_router(metrics_handle))
-        .fallback(fallback_handler)
         .layer(middleware::from_fn(request_id::request_id_middleware))
         .layer(middleware::from_fn(metrics::track_metrics))
         .layer(RequestBodyLimitLayer::new(request_body_limit_bytes))
-        .with_state(state);
-
-    http_tracing::apply_http_tracing_layer(app)
+        .with_state(state)
 }
 
 /// Fallback handler that returns 404 with a list of all known templates.

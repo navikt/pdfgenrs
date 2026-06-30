@@ -1,6 +1,8 @@
 use axum::Router;
 
-pub(crate) fn apply_http_tracing_layer(app: Router) -> Router {
+use crate::state::AppState;
+
+pub(crate) fn apply_http_tracing_layer(app: Router<AppState>) -> Router<AppState> {
     imp::apply_http_tracing_layer(app)
 }
 
@@ -51,7 +53,9 @@ mod imp {
         span
     }
 
-    pub(super) fn apply_http_tracing_layer(app: Router) -> Router {
+    pub(super) fn apply_http_tracing_layer(
+        app: Router<crate::state::AppState>,
+    ) -> Router<crate::state::AppState> {
         if cfg!(test) {
             app
         } else {
