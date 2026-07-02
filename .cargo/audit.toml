@@ -1,0 +1,7 @@
+[advisories]
+ignore = [
+    # quick-xml vulnerabilities - transitive dependency via citationberg (typst ecosystem)
+    # Cannot be updated until upstream citationberg releases a version using quick-xml >= 0.41.0
+    "RUSTSEC-2026-0194", # Quadratic run time when checking a start tag for duplicate attribute names
+    "RUSTSEC-2026-0195", # Unbounded namespace-declaration allocation in NsReader enables memory-exhaustion DoS
+]
