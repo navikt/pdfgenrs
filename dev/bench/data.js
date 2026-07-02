@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782807395099,
+  "lastUpdate": 1782994251782,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2495,6 +2495,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 114156,
             "range": "± 2770",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1dde2444e286d75f2e44f4b9f1156b40771744d5",
+          "message": "Merge pull request #318 from navikt/copilot/log-413-payload-response\n\nImplementing logging for HTTP response codes",
+          "timestamp": "2026-07-02T13:59:24+02:00",
+          "tree_id": "30b106ba797b03c193021856fbf10ef1edd0c037",
+          "url": "https://github.com/navikt/pdfgenrs/commit/1dde2444e286d75f2e44f4b9f1156b40771744d5"
+        },
+        "date": 1782994246966,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 229688,
+            "range": "± 11792",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 427019,
+            "range": "± 2093",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1271004839,
+            "range": "± 713037",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 157344,
+            "range": "± 3158",
             "unit": "ns/iter"
           }
         ]
