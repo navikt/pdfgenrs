@@ -118,6 +118,8 @@ async fn main() -> Result<()> {
 
     let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
         tracing::error!(error = %e, address = %addr, "Failed to bind TCP listener");
+        aliveness_clone.set_ready(false);
+        aliveness_clone.set_alive(false);
         e
     })?;
 
