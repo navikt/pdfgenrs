@@ -241,8 +241,11 @@ mod tests {
     // Keeps the request-level check slightly above the 90 MB compile-only guard in typst_world,
     // leaving room for Axum/TestServer/request handling overhead while still catching sustained
     // RSS growth across a long run of PDF requests.
+    #[cfg(target_os = "linux")]
     const MAX_REQUEST_RSS_GROWTH_KB: u64 = 110_000;
+    #[cfg(target_os = "linux")]
     const WARMUP_REQUEST_COUNT: usize = 10;
+    #[cfg(target_os = "linux")]
     const MEMORY_REGRESSION_REQUEST_COUNT: usize = 200;
 
     #[cfg(target_os = "linux")]
