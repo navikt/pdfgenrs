@@ -615,6 +615,41 @@ Dev mode: #data.at("mode", default: "unknown")
         Ok(())
     }
 
+    #[tokio::test]
+    async fn build_router_enforces_custom_request_body_limit() -> anyhow::Result<()> {
+        use pdfgenrs::testutil::make_state_with_body_limit;
+
+        let custom_limit: usize = 1024; // 1 KiB
+        let state =
+            make_state_with_body_limit(HashMap::new(), HashMap::new(), false, custom_limit)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        // A request body that exceeds the custom limit should be rejected.
+        let oversized = format!(r#"{{"data":"{}"}}"#, "x".repeat(custom_limit));
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from(oversized))
+            .await;
+        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+
+        // A request body within the custom limit should NOT be rejected as too large.
+        // (It may fail for other reasons, e.g. template not found, but not 413.)
+        let within_limit = r#"{"data":"ok"}"#;
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from(within_limit))
+            .await;
+        assert_ne!(
+            response.status_code(),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Request within the body limit should not be rejected as too large"
+        );
+
+        Ok(())
+    }
+
     // --- Nais endpoints accessible via full router ---
 
     #[tokio::test]
