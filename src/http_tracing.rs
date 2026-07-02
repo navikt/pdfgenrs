@@ -9,9 +9,10 @@ pub(crate) fn apply_http_tracing_layer(app: Router<AppState>) -> Router<AppState
 mod imp {
     use axum::Router;
     use axum::body::Body;
-    use axum::http::{HeaderMap, Request};
+    use axum::http::{HeaderMap, Request, Response};
     use opentelemetry::{global, propagation::Extractor};
     use tower_http::trace::TraceLayer;
+    use tracing::{Span, warn};
     use tracing_opentelemetry::OpenTelemetrySpanExt;
 
     /// Implements [`Extractor`] for an Axum [`HeaderMap`] so that
@@ -35,7 +36,7 @@ mod imp {
     /// [`OpenTelemetrySpanExt::set_parent`] here (synchronously, before any `.await`) avoids the
     /// `!Send` constraint of [`opentelemetry::ContextGuard`] and correctly parents the new span to
     /// the caller's distributed trace when a `traceparent` header is present.
-    fn make_otel_span(request: &Request<Body>) -> tracing::Span {
+    fn make_otel_span(request: &Request<Body>) -> Span {
         let span = tracing::info_span!(
             "HTTP request",
             http.method = %request.method(),
@@ -53,6 +54,19 @@ mod imp {
         span
     }
 
+    /// Logs non-success HTTP responses (4xx/5xx), including framework-generated errors
+    /// such as 413 Payload Too Large from the body limit layer.
+    fn on_response(response: &Response<Body>, latency: std::time::Duration, _span: &Span) {
+        let status = response.status();
+        if status.is_client_error() || status.is_server_error() {
+            warn!(
+                http.status_code = status.as_u16(),
+                latency_ms = latency.as_millis() as u64,
+                "HTTP error response"
+            );
+        }
+    }
+
     pub(super) fn apply_http_tracing_layer(
         app: Router<crate::state::AppState>,
     ) -> Router<crate::state::AppState> {
@@ -62,6 +76,7 @@ mod imp {
             app.layer(
                 TraceLayer::new_for_http()
                     .make_span_with(make_otel_span)
+                    .on_response(on_response)
                     .on_failure(()),
             )
         }
