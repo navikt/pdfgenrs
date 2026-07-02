@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782996540054,
+  "lastUpdate": 1783008359246,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2591,6 +2591,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 149592,
             "range": "± 5282",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "688e6be609115ececd6c090358b54aa85f816393",
+          "message": "Merge pull request #321 from navikt/copilot/update-dependencies-refresh-lockfile\n\nchore: update dependencies and refresh Cargo.lock",
+          "timestamp": "2026-07-02T17:54:46+02:00",
+          "tree_id": "3e214902f213ef79814019aed730d054537f06bb",
+          "url": "https://github.com/navikt/pdfgenrs/commit/688e6be609115ececd6c090358b54aa85f816393"
+        },
+        "date": 1783008355119,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 215617,
+            "range": "± 2149",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 401436,
+            "range": "± 2398",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1269974266,
+            "range": "± 881813",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 145575,
+            "range": "± 2370",
             "unit": "ns/iter"
           }
         ]
