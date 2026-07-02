@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783008359246,
+  "lastUpdate": 1783009792452,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2639,6 +2639,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 145575,
             "range": "± 2370",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c896d566a3c1a581a5f80fb881a4dbfdf91d404d",
+          "message": "Merge pull request #323 from navikt/copilot/fix-unused-constants\n\nGate linux-only test constants with #[cfg(target_os = \"linux\")]",
+          "timestamp": "2026-07-02T18:25:58+02:00",
+          "tree_id": "e7087a058bad7ef79fa861d43e5cb65b515dfdf5",
+          "url": "https://github.com/navikt/pdfgenrs/commit/c896d566a3c1a581a5f80fb881a4dbfdf91d404d"
+        },
+        "date": 1783009788052,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 220995,
+            "range": "± 5020",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 406811,
+            "range": "± 4498",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1267374974,
+            "range": "± 770436",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 143615,
+            "range": "± 4267",
             "unit": "ns/iter"
           }
         ]
