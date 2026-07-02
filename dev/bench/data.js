@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782994251782,
+  "lastUpdate": 1782996540054,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2543,6 +2543,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 157344,
             "range": "± 3158",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b78c0c6c6cf42bf520426a553839ce85bd978056",
+          "message": "Merge pull request #319 from navikt/copilot/verify-request-body-limit-bytes\n\ntest: verify REQUEST_BODY_LIMIT_BYTES works with custom values",
+          "timestamp": "2026-07-02T14:37:39+02:00",
+          "tree_id": "54ae7aaad761fa241e570afc68da401ac08d68b0",
+          "url": "https://github.com/navikt/pdfgenrs/commit/b78c0c6c6cf42bf520426a553839ce85bd978056"
+        },
+        "date": 1782996534859,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 227643,
+            "range": "± 13422",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 418893,
+            "range": "± 2561",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1265987091,
+            "range": "± 908459",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 149592,
+            "range": "± 5282",
             "unit": "ns/iter"
           }
         ]
