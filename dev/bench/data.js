@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783009792452,
+  "lastUpdate": 1783056211328,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2687,6 +2687,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 143615,
             "range": "± 4267",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8e3305a34752fb001e7819c605e968c03672dcf6",
+          "message": "Merge pull request #325 from navikt/copilot/graceful-shutdown-bind-error-path\n\nfix: set alive=false when TCP bind fails during startup",
+          "timestamp": "2026-07-03T07:19:22+02:00",
+          "tree_id": "58f6d13aad188a38c943909204c02f8c58733341",
+          "url": "https://github.com/navikt/pdfgenrs/commit/8e3305a34752fb001e7819c605e968c03672dcf6"
+        },
+        "date": 1783056206453,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 227648,
+            "range": "± 1201",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 420577,
+            "range": "± 2530",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1265350069,
+            "range": "± 415269",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 156881,
+            "range": "± 4034",
             "unit": "ns/iter"
           }
         ]
