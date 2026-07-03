@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783090498847,
+  "lastUpdate": 1783090501734,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2831,6 +2831,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 145685,
             "range": "± 4436",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "045de8d69a86a22a8bb08e7e7bf94bdd6695b362",
+          "message": "Merge pull request #327 from navikt/dependabot/cargo/axum-test-21.0.0\n\nchore(deps): bump axum-test from 20.1.0 to 21.0.0",
+          "timestamp": "2026-07-03T16:51:02+02:00",
+          "tree_id": "16c38a91f6352c17a0cad0d1477f6843e329e124",
+          "url": "https://github.com/navikt/pdfgenrs/commit/045de8d69a86a22a8bb08e7e7bf94bdd6695b362"
+        },
+        "date": 1783090497364,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 214880,
+            "range": "± 1712",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 399009,
+            "range": "± 3997",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1266776610,
+            "range": "± 749320",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 138961,
+            "range": "± 2536",
             "unit": "ns/iter"
           }
         ]
