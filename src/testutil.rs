@@ -60,6 +60,7 @@ pub fn make_state_with_body_limit(
             )
             .0,
         ),
+        file_cache: typst_world::FileCache::new(),
     })
 }
 
@@ -112,5 +113,6 @@ pub fn make_state(
             )
             .0,
         ),
+        file_cache: typst_world::FileCache::new(),
     })
 }

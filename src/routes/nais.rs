@@ -104,6 +104,7 @@ mod tests {
             resources_dir: Arc::new(cfg.resource_root()),
             config: cfg,
             compile_semaphore: None,
+            file_cache: typst_world::FileCache::new(),
         })
     }
 

@@ -50,6 +50,7 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
         resources_dir: Arc::new(cfg.resource_root()),
         config: cfg,
         compile_semaphore: None,
+        file_cache: typst_world::FileCache::new(),
     })
 }
 

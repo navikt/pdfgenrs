@@ -104,6 +104,7 @@ async fn main() -> Result<()> {
         )),
         html_converter,
         compile_semaphore,
+        file_cache: typst_world::FileCache::new(),
     };
 
     let metrics_handle = metrics::setup_metrics_recorder()?;

@@ -8,7 +8,7 @@ use typst::foundations::Bytes;
 use typst_library::text::Font;
 use walkdir::WalkDir;
 
-use crate::typst_world::{self, Fonts};
+use crate::typst_world::{self, FileCache, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
@@ -165,6 +165,7 @@ pub fn typst_to_pdf(
     app_name: &str,
     template_name: &str,
     library: Arc<LazyHash<Library>>,
+    file_cache: FileCache,
 ) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
@@ -178,6 +179,7 @@ pub fn typst_to_pdf(
         template_source,
         vfiles,
         library,
+        file_cache,
     )
 }
 
@@ -200,6 +202,7 @@ pub fn image_to_pdf<B>(
     root: &Path,
     resources_dir: &Path,
     library: Arc<LazyHash<Library>>,
+    file_cache: FileCache,
 ) -> Result<Vec<u8>>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
@@ -227,6 +230,7 @@ where
         source,
         vfiles,
         library,
+        file_cache,
     )
 }
 
@@ -467,6 +471,7 @@ Hello, world!
             "test",
             "simple",
             pdf_library(),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -488,6 +493,7 @@ Hello, world!
             "test",
             "app",
             pdf_library(),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -506,6 +512,7 @@ Hello, world!
             "test",
             "invalid",
             pdf_library(),
+            FileCache::new(),
         );
         assert!(
             result.is_err(),
@@ -554,6 +561,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -573,6 +581,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -903,6 +912,7 @@ Hello, world!
             "test",
             "resource",
             pdf_library(),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())

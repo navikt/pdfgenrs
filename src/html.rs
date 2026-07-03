@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 use typst::foundations::Bytes;
 
-use crate::typst_world::{self, Fonts};
+use crate::typst_world::{self, FileCache, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
@@ -27,6 +27,7 @@ pub(crate) fn typst_to_html(
     app_name: &str,
     template_name: &str,
     library: Arc<LazyHash<Library>>,
+    file_cache: FileCache,
 ) -> Result<String> {
     let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
@@ -40,13 +41,14 @@ pub(crate) fn typst_to_html(
         template_source,
         vfiles,
         library,
+        file_cache,
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::typst_world::{build_library, load_fonts};
+    use crate::typst_world::{FileCache, build_library, load_fonts};
     use std::path::PathBuf;
     use std::sync::Arc;
     use typst::Feature;
@@ -80,6 +82,7 @@ mod tests {
             "test",
             "simple",
             html_library(),
+            FileCache::new(),
         )?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -104,6 +107,7 @@ mod tests {
             "test",
             "app",
             html_library(),
+            FileCache::new(),
         )?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -122,6 +126,7 @@ mod tests {
             "test",
             "invalid",
             html_library(),
+            FileCache::new(),
         );
         assert!(
             result.is_err(),

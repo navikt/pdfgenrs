@@ -42,6 +42,7 @@ pub(crate) async fn get_html(
                 &app_name,
                 &template_name,
                 params.html_library,
+                params.file_cache,
             )
         },
     )
@@ -80,6 +81,7 @@ pub(crate) async fn post_html(
                 &app_name,
                 &template_name,
                 params.html_library,
+                params.file_cache,
             )
         },
     )

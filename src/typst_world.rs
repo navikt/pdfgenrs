@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 /// Maximum number of evictions to perform on the comemo memoization cache after
 /// each compilation. This bounds memory growth while preserving frequently-used
@@ -18,6 +18,42 @@ use typst_library::foundations::Duration;
 use typst_library::text::{Font, FontBook};
 use typst_syntax::{FileId, RootedPath, Source, VirtualPath, VirtualRoot};
 use walkdir::WalkDir;
+
+/// A thread-safe cache for resource files read from disk.
+///
+/// Keyed by physical file path, this avoids repeated filesystem reads for
+/// frequently-used resources (e.g. images, shared Typst snippets) across
+/// multiple compilations.
+#[derive(Clone, Debug, Default)]
+pub struct FileCache {
+    inner: Arc<RwLock<HashMap<PathBuf, Bytes>>>,
+}
+
+impl FileCache {
+    /// Creates a new, empty file cache.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns cached bytes for `path`, or reads from disk, caches, and returns the result.
+    fn get_or_read(&self, path: &Path) -> std::io::Result<Bytes> {
+        {
+            let cache = self.inner.read().unwrap_or_else(|e| e.into_inner());
+            if let Some(bytes) = cache.get(path) {
+                return Ok(bytes.clone());
+            }
+        }
+        let data = std::fs::read(path)?;
+        let bytes = Bytes::new(data);
+        {
+            let mut cache = self.inner.write().unwrap_or_else(|e| e.into_inner());
+            cache
+                .entry(path.to_path_buf())
+                .or_insert_with(|| bytes.clone());
+        }
+        Ok(bytes)
+    }
+}
 
 /// Pre-builds a Typst [`Library`] with the given feature set.
 ///
@@ -117,6 +153,7 @@ pub struct PdfgenWorld {
     virtual_files: HashMap<FileId, Bytes>,
     root: PathBuf,
     resources_dir: PathBuf,
+    file_cache: FileCache,
 }
 
 impl std::fmt::Debug for Fonts {
@@ -138,6 +175,7 @@ impl std::fmt::Debug for PdfgenWorld {
             .field("virtual_files", &self.virtual_files)
             .field("root", &self.root)
             .field("resources_dir", &self.resources_dir)
+            .field("file_cache", &self.file_cache)
             .finish()
     }
 }
@@ -153,6 +191,8 @@ impl PdfgenWorld {
     /// - `virtual_files` - Map of virtual path to byte content for in-memory files
     ///   (e.g. `"/data.json"` to JSON bytes).
     /// - `library` - Pre-built Typst library (see [`build_library`]).
+    /// - `file_cache` - Shared file cache for resource files.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         fonts: Arc<Fonts>,
         root: &Path,
@@ -161,6 +201,7 @@ impl PdfgenWorld {
         main_source: String,
         virtual_files: HashMap<String, Bytes>,
         library: Arc<LazyHash<Library>>,
+        file_cache: FileCache,
     ) -> Result<Self> {
         let main_vpath = VirtualPath::new(main_path)
             .map_err(|e| anyhow::anyhow!("Invalid main path '{main_path}': {e}"))?;
@@ -185,6 +226,7 @@ impl PdfgenWorld {
             virtual_files: vfiles,
             root: root.to_path_buf(),
             resources_dir: resources_dir.to_path_buf(),
+            file_cache,
         })
     }
 
@@ -224,8 +266,13 @@ impl World for PdfgenWorld {
         }
         let vpath = id.vpath();
         let physical = self.physical_path(vpath);
-        let text =
-            std::fs::read_to_string(&physical).map_err(|e| FileError::from_io(e, &physical))?;
+        let bytes = self
+            .file_cache
+            .get_or_read(&physical)
+            .map_err(|e| FileError::from_io(e, &physical))?;
+        let text = std::str::from_utf8(bytes.as_slice())
+            .map_err(|_| FileError::InvalidUtf8)?
+            .to_string();
         Ok(Source::new(id, text))
     }
 
@@ -235,8 +282,9 @@ impl World for PdfgenWorld {
         }
         let vpath = id.vpath();
         let physical = self.physical_path(vpath);
-        let bytes = std::fs::read(&physical).map_err(|e| FileError::from_io(e, &physical))?;
-        Ok(Bytes::new(bytes))
+        self.file_cache
+            .get_or_read(&physical)
+            .map_err(|e| FileError::from_io(e, &physical))
     }
 
     #[inline]
@@ -276,6 +324,7 @@ impl World for PdfgenWorld {
 ///
 /// # Errors
 /// Returns an error if Typst compilation fails or the PDF cannot be exported.
+#[allow(clippy::too_many_arguments)]
 pub fn compile_to_pdf(
     fonts: Arc<Fonts>,
     root: &Path,
@@ -284,6 +333,7 @@ pub fn compile_to_pdf(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
+    file_cache: FileCache,
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(
         fonts,
@@ -293,6 +343,7 @@ pub fn compile_to_pdf(
         main_source,
         virtual_files,
         library,
+        file_cache,
     )?;
 
     let result = typst::compile::<typst_layout::PagedDocument>(&world);
@@ -328,6 +379,7 @@ pub fn compile_to_pdf(
 ///
 /// # Errors
 /// Returns an error if Typst compilation fails or the HTML cannot be exported.
+#[allow(clippy::too_many_arguments)]
 pub fn compile_to_html(
     fonts: Arc<Fonts>,
     root: &Path,
@@ -336,6 +388,7 @@ pub fn compile_to_html(
     main_source: String,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
+    file_cache: FileCache,
 ) -> Result<String> {
     let world = PdfgenWorld::new(
         fonts,
@@ -345,6 +398,7 @@ pub fn compile_to_html(
         main_source,
         virtual_files,
         library,
+        file_cache,
     )?;
 
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
@@ -453,6 +507,7 @@ Hello, world!
             source.to_string(),
             HashMap::new(),
             Arc::clone(&library),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
@@ -464,6 +519,7 @@ Hello, world!
             source.to_string(),
             HashMap::new(),
             Arc::clone(&library),
+            FileCache::new(),
         )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
 
@@ -487,6 +543,7 @@ Hello, world!
             source,
             HashMap::new(),
             pdf_library(),
+            FileCache::new(),
         )?;
         assert!(
             is_pdf(&pdf),
@@ -524,6 +581,7 @@ Hello, world!
             "Hello".to_string(),
             HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
             pdf_library(),
+            FileCache::new(),
         )?;
 
         let file_id = FileId::new(RootedPath::new(
@@ -549,6 +607,7 @@ Hello, world!
             "Main".to_string(),
             HashMap::new(),
             pdf_library(),
+            FileCache::new(),
         )?;
         let file_id = FileId::new(RootedPath::new(
             VirtualRoot::Project,
@@ -574,6 +633,7 @@ Hello, world!
             "Main".to_string(),
             HashMap::new(),
             pdf_library(),
+            FileCache::new(),
         )?;
 
         let file_id = FileId::new(RootedPath::new(
@@ -597,6 +657,7 @@ Hello, world!
             "Hello".to_string(),
             HashMap::new(),
             pdf_library(),
+            FileCache::new(),
         )?;
 
         assert!(world.today(None).is_some());
@@ -621,6 +682,7 @@ Hello, world!
                 source,
                 HashMap::new(),
                 Arc::clone(&library),
+                FileCache::new(),
             )?;
         }
 
@@ -640,6 +702,7 @@ Hello, world!
                 source,
                 HashMap::new(),
                 Arc::clone(&library),
+                FileCache::new(),
             );
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }

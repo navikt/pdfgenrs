@@ -8,7 +8,7 @@ use tracing::error;
 
 use self::error::ApiError;
 use crate::state::AppState;
-use crate::typst_world::Fonts;
+use crate::typst_world::{FileCache, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
@@ -26,6 +26,7 @@ pub(crate) struct CompileParams {
     pub html_library: Arc<LazyHash<Library>>,
     pub root: Arc<PathBuf>,
     pub resources_dir: Arc<PathBuf>,
+    pub file_cache: FileCache,
 }
 
 /// Looks up the template source and pre-loaded test data for the given key (used by GET handlers).
@@ -53,6 +54,7 @@ pub(crate) async fn lookup_template_and_data(
         html_library: Arc::clone(&state.html_library),
         root: Arc::clone(&state.root_dir),
         resources_dir: Arc::clone(&state.resources_dir),
+        file_cache: state.file_cache.clone(),
     })
 }
 
@@ -77,6 +79,7 @@ pub(crate) fn lookup_template_with_data(
         html_library: Arc::clone(&state.html_library),
         root: Arc::clone(&state.root_dir),
         resources_dir: Arc::clone(&state.resources_dir),
+        file_cache: state.file_cache.clone(),
     })
 }
 

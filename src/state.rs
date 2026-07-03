@@ -7,7 +7,7 @@ use serde_json::Value;
 use tokio::sync::{RwLock, Semaphore};
 
 use crate::config;
-use crate::typst_world::Fonts;
+use crate::typst_world::{FileCache, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
@@ -36,6 +36,8 @@ pub struct AppState {
     pub root_dir: Arc<PathBuf>,
     /// Pre-computed resource root path, shared via Arc to avoid per-request cloning.
     pub resources_dir: Arc<PathBuf>,
+    /// Shared file cache for resource files to avoid repeated disk reads.
+    pub file_cache: FileCache,
 }
 
 /// Tracks the liveness and readiness state of the application.
@@ -93,6 +95,7 @@ impl std::fmt::Debug for AppState {
             .field("compile_semaphore", &self.compile_semaphore)
             .field("root_dir", &self.root_dir)
             .field("resources_dir", &self.resources_dir)
+            .field("file_cache", &self.file_cache)
             .finish()
     }
 }

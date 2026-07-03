@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use pdfgenrs::pdf::{build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf};
-use pdfgenrs::typst_world;
+use pdfgenrs::typst_world::{self, FileCache};
 use typst::Features;
 use typst::Library;
 use typst::utils::LazyHash;
@@ -47,6 +47,7 @@ Hello, world!
                 "bench",
                 "simple",
                 Arc::clone(&library),
+                FileCache::new(),
             );
         });
     });
@@ -80,6 +81,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
                 "bench",
                 "template",
                 Arc::clone(&library),
+                FileCache::new(),
             );
         });
     });
@@ -119,6 +121,7 @@ fn bench_image_to_pdf(c: &mut Criterion) {
                 &root_dir(),
                 &resources_dir(),
                 Arc::clone(&library),
+                FileCache::new(),
             );
         });
     });

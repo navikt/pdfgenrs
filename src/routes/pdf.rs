@@ -42,6 +42,7 @@ pub(crate) async fn get_pdf(
                 &app_name,
                 &template_name,
                 params.pdf_library,
+                params.file_cache,
             )
         },
     )
@@ -80,6 +81,7 @@ pub(crate) async fn post_pdf(
                 &app_name,
                 &template_name,
                 params.pdf_library,
+                params.file_cache,
             )
         },
     )
@@ -127,6 +129,7 @@ pub(crate) async fn post_pdf_from_image(
     let root = Arc::clone(&state.root_dir);
     let resources_dir = Arc::clone(&state.resources_dir);
     let library = Arc::clone(&state.pdf_library);
+    let file_cache = state.file_cache.clone();
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
         gen_pdf::image_to_pdf(
@@ -136,6 +139,7 @@ pub(crate) async fn post_pdf_from_image(
             &root,
             &resources_dir,
             library,
+            file_cache,
         )
     })
     .await?;
