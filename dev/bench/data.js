@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783438932172,
+  "lastUpdate": 1783442857253,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3167,6 +3167,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 154535,
             "range": "± 4235",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3981b516179db6f553eb9f5711132268a1f861c4",
+          "message": "Merge pull request #336 from navikt/copilot/check-unit-tests-necessity\n\nAdd unit tests for low-coverage areas",
+          "timestamp": "2026-07-07T18:43:18+02:00",
+          "tree_id": "30f14259ca0add66d73f144b7ab7cc79e50ede46",
+          "url": "https://github.com/navikt/pdfgenrs/commit/3981b516179db6f553eb9f5711132268a1f861c4"
+        },
+        "date": 1783442852919,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 235779,
+            "range": "± 9889",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 428080,
+            "range": "± 2614",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1265469152,
+            "range": "± 559925",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 156909,
+            "range": "± 3705",
             "unit": "ns/iter"
           }
         ]
