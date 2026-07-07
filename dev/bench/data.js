@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783431270117,
+  "lastUpdate": 1783438932172,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3119,6 +3119,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 151030,
             "range": "± 4060",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cde8ad6a1a3dc425d4b8c72ba1b7d30635af0387",
+          "message": "Merge pull request #335 from navikt/copilot/add-unit-test-axum-body-size-limit\n\nAdd unit tests for axum body size limit",
+          "timestamp": "2026-07-07T17:37:52+02:00",
+          "tree_id": "285ef5eb1ea038999508a6bdde3c826863028acd",
+          "url": "https://github.com/navikt/pdfgenrs/commit/cde8ad6a1a3dc425d4b8c72ba1b7d30635af0387"
+        },
+        "date": 1783438927486,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 233361,
+            "range": "± 18934",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 430117,
+            "range": "± 3352",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1268883033,
+            "range": "± 1469313",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 154535,
+            "range": "± 4235",
             "unit": "ns/iter"
           }
         ]
