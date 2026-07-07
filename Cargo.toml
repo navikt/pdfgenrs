@@ -27,7 +27,7 @@ harness = false
 [dependencies]
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
 axum = "0.8.9"
-serde_json = "1.0.150"
+serde_json = { version = "1.0.150", features = ["preserve_order"] }
 time = { version = "0.3.51", features = ["local-offset", "formatting"] }
 walkdir = "2.5.0"
 anyhow = "1.0.102"
