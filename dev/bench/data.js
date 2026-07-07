@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783430724918,
+  "lastUpdate": 1783431270117,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3071,6 +3071,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 143043,
             "range": "± 4378",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49414304959b321fea7e88cd4a9d4e5d1949d56c",
+          "message": "Merge pull request #333 from haraldme/fix/allow-request-body-limit-increase-beyond-default\n\nDisable axum's implicit DefaultBodyLimit",
+          "timestamp": "2026-07-07T15:30:32+02:00",
+          "tree_id": "07f8ecc814a86c3750bcb633d94c9159ae4f4618",
+          "url": "https://github.com/navikt/pdfgenrs/commit/49414304959b321fea7e88cd4a9d4e5d1949d56c"
+        },
+        "date": 1783431267093,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 228800,
+            "range": "± 13498",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 425011,
+            "range": "± 6822",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1264911372,
+            "range": "± 487300",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 151030,
+            "range": "± 4060",
             "unit": "ns/iter"
           }
         ]
