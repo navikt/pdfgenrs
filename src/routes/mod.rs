@@ -356,4 +356,165 @@ mod tests {
         assert_eq!(value, "ok");
         Ok(())
     }
+
+    #[tokio::test]
+    async fn compile_blocking_allows_concurrent_tasks_within_semaphore_capacity()
+    -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 10;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(2)));
+
+        let state1 = state.clone();
+        let state2 = state.clone();
+
+        let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
+        let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
+        let (started1_tx, started1_rx) = tokio::sync::oneshot::channel::<()>();
+        let (started2_tx, started2_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let task1 = tokio::spawn(async move {
+            compile_blocking(&state1, "app".to_string(), None, move || {
+                started1_tx.send(()).ok();
+                rx1.blocking_recv().ok();
+                Ok(1)
+            })
+            .await
+        });
+
+        let task2 = tokio::spawn(async move {
+            compile_blocking(&state2, "app".to_string(), None, move || {
+                started2_tx.send(()).ok();
+                rx2.blocking_recv().ok();
+                Ok(2)
+            })
+            .await
+        });
+
+        // Both tasks should start concurrently since semaphore capacity is 2
+        tokio::time::timeout(Duration::from_secs(5), started1_rx)
+            .await
+            .context("task1 did not start in time")?
+            .context("task1 start channel closed")?;
+        tokio::time::timeout(Duration::from_secs(5), started2_rx)
+            .await
+            .context("task2 did not start in time")?
+            .context("task2 start channel closed")?;
+
+        tx1.send(()).ok();
+        tx2.send(()).ok();
+
+        let r1 = task1.await.context("task1 join error")?;
+        let r2 = task2.await.context("task2 join error")?;
+
+        let v1 = match r1 {
+            Ok(v) => v,
+            Err(e) => anyhow::bail!("task1 failed: {e:?}"),
+        };
+        let v2 = match r2 {
+            Ok(v) => v,
+            Err(e) => anyhow::bail!("task2 failed: {e:?}"),
+        };
+        assert_eq!(v1, 1);
+        assert_eq!(v2, 2);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn lookup_template_with_data_returns_not_found_when_template_missing()
+    -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let key = ("myapp".to_string(), "missing".to_string());
+        let result =
+            super::lookup_template_with_data(&state, &key, serde_json::json!({"key": "value"}));
+        assert!(result.is_err());
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected NotFound error"),
+            Err(e) => e,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(response.status(), axum::http::StatusCode::NOT_FOUND);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn lookup_template_with_data_returns_params_when_template_exists() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "tmpl".to_string()),
+            "Hello".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let key = ("myapp".to_string(), "tmpl".to_string());
+        let result = super::lookup_template_with_data(&state, &key, serde_json::json!({"x": 1}));
+        let params = match result {
+            Ok(p) => p,
+            Err(_) => anyhow::bail!("expected Ok"),
+        };
+        assert_eq!(*params.source, "Hello");
+        assert_eq!(params.data, serde_json::json!({"x": 1}));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn lookup_template_and_data_returns_not_found_when_template_missing() -> anyhow::Result<()>
+    {
+        let mut data = HashMap::new();
+        data.insert(
+            ("myapp".to_string(), "tmpl".to_string()),
+            serde_json::json!({}),
+        );
+        let state = make_state(HashMap::new(), data, true)?;
+        let key = ("myapp".to_string(), "tmpl".to_string());
+        let result = super::lookup_template_and_data(&state, &key).await;
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected NotFound error"),
+            Err(e) => e,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(response.status(), axum::http::StatusCode::NOT_FOUND);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn lookup_template_and_data_returns_not_found_when_data_missing() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "tmpl".to_string()),
+            "Hello".to_string(),
+        );
+        let state = make_state(templates, HashMap::new(), true)?;
+        let key = ("myapp".to_string(), "tmpl".to_string());
+        let result = super::lookup_template_and_data(&state, &key).await;
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected NotFound error"),
+            Err(e) => e,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(response.status(), axum::http::StatusCode::NOT_FOUND);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn lookup_template_and_data_returns_params_when_both_exist() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "tmpl".to_string()),
+            "Hello".to_string(),
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            ("myapp".to_string(), "tmpl".to_string()),
+            serde_json::json!({"key": "value"}),
+        );
+        let state = make_state(templates, data, true)?;
+        let key = ("myapp".to_string(), "tmpl".to_string());
+        let result = super::lookup_template_and_data(&state, &key).await;
+        let params = match result {
+            Ok(p) => p,
+            Err(_) => anyhow::bail!("expected Ok"),
+        };
+        assert_eq!(*params.source, "Hello");
+        assert_eq!(params.data, serde_json::json!({"key": "value"}));
+        Ok(())
+    }
 }

@@ -129,4 +129,75 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn typst_to_html_with_nested_json_data() -> Result<()> {
+        let source = r#"#let data = json("/data/test/nested.json")
+#data.at("user").at("name", default: "")
+"#;
+        let data = serde_json::json!({
+            "user": {
+                "name": "Alice",
+                "age": 30
+            }
+        });
+        let html = typst_to_html(
+            source.to_string(),
+            &data,
+            Arc::new(load_fonts(&fonts_dir())?),
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "nested",
+            html_library(),
+        )?;
+        assert!(html.contains("Alice"));
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_html_with_array_json_data() -> Result<()> {
+        let source = r#"#let data = json("/data/test/array.json")
+#for item in data.at("items", default: ()) [
+  #item
+]
+"#;
+        let data = serde_json::json!({
+            "items": ["alpha", "beta", "gamma"]
+        });
+        let html = typst_to_html(
+            source.to_string(),
+            &data,
+            Arc::new(load_fonts(&fonts_dir())?),
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "array",
+            html_library(),
+        )?;
+        assert!(html.contains("alpha"));
+        assert!(html.contains("beta"));
+        assert!(html.contains("gamma"));
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_html_with_empty_json_object() -> Result<()> {
+        let source = r#"#let data = json("/data/test/empty.json")
+Empty: #data.keys().len()
+"#;
+        let data = serde_json::json!({});
+        let html = typst_to_html(
+            source.to_string(),
+            &data,
+            Arc::new(load_fonts(&fonts_dir())?),
+            &root_dir(),
+            &resources_dir(),
+            "test",
+            "empty",
+            html_library(),
+        )?;
+        assert!(html.contains("<!DOCTYPE html>"));
+        Ok(())
+    }
 }

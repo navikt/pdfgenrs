@@ -907,4 +907,158 @@ Hello, world!
         assert!(is_pdf(&bytes));
         Ok(())
     }
+
+    // --- SVG-to-PDF integration test ---
+
+    #[test]
+    fn image_to_pdf_svg_returns_pdf_bytes() -> Result<()> {
+        let image_bytes = std::fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))?;
+        let bytes = image_to_pdf(
+            image_bytes,
+            "/image.svg",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+        )?;
+        assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    // --- css_font_name tests ---
+
+    #[test]
+    fn css_font_name_regular_weight_normal_style_returns_family_only() {
+        use typst_library::text::{FontStyle, FontVariant, FontWeight};
+        let variant = FontVariant {
+            weight: FontWeight::REGULAR,
+            style: FontStyle::Normal,
+            ..Default::default()
+        };
+        assert_eq!(css_font_name("Source Sans 3", &variant), "Source Sans 3");
+    }
+
+    #[test]
+    fn css_font_name_bold_weight_returns_family_with_bold() {
+        use typst_library::text::{FontStyle, FontVariant, FontWeight};
+        let variant = FontVariant {
+            weight: FontWeight::BOLD,
+            style: FontStyle::Normal,
+            ..Default::default()
+        };
+        assert_eq!(
+            css_font_name("Source Sans 3", &variant),
+            "Source Sans 3 bold"
+        );
+    }
+
+    #[test]
+    fn css_font_name_italic_style_returns_family_with_italic() {
+        use typst_library::text::{FontStyle, FontVariant, FontWeight};
+        let variant = FontVariant {
+            weight: FontWeight::REGULAR,
+            style: FontStyle::Italic,
+            ..Default::default()
+        };
+        assert_eq!(
+            css_font_name("Source Sans 3", &variant),
+            "Source Sans 3 italic"
+        );
+    }
+
+    #[test]
+    fn css_font_name_bold_italic_returns_family_with_both() {
+        use typst_library::text::{FontStyle, FontVariant, FontWeight};
+        let variant = FontVariant {
+            weight: FontWeight::BOLD,
+            style: FontStyle::Italic,
+            ..Default::default()
+        };
+        assert_eq!(
+            css_font_name("Source Sans 3", &variant),
+            "Source Sans 3 bold italic"
+        );
+    }
+
+    #[test]
+    fn css_font_name_light_weight() {
+        use typst_library::text::{FontStyle, FontVariant, FontWeight};
+        let variant = FontVariant {
+            weight: FontWeight::LIGHT,
+            style: FontStyle::Normal,
+            ..Default::default()
+        };
+        assert_eq!(
+            css_font_name("Source Sans 3", &variant),
+            "Source Sans 3 light"
+        );
+    }
+
+    #[test]
+    fn css_font_name_semibold_oblique() {
+        use typst_library::text::{FontStyle, FontVariant, FontWeight};
+        let variant = FontVariant {
+            weight: FontWeight::SEMIBOLD,
+            style: FontStyle::Oblique,
+            ..Default::default()
+        };
+        assert_eq!(
+            css_font_name("MyFont", &variant),
+            "MyFont semi bold oblique"
+        );
+    }
+
+    // --- is_supported_font_file tests ---
+
+    #[test]
+    fn is_supported_font_file_accepts_ttf() {
+        assert!(is_supported_font_file(Path::new("font.ttf")));
+        assert!(is_supported_font_file(Path::new("font.TTF")));
+    }
+
+    #[test]
+    fn is_supported_font_file_accepts_otf() {
+        assert!(is_supported_font_file(Path::new("font.otf")));
+        assert!(is_supported_font_file(Path::new("font.OTF")));
+    }
+
+    #[test]
+    fn is_supported_font_file_accepts_ttc() {
+        assert!(is_supported_font_file(Path::new("font.ttc")));
+        assert!(is_supported_font_file(Path::new("font.TTC")));
+    }
+
+    #[test]
+    fn is_supported_font_file_rejects_unsupported_extensions() {
+        assert!(!is_supported_font_file(Path::new("font.woff")));
+        assert!(!is_supported_font_file(Path::new("font.woff2")));
+        assert!(!is_supported_font_file(Path::new("font.svg")));
+        assert!(!is_supported_font_file(Path::new("readme.txt")));
+    }
+
+    #[test]
+    fn is_supported_font_file_rejects_no_extension() {
+        assert!(!is_supported_font_file(Path::new("font")));
+        assert!(!is_supported_font_file(Path::new(".")));
+    }
+
+    // --- SVG dimension edge cases ---
+
+    #[test]
+    fn svg_dimensions_with_comma_separated_viewbox() {
+        let svg = br#"<svg viewBox="0,0,640,480" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((640, 480)));
+    }
+
+    #[test]
+    fn svg_dimensions_returns_none_for_empty_svg_tag() {
+        let svg = br#"<svg></svg>"#;
+        assert_eq!(image_dimensions(svg), None);
+    }
+
+    #[test]
+    fn svg_dimensions_with_single_quotes() {
+        let svg = b"<svg width='120' height='80'></svg>";
+        assert_eq!(image_dimensions(svg), Some((120, 80)));
+    }
 }
