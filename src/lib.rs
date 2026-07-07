@@ -150,4 +150,50 @@ mod tests {
         assert!(body.contains("Unknown path. Known templates:"));
         Ok(())
     }
+
+    #[tokio::test]
+    async fn body_limit_rejects_oversized_request() -> anyhow::Result<()> {
+        use crate::testutil::make_state_with_body_limit;
+
+        let limit: usize = 1024;
+        let state = make_state_with_body_limit(HashMap::new(), HashMap::new(), false, limit)?;
+        let metrics_handle = metrics::test_metrics_handle();
+        let router = build_router(state, metrics_handle);
+        let server = TestServer::new(router);
+
+        let oversized = vec![b'a'; limit + 1];
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from(oversized))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn body_limit_allows_request_within_limit() -> anyhow::Result<()> {
+        use crate::testutil::make_state_with_body_limit;
+
+        let limit: usize = 1024;
+        let state = make_state_with_body_limit(HashMap::new(), HashMap::new(), false, limit)?;
+        let metrics_handle = metrics::test_metrics_handle();
+        let router = build_router(state, metrics_handle);
+        let server = TestServer::new(router);
+
+        let within_limit = vec![b'a'; limit - 1];
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from(within_limit))
+            .await;
+
+        assert_ne!(
+            response.status_code(),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Request within body limit should not be rejected as 413"
+        );
+        Ok(())
+    }
 }
