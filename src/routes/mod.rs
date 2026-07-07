@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
+use metrics::histogram;
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::error;
@@ -119,6 +120,7 @@ where
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
     let permit = acquire_compile_permit(state).await?;
 
+    let start = Instant::now();
     let result = tokio::time::timeout(
         timeout_duration,
         tokio::task::spawn_blocking(move || {
@@ -127,6 +129,18 @@ where
         }),
     )
     .await;
+
+    let duration = start.elapsed().as_secs_f64();
+    let labels = [
+        ("app_name", app_name.clone()),
+        (
+            "template_name",
+            template_name
+                .clone()
+                .unwrap_or_else(|| "unknown".to_owned()),
+        ),
+    ];
+    histogram!("template_compilation_duration_seconds", &labels).record(duration);
 
     match result {
         Ok(join_result) => {
@@ -155,6 +169,8 @@ mod tests {
 
     use anyhow::Context;
     use tokio::sync::Semaphore;
+
+    use metrics_exporter_prometheus::PrometheusBuilder;
 
     use super::compile_blocking;
     use crate::testutil::make_state;
@@ -515,6 +531,72 @@ mod tests {
         };
         assert_eq!(*params.source, "Hello");
         assert_eq!(params.data, serde_json::json!({"key": "value"}));
+        Ok(())
+    }
+
+    #[test]
+    fn compile_blocking_records_compilation_duration_histogram() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(async {
+                let state = make_state(HashMap::new(), HashMap::new(), false)?;
+
+                let _ = compile_blocking(
+                    &state,
+                    "myapp".to_string(),
+                    Some("report".to_string()),
+                    || Ok(42),
+                )
+                .await;
+
+                let output = handle.render();
+                assert!(
+                    output.contains("template_compilation_duration_seconds"),
+                    "expected template_compilation_duration_seconds in output: {output}"
+                );
+                assert!(
+                    output.contains(r#"app_name="myapp""#),
+                    "expected app_name=myapp label: {output}"
+                );
+                assert!(
+                    output.contains(r#"template_name="report""#),
+                    "expected template_name=report label: {output}"
+                );
+                Ok::<(), anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn compile_blocking_records_unknown_template_name_when_none() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(async {
+                let state = make_state(HashMap::new(), HashMap::new(), false)?;
+
+                let _ = compile_blocking(&state, "myapp".to_string(), None, || Ok(42)).await;
+
+                let output = handle.render();
+                assert!(
+                    output.contains(r#"template_name="unknown""#),
+                    "expected template_name=unknown label when None: {output}"
+                );
+                Ok::<(), anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
         Ok(())
     }
 }
