@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783420557225,
+  "lastUpdate": 1783422860020,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2975,6 +2975,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 154750,
             "range": "± 4090",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e792f97391c0ec619e1cf22b48bcd774566a6090",
+          "message": "Merge pull request #332 from navikt/copilot/fix-audit-dependencies\n\nRefresh lockfile to unblock dependency audit job",
+          "timestamp": "2026-07-07T13:05:37+02:00",
+          "tree_id": "5a77bb8384288cd4ed8f6443dc7be6bfe2cf8392",
+          "url": "https://github.com/navikt/pdfgenrs/commit/e792f97391c0ec619e1cf22b48bcd774566a6090"
+        },
+        "date": 1783422856942,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 231406,
+            "range": "± 1805",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 428742,
+            "range": "± 8798",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1270175659,
+            "range": "± 858330",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 157825,
+            "range": "± 3544",
             "unit": "ns/iter"
           }
         ]
