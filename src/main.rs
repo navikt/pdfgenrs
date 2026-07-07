@@ -621,7 +621,9 @@ Dev mode: #data.at("mode", default: "unknown")
     async fn build_router_enforces_custom_request_body_limit() -> anyhow::Result<()> {
         use pdfgenrs::testutil::make_state_with_body_limit;
 
-        let custom_limit: usize = 1024; // 1 KiB
+        // Set limit slightly over axum's implicit DefaultBodyLimit of 2MB
+        // (see https://docs.rs/axum/latest/axum/extract/struct.DefaultBodyLimit.html)
+        let custom_limit: usize = 1024 + 2 * 1024 * 1024;
         let state =
             make_state_with_body_limit(HashMap::new(), HashMap::new(), false, custom_limit)?;
         let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
@@ -637,7 +639,7 @@ Dev mode: #data.at("mode", default: "unknown")
 
         // A request body within the custom limit should NOT be rejected as too large.
         // (It may fail for other reasons, e.g. template not found, but not 413.)
-        let within_limit = r#"{"data":"ok"}"#;
+        let within_limit = format!(r#"{{"data":"{}"}}"#, "x".repeat(custom_limit - 100));
         let response = server
             .post("/api/v1/genpdf/myapp/mytemplate")
             .content_type("application/json")

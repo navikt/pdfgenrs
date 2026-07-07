@@ -23,6 +23,7 @@ pub(crate) mod routes;
 #[doc(hidden)]
 pub mod testutil;
 
+use axum::extract::DefaultBodyLimit;
 use axum::{
     Router,
     extract::State,
@@ -73,6 +74,7 @@ pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router
         .merge(routes::nais::nais_router(metrics_handle))
         .layer(middleware::from_fn(request_id::request_id_middleware))
         .layer(middleware::from_fn(metrics::track_metrics))
+        .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(request_body_limit_bytes))
         .with_state(state)
 }
