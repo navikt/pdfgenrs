@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783090501734,
+  "lastUpdate": 1783419494852,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2879,6 +2879,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 138961,
             "range": "± 2536",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "120ce76e84586ab349c946010d3351a1c283e2d4",
+          "message": "Merge pull request #330 from haraldme/feat/log-request-path-and-method-with-error-response\n\nInclude request path+method when an error response is logged",
+          "timestamp": "2026-07-07T12:13:09+02:00",
+          "tree_id": "74d4973377ec6a3c8a132ca184626ba729c44700",
+          "url": "https://github.com/navikt/pdfgenrs/commit/120ce76e84586ab349c946010d3351a1c283e2d4"
+        },
+        "date": 1783419491521,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 230808,
+            "range": "± 15531",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 423194,
+            "range": "± 2379",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1269956840,
+            "range": "± 692442",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 155971,
+            "range": "± 4190",
             "unit": "ns/iter"
           }
         ]
