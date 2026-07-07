@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783419494852,
+  "lastUpdate": 1783420557225,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -2927,6 +2927,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 155971,
             "range": "± 4190",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e5016c3bb56c52adf10a1870cd4c3b433f7497f",
+          "message": "Merge pull request #331 from haraldme/feat/preserve-insert-order-in-json-log-objects\n\nUse the \"preserve_order\" feature of serde_json",
+          "timestamp": "2026-07-07T12:30:09+02:00",
+          "tree_id": "0be258775fc87d9c82ac9d6bd39f4983b49bd5ca",
+          "url": "https://github.com/navikt/pdfgenrs/commit/4e5016c3bb56c52adf10a1870cd4c3b433f7497f"
+        },
+        "date": 1783420553272,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 248051,
+            "range": "± 21886",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 424187,
+            "range": "± 13062",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1266234577,
+            "range": "± 579333",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 154750,
+            "range": "± 4090",
             "unit": "ns/iter"
           }
         ]
