@@ -1,10 +1,11 @@
 use axum::{
     Json,
-    body::Bytes,
+    body::{Body, Bytes},
     extract::{Path, State},
     http::{HeaderMap, HeaderValue, header},
     response::{IntoResponse, Response},
 };
+use futures_util::stream;
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::info;
@@ -144,15 +145,27 @@ pub(crate) async fn post_pdf_from_image(
     Ok(pdf_response(pdf_bytes))
 }
 
+/// Size of each chunk when streaming PDF responses (64 KiB).
+const STREAM_CHUNK_SIZE: usize = 64 * 1024;
+
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
     let content_length = pdf_bytes.len().to_string();
+
+    let chunks: Vec<Result<Bytes, std::convert::Infallible>> = pdf_bytes
+        .chunks(STREAM_CHUNK_SIZE)
+        .map(|chunk| Ok(Bytes::copy_from_slice(chunk)))
+        .collect();
+    drop(pdf_bytes);
+
+    let body = Body::from_stream(stream::iter(chunks));
+
     (
         [
             (header::CONTENT_TYPE, "application/pdf"),
             (header::CONTENT_DISPOSITION, "inline"),
             (header::CONTENT_LENGTH, content_length.as_str()),
         ],
-        Bytes::from(pdf_bytes),
+        body,
     )
         .into_response()
 }

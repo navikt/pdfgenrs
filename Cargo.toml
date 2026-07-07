@@ -50,6 +50,7 @@ ironpress = "1.4.3"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 uuid = { version = "1.23.4", features = ["v4"] }
+futures-util = "0.3.32"
 
 [dev-dependencies]
 axum-test = "21.0.0"

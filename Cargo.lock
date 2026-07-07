@@ -2655,6 +2655,7 @@ dependencies = [
  "axum-test",
  "comemo",
  "criterion",
+ "futures-util",
  "http-body-util",
  "ironpress",
  "metrics",
