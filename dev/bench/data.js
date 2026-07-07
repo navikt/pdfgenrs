@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783442857253,
+  "lastUpdate": 1783450673091,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3215,6 +3215,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 156909,
             "range": "± 3705",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "992eed8b65e7697442e40ef0073bbc3b05b448f0",
+          "message": "Merge pull request #337 from navikt/copilot/add-histograms-for-compilation-duration\n\nAdd compilation duration histogram per template",
+          "timestamp": "2026-07-07T20:53:37+02:00",
+          "tree_id": "c86c6611b45ba0c578f276ff86c76537fc0b76d5",
+          "url": "https://github.com/navikt/pdfgenrs/commit/992eed8b65e7697442e40ef0073bbc3b05b448f0"
+        },
+        "date": 1783450668335,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 225671,
+            "range": "± 1263",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 420757,
+            "range": "± 13039",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1265232094,
+            "range": "± 468630",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 153675,
+            "range": "± 4682",
             "unit": "ns/iter"
           }
         ]
