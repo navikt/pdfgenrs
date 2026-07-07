@@ -7,10 +7,12 @@ pub(crate) fn apply_http_tracing_layer(app: Router<AppState>) -> Router<AppState
 }
 
 mod imp {
-    use axum::Router;
     use axum::body::Body;
     use axum::http::{HeaderMap, Request, Response};
+    use axum::middleware::Next;
+    use axum::{Router, middleware};
     use opentelemetry::{global, propagation::Extractor};
+    use std::time::Instant;
     use tower_http::trace::TraceLayer;
     use tracing::{Span, warn};
     use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -56,15 +58,27 @@ mod imp {
 
     /// Logs non-success HTTP responses (4xx/5xx), including framework-generated errors
     /// such as 413 Payload Too Large from the body limit layer.
-    fn on_response(response: &Response<Body>, latency: std::time::Duration, _span: &Span) {
+    async fn log_error_response_middleware(request: Request<Body>, next: Next) -> Response<Body> {
+        let start = Instant::now();
+
+        let uri = request.uri().to_owned();
+        let method = request.method().to_owned();
+
+        let response = next.run(request).await;
+        let latency = start.elapsed();
+
         let status = response.status();
         if status.is_client_error() || status.is_server_error() {
             warn!(
+                http.request_path = uri.path().to_string(),
+                http.request_method = method.to_string(),
                 http.status_code = status.as_u16(),
                 latency_ms = latency.as_millis() as u64,
                 "HTTP error response"
             );
         }
+
+        response
     }
 
     pub(super) fn apply_http_tracing_layer(
@@ -76,9 +90,9 @@ mod imp {
             app.layer(
                 TraceLayer::new_for_http()
                     .make_span_with(make_otel_span)
-                    .on_response(on_response)
                     .on_failure(()),
             )
+            .layer(middleware::from_fn(log_error_response_middleware))
         }
     }
 
