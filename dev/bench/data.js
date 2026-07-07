@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783422860020,
+  "lastUpdate": 1783430724918,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3023,6 +3023,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 157825,
             "range": "± 3544",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bfa99167e377f7e553337b3060821344128ec3ff",
+          "message": "Merge pull request #334 from navikt/MikAoJk-patch-1\n\nRemove pull_request trigger from workflow",
+          "timestamp": "2026-07-07T15:21:28+02:00",
+          "tree_id": "2b27bf1b9be52e0c690356804a4c145fb17edc71",
+          "url": "https://github.com/navikt/pdfgenrs/commit/bfa99167e377f7e553337b3060821344128ec3ff"
+        },
+        "date": 1783430722017,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 225057,
+            "range": "± 11316",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 419140,
+            "range": "± 4904",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1266268105,
+            "range": "± 781471",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 143043,
+            "range": "± 4378",
             "unit": "ns/iter"
           }
         ]
