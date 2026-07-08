@@ -30,7 +30,10 @@ pub(crate) enum ApiError {
         template_name: Option<String>,
     },
     /// The server is overloaded and cannot accept more compilation requests right now.
-    ServiceOverloaded,
+    ServiceOverloaded {
+        /// Suggested number of seconds the client should wait before retrying.
+        retry_after_seconds: u64,
+    },
 }
 
 #[cfg(test)]
@@ -52,7 +55,7 @@ impl std::fmt::Debug for ApiError {
             } => {
                 write!(f, "RequestTimeout({app_name}, {template_name:?})")
             }
-            Self::ServiceOverloaded => write!(f, "ServiceOverloaded"),
+            Self::ServiceOverloaded { .. } => write!(f, "ServiceOverloaded"),
         }
     }
 }
@@ -140,13 +143,19 @@ impl IntoResponse for ApiError {
                     "Request timed out",
                 )
             }
-            Self::ServiceOverloaded => {
+            Self::ServiceOverloaded {
+                retry_after_seconds,
+            } => {
                 error!("Semaphore acquisition timed out; server is overloaded");
-                problem_response(
+                let mut response = problem_response(
                     StatusCode::SERVICE_UNAVAILABLE,
                     "urn:pdfgenrs:error:overloaded",
                     "Service is overloaded, try again later",
-                )
+                );
+                if let Ok(value) = retry_after_seconds.to_string().parse() {
+                    response.headers_mut().insert(header::RETRY_AFTER, value);
+                }
+                response
             }
         }
     }
@@ -265,13 +274,34 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn service_overloaded_returns_503() -> anyhow::Result<()> {
-        let (status, body) = status_and_body(ApiError::ServiceOverloaded).await?;
+    async fn service_overloaded_returns_503_with_retry_after() -> anyhow::Result<()> {
+        let error = ApiError::ServiceOverloaded {
+            retry_after_seconds: 10,
+        };
+        let response = error.into_response();
+        let status = response.status();
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
-        assert_eq!(body["type"], "urn:pdfgenrs:error:overloaded");
-        assert_eq!(body["title"], "Service Unavailable");
-        assert_eq!(body["status"], 503);
-        assert_eq!(body["detail"], "Service is overloaded, try again later");
+
+        let retry_after = response
+            .headers()
+            .get("retry-after")
+            .ok_or_else(|| anyhow!("missing retry-after header"))?
+            .to_str()
+            .context("invalid retry-after header")?;
+        assert_eq!(retry_after, "10");
+
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .context("failed to read response body")?
+            .to_bytes();
+        let json: serde_json::Value =
+            serde_json::from_slice(&body).context("response body must be valid JSON")?;
+        assert_eq!(json["type"], "urn:pdfgenrs:error:overloaded");
+        assert_eq!(json["title"], "Service Unavailable");
+        assert_eq!(json["status"], 503);
+        assert_eq!(json["detail"], "Service is overloaded, try again later");
         Ok(())
     }
 }
