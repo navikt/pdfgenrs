@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783450673091,
+  "lastUpdate": 1783499040176,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3263,6 +3263,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 153675,
             "range": "± 4682",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1d6eedd1e4b4cc1615077e704b0ee13fc930ef2",
+          "message": "Merge pull request #339 from navikt/copilot/graceful-semaphore-backpressure\n\nAdd Retry-After header to 503 Service Unavailable response for graceful semaphore backpressure",
+          "timestamp": "2026-07-08T10:19:43+02:00",
+          "tree_id": "a96f03c283ffac2707d81542355649667aa19d5f",
+          "url": "https://github.com/navikt/pdfgenrs/commit/b1d6eedd1e4b4cc1615077e704b0ee13fc930ef2"
+        },
+        "date": 1783499035200,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 231775,
+            "range": "± 12582",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 425938,
+            "range": "± 3084",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1266250263,
+            "range": "± 1096022",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 158045,
+            "range": "± 5756",
             "unit": "ns/iter"
           }
         ]
