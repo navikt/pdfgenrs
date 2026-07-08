@@ -96,7 +96,9 @@ pub(crate) async fn acquire_compile_permit(
             // lifetime and is never explicitly closed, so acquire_owned() cannot fail with a
             // closed error.
             Ok(Err(_)) => unreachable!("semaphore is never closed"),
-            Err(_elapsed) => Err(ApiError::ServiceOverloaded),
+            Err(_elapsed) => Err(ApiError::ServiceOverloaded {
+                retry_after_seconds: state.config.semaphore_acquire_timeout_seconds,
+            }),
         }
     } else {
         Ok(None)
