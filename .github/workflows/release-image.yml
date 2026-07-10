@@ -6,6 +6,10 @@ on:
 permissions:
   contents: read
   id-token: write
+  packages: write
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  NEW_VERSION: ${{ github.event.release.tag_name }}
 
 jobs:
   build:
@@ -18,10 +22,16 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build and push multi-platform image
-        uses: nais/docker-build-push@v0
-        id: docker-push
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          team: pdfgen
-          tag: ${{ github.event.release.tag_name }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push multi-platform image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
           platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ env.NEW_VERSION }}
