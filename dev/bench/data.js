@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783694459466,
+  "lastUpdate": 1784295020197,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3359,6 +3359,54 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 124485,
             "range": "± 4788",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4aa78abb73fb3ce1a3785583790095e8198bcafa",
+          "message": "Merge pull request #343 from navikt/dependabot/github_actions/github/codeql-action-4.37.0\n\nchore(deps): bump github/codeql-action from 4.36.3 to 4.37.0",
+          "timestamp": "2026-07-17T15:19:08+02:00",
+          "tree_id": "c5e96412039a5ee57b67e382d07ac152f5214302",
+          "url": "https://github.com/navikt/pdfgenrs/commit/4aa78abb73fb3ce1a3785583790095e8198bcafa"
+        },
+        "date": 1784295016713,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 216162,
+            "range": "± 13717",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 407192,
+            "range": "± 3001",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 1268478544,
+            "range": "± 1277612",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 145001,
+            "range": "± 1956",
             "unit": "ns/iter"
           }
         ]
