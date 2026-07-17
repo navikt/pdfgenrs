@@ -268,12 +268,12 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 ## Applications that use pdfgenrs
 
 - https://github.com/navikt/pdfgenrs-test
-- https://github.com/navikt/pale-2-pdfgenrs
 - https://github.com/navikt/pengeflyt-pdfgenrs
 - https://github.com/navikt/helse-sprinter
 - https://github.com/navikt/aap-pdfgenerator
 - https://github.com/navikt/tiltakspenger-pdfgenrs
 - https://github.com/navikt/orkivar-pdfgen
+- https://github.com/navikt/mulighetsrommet/tree/main/mulighetsrommet-pdfgenrs
 
 ## Environment variables
 
