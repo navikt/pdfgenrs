@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pdfgenrs::pdf::{build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf};
+use pdfgenrs::pdf::{image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
 use typst::Features;
 use typst::Library;
@@ -85,21 +85,6 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
     });
 }
 
-fn bench_html_to_pdf(c: &mut Criterion) {
-    let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
-    let html = r#"<!DOCTYPE html>
-<html>
-<head><style>body { font-family: "Source Sans 3", sans-serif; }</style></head>
-<body><h1>Benchmark HTML to PDF</h1><p>This is a performance test document.</p></body>
-</html>"#;
-
-    c.bench_function("html_to_pdf", |b| {
-        b.iter(|| {
-            let _ = html_to_pdf(html, &converter);
-        });
-    });
-}
-
 fn bench_image_to_pdf(c: &mut Criterion) {
     let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
         return;
@@ -128,7 +113,6 @@ criterion_group!(
     benches,
     bench_typst_to_pdf,
     bench_typst_to_pdf_with_data,
-    bench_html_to_pdf,
     bench_image_to_pdf,
 );
 criterion_main!(benches);

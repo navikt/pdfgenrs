@@ -66,7 +66,7 @@ mod tests {
     use crate::metrics;
     use crate::state::AppAliveness;
     use crate::state::AppState;
-    use crate::{build_html_converter, typst_world};
+    use crate::typst_world;
     use typst::{Feature, Features};
 
     fn test_state(alive: bool, ready: bool) -> anyhow::Result<AppState> {
@@ -99,7 +99,6 @@ mod tests {
             html_library: Arc::new(typst_world::build_library(
                 [Feature::Html].into_iter().collect(),
             )),
-            html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
             root_dir: Arc::new(cfg.root_dir.clone()),
             resources_dir: Arc::new(cfg.resource_root()),
             config: cfg,

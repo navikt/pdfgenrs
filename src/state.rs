@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ironpress::HtmlConverter;
 use serde_json::Value;
 use tokio::sync::{RwLock, Semaphore};
 
@@ -27,8 +26,6 @@ pub struct AppState {
     pub pdf_library: Arc<LazyHash<Library>>,
     /// Pre-built Typst library for HTML compilation (HTML feature enabled).
     pub html_library: Arc<LazyHash<Library>>,
-    /// Pre-built HTML-to-PDF converter with font aliases loaded at startup.
-    pub html_converter: Arc<HtmlConverter>,
     /// Semaphore to limit the number of concurrent compilation tasks.
     /// When `None`, no limit is enforced.
     pub compile_semaphore: Option<Arc<Semaphore>>,
@@ -89,7 +86,6 @@ impl std::fmt::Debug for AppState {
             .field("fonts", &self.fonts)
             .field("pdf_library", &"LazyHash<Library>")
             .field("html_library", &"LazyHash<Library>")
-            .field("html_converter", &"HtmlConverter")
             .field("compile_semaphore", &self.compile_semaphore)
             .field("root_dir", &self.root_dir)
             .field("resources_dir", &self.resources_dir)

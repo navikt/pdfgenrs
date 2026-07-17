@@ -16,7 +16,7 @@ pub mod typst_world;
 
 pub(crate) mod html;
 pub(crate) mod http_tracing;
-/// PDF generation functions: Typst-to-PDF, HTML-to-PDF, and image-to-PDF.
+/// PDF generation functions: Typst-to-PDF and image-to-PDF.
 pub mod pdf;
 pub(crate) mod request_id;
 pub(crate) mod routes;
@@ -36,11 +36,6 @@ use metrics_exporter_prometheus::PrometheusHandle;
 use state::AppState;
 use tower_http::limit::RequestBodyLimitLayer;
 
-/// Builds a pre-configured HTML-to-PDF converter with font aliases.
-///
-/// The converter is built once at startup and shared across requests.
-pub use pdf::build_html_converter;
-
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
     static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
@@ -51,7 +46,6 @@ pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {
 pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router {
     let request_body_limit_bytes = state.config.request_body_limit_bytes;
     let mut pdf_router = Router::new()
-        .route("/html/{app_name}", post(routes::pdf::post_pdf_from_html))
         .route("/image/{app_name}", post(routes::pdf::post_pdf_from_image))
         .route("/{app_name}/{template}", post(routes::pdf::post_pdf));
 
