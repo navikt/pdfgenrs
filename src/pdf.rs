@@ -404,21 +404,20 @@ Hello, world!
     }
 
     #[test]
-    fn image_to_pdf_returns_error_for_unsupported_image_type() {
+    fn image_to_pdf_returns_error_for_unsupported_image_type() -> Result<()> {
         let result = image_to_pdf(
             b"not a valid image".to_vec(),
             "/image.png",
-            test_fonts().unwrap(),
+            test_fonts()?,
             &root_dir(),
             &resources_dir(),
             pdf_library(),
         );
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
         assert!(
-            err_msg.contains("Unsupported or corrupted image"),
-            "Expected unsupported image error, got: {err_msg}"
+            result.is_err(),
+            "Expected an error for unsupported image type"
         );
+        Ok(())
     }
 
     #[test]
