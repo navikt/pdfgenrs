@@ -21,6 +21,8 @@ pub(crate) enum ApiError {
         app_name: String,
         template_name: Option<String>,
         source: anyhow::Error,
+        /// When `true`, the error detail is included in the response body.
+        dev_mode: bool,
     },
     /// The request body content type is not supported.
     UnsupportedMediaType,
@@ -111,16 +113,22 @@ impl IntoResponse for ApiError {
                 ref app_name,
                 ref template_name,
                 ref source,
+                dev_mode,
             } => {
                 if let Some(tmpl) = template_name {
                     error!(app_name = %app_name, template_name = %tmpl, error = %source, "Document generation failed");
                 } else {
                     error!(app_name = %app_name, error = %source, "Document generation failed");
                 }
+                let detail = if dev_mode {
+                    format!("{source:#}")
+                } else {
+                    "Internal server error".to_string()
+                };
                 problem_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "urn:pdfgenrs:error:generation-failed",
-                    "Internal server error",
+                    &detail,
                 )
             }
             Self::UnsupportedMediaType => problem_response(
@@ -206,6 +214,7 @@ mod tests {
             app_name: "myapp".to_string(),
             template_name: Some("template1".to_string()),
             source: anyhow!("render error"),
+            dev_mode: false,
         };
         let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
@@ -222,6 +231,7 @@ mod tests {
             app_name: "myapp".to_string(),
             template_name: None,
             source: anyhow!("render error"),
+            dev_mode: false,
         };
         let (status, body) = status_and_body(error).await?;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
@@ -229,6 +239,21 @@ mod tests {
         assert_eq!(body["title"], "Internal Server Error");
         assert_eq!(body["status"], 500);
         assert_eq!(body["detail"], "Internal server error");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn generation_failed_returns_error_detail_in_dev_mode() -> anyhow::Result<()> {
+        let error = ApiError::GenerationFailed {
+            app_name: "myapp".to_string(),
+            template_name: Some("template1".to_string()),
+            source: anyhow!("typst compilation error: missing field"),
+            dev_mode: true,
+        };
+        let (status, body) = status_and_body(error).await?;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["type"], "urn:pdfgenrs:error:generation-failed");
+        assert_eq!(body["detail"], "typst compilation error: missing field");
         Ok(())
     }
 

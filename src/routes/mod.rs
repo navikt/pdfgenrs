@@ -154,6 +154,7 @@ where
                 app_name,
                 template_name,
                 source,
+                dev_mode: state.config.dev_mode,
             })
         }
         Err(_elapsed) => Err(ApiError::RequestTimeout {
