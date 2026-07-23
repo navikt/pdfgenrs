@@ -20,7 +20,7 @@ pub(crate) mod pdf;
 
 /// Common parameters extracted from state for template compilation.
 pub(crate) struct CompileParams {
-    pub source: Arc<String>,
+    pub source: Arc<str>,
     pub data: Value,
     pub fonts: Arc<Fonts>,
     pub pdf_library: Arc<LazyHash<Library>>,
@@ -469,7 +469,7 @@ mod tests {
             Ok(p) => p,
             Err(_) => anyhow::bail!("expected Ok"),
         };
-        assert_eq!(*params.source, "Hello");
+        assert_eq!(&*params.source, "Hello");
         assert_eq!(params.data, serde_json::json!({"x": 1}));
         Ok(())
     }
@@ -532,7 +532,7 @@ mod tests {
             Ok(p) => p,
             Err(_) => anyhow::bail!("expected Ok"),
         };
-        assert_eq!(*params.source, "Hello");
+        assert_eq!(&*params.source, "Hello");
         assert_eq!(params.data, serde_json::json!({"key": "value"}));
         Ok(())
     }

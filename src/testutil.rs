@@ -21,7 +21,7 @@ pub fn make_state_with_body_limit(
 ) -> anyhow::Result<AppState> {
     let templates = templates
         .into_iter()
-        .map(|(k, v)| (k, Arc::new(v)))
+        .map(|(k, v)| (k, Arc::from(v)))
         .collect();
     let cfg = config::Config {
         port: 8080,
@@ -66,7 +66,7 @@ pub fn make_state(
 ) -> anyhow::Result<AppState> {
     let templates = templates
         .into_iter()
-        .map(|(k, v)| (k, Arc::new(v)))
+        .map(|(k, v)| (k, Arc::from(v)))
         .collect();
     let cfg = config::Config {
         port: 8080,

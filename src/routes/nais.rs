@@ -85,10 +85,7 @@ mod tests {
         let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir)?);
         let mut templates = HashMap::new();
         if with_templates {
-            templates.insert(
-                ("app".to_string(), "test".to_string()),
-                Arc::new("hello".to_string()),
-            );
+            templates.insert(("app".to_string(), "test".to_string()), Arc::from("hello"));
         }
         Ok(AppState {
             templates: Arc::new(templates),

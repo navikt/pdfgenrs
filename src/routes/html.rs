@@ -6,7 +6,6 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::Value;
-use std::sync::Arc;
 use tracing::info;
 
 use super::error::ApiError;
@@ -34,7 +33,7 @@ pub(crate) async fn get_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                Arc::unwrap_or_clone(params.source),
+                params.source.to_string(),
                 &params.data,
                 params.fonts,
                 &params.root,
@@ -72,7 +71,7 @@ pub(crate) async fn post_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                Arc::unwrap_or_clone(params.source),
+                params.source.to_string(),
                 &params.data,
                 params.fonts,
                 &params.root,
