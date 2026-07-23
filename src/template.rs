@@ -58,7 +58,7 @@ impl TestDataLoadResult {
 /// Returns an error if any file cannot be read or a path cannot be processed.
 pub fn load_templates_from_dir(
     templates_dir: &Path,
-) -> anyhow::Result<HashMap<(String, String), Arc<String>>> {
+) -> anyhow::Result<HashMap<(String, String), Arc<str>>> {
     let mut templates = HashMap::new();
 
     for entry in WalkDir::new(templates_dir).follow_links(true).into_iter() {
@@ -89,7 +89,7 @@ pub fn load_templates_from_dir(
             let source = std::fs::read_to_string(path).context("Failed to read template file")?;
             templates.insert(
                 (app_name.to_string(), template_name.to_string()),
-                Arc::new(source),
+                Arc::from(source),
             );
         }
     }
@@ -216,7 +216,7 @@ mod tests {
 
         assert_eq!(templates.len(), 1);
         assert_eq!(
-            templates[&("myapp".to_string(), "hello".to_string())].as_str(),
+            templates[&("myapp".to_string(), "hello".to_string())].as_ref(),
             "Hello Typst"
         );
         Ok(())
@@ -234,7 +234,7 @@ mod tests {
         assert_eq!(templates.len(), 1);
         let key = ("myapp".to_string(), "report".to_string());
         assert!(templates.contains_key(&key));
-        assert_eq!(templates[&key].as_str(), "Report content");
+        assert_eq!(templates[&key].as_ref(), "Report content");
         Ok(())
     }
 
@@ -391,7 +391,7 @@ mod tests {
         assert!(templates.contains_key(&("myapp".to_string(), "real".to_string())));
         assert!(templates.contains_key(&("linkapp".to_string(), "linked".to_string())));
         assert_eq!(
-            templates[&("linkapp".to_string(), "linked".to_string())].as_str(),
+            templates[&("linkapp".to_string(), "linked".to_string())].as_ref(),
             "Real template"
         );
         Ok(())
@@ -418,7 +418,7 @@ mod tests {
         assert!(templates.contains_key(&("realapp".to_string(), "template".to_string())));
         assert!(templates.contains_key(&("symlinkapp".to_string(), "template".to_string())));
         assert_eq!(
-            templates[&("symlinkapp".to_string(), "template".to_string())].as_str(),
+            templates[&("symlinkapp".to_string(), "template".to_string())].as_ref(),
             "From real dir"
         );
         Ok(())

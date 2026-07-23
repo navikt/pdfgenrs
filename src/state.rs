@@ -13,7 +13,7 @@ use typst::utils::LazyHash;
 #[derive(Clone)]
 pub struct AppState {
     /// Pre-loaded Typst templates keyed by `(app_name, template_name)`.
-    pub templates: Arc<std::collections::HashMap<(String, String), Arc<String>>>,
+    pub templates: Arc<std::collections::HashMap<(String, String), Arc<str>>>,
     /// Test JSON data keyed by `(app_name, template_name)`, used in dev mode.
     pub data: Arc<RwLock<std::collections::HashMap<(String, String), Value>>>,
     /// Liveness / readiness flags exposed via the NAIS health endpoints.
