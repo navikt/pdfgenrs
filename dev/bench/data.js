@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784821499410,
+  "lastUpdate": 1784824851758,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3533,6 +3533,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 136876,
             "range": "± 2870",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fb29efceebf70f8a0a5f4cdb6e5d58f0461e41ad",
+          "message": "Merge pull request #348 from navikt/copilot/fix-webp-dimension-redundancy\n\nRemove redundant length checks in webp_dimensions VP8 lossy branch",
+          "timestamp": "2026-07-23T18:38:56+02:00",
+          "tree_id": "48fb807aefad6e0dc5d6396c291472137ae26894",
+          "url": "https://github.com/navikt/pdfgenrs/commit/fb29efceebf70f8a0a5f4cdb6e5d58f0461e41ad"
+        },
+        "date": 1784824847863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 230647,
+            "range": "± 19775",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 424088,
+            "range": "± 5025",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 153194,
+            "range": "± 4383",
             "unit": "ns/iter"
           }
         ]
