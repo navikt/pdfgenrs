@@ -143,12 +143,9 @@ fn webp_dimensions(data: &[u8]) -> Option<(u32, u32)> {
         return None;
     }
     // VP8 lossy format
-    if &data[12..16] == b"VP8 " && data.len() >= 30 {
+    if &data[12..16] == b"VP8 " {
         // VP8 bitstream header starts at offset 20 (after the chunk header)
         // Frame tag at bytes 23..26 contains width/height
-        if data.len() < 30 {
-            return None;
-        }
         let width = u32::from(u16::from_le_bytes([data[26], data[27]])) & 0x3FFF;
         let height = u32::from(u16::from_le_bytes([data[28], data[29]])) & 0x3FFF;
         return Some((width, height));
