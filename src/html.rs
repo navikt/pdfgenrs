@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -10,17 +10,16 @@ use typst::utils::LazyHash;
 
 /// Compiles a Typst template with JSON data and returns the resulting HTML string.
 ///
-/// The JSON data is serialised and injected as a virtual file at
+/// The JSON data is injected as a virtual file at
 /// `/data/{app_name}/{template_name}.json`, which the template can read with
 /// `#let data = json("/data/<app_name>/<template_name>.json")`.
 ///
 /// # Errors
-/// Returns an error if serialisation of `json_data` fails or if the Typst
-/// compilation / HTML export fails.
+/// Returns an error if the Typst compilation / HTML export fails.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn typst_to_html(
     template_source: String,
-    json_data: &serde_json::Value,
+    json_bytes: &[u8],
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
@@ -28,9 +27,8 @@ pub(crate) fn typst_to_html(
     template_name: &str,
     library: Arc<LazyHash<Library>>,
 ) -> Result<String> {
-    let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
-    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
+    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes.to_vec()))]);
 
     typst_world::compile_to_html(
         fonts,
@@ -70,7 +68,7 @@ mod tests {
     #[test]
     fn typst_to_html_simple_template_returns_html_string() -> Result<()> {
         let source = "Hello, world!\n";
-        let data = serde_json::json!({});
+        let data = serde_json::to_vec(&serde_json::json!({}))?;
         let html = typst_to_html(
             source.to_string(),
             &data,
@@ -94,7 +92,7 @@ mod tests {
         let source = r#"#let data = json("/data/test/app.json")
 #data.at("name", default: "")
 "#;
-        let data = serde_json::json!({"name": "Test User"});
+        let data = serde_json::to_vec(&serde_json::json!({"name": "Test User"}))?;
         let html = typst_to_html(
             source.to_string(),
             &data,
@@ -112,7 +110,7 @@ mod tests {
     #[test]
     fn typst_to_html_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
-        let data = serde_json::json!({});
+        let data = serde_json::to_vec(&serde_json::json!({}))?;
         let result = typst_to_html(
             source.to_string(),
             &data,
@@ -135,12 +133,12 @@ mod tests {
         let source = r#"#let data = json("/data/test/nested.json")
 #data.at("user").at("name", default: "")
 "#;
-        let data = serde_json::json!({
+        let data = serde_json::to_vec(&serde_json::json!({
             "user": {
                 "name": "Alice",
                 "age": 30
             }
-        });
+        }))?;
         let html = typst_to_html(
             source.to_string(),
             &data,
@@ -162,9 +160,9 @@ mod tests {
   #item
 ]
 "#;
-        let data = serde_json::json!({
+        let data = serde_json::to_vec(&serde_json::json!({
             "items": ["alpha", "beta", "gamma"]
-        });
+        }))?;
         let html = typst_to_html(
             source.to_string(),
             &data,
@@ -186,7 +184,7 @@ mod tests {
         let source = r#"#let data = json("/data/test/empty.json")
 Empty: #data.keys().len()
 "#;
-        let data = serde_json::json!({});
+        let data = serde_json::to_vec(&serde_json::json!({}))?;
         let html = typst_to_html(
             source.to_string(),
             &data,

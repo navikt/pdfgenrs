@@ -10,18 +10,17 @@ use typst::utils::LazyHash;
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
 ///
-/// The JSON data is serialised and injected as a virtual file at
+/// The JSON data is injected as a virtual file at
 /// `/data/{app_name}/{template_name}.json`, which the template can read with
 /// `#let data = json("/data/<app_name>/<template_name>.json")`.
 ///
 /// # Errors
-/// Returns an error if serialisation of `json_data` fails or if the Typst
-/// compilation / PDF export fails.
+/// Returns an error if the Typst compilation / PDF export fails.
 #[must_use = "this returns a Result that should be handled"]
 #[allow(clippy::too_many_arguments)]
 pub fn typst_to_pdf(
     template_source: String,
-    json_data: &serde_json::Value,
+    json_bytes: &[u8],
     fonts: Arc<Fonts>,
     root: &Path,
     resources_dir: &Path,
@@ -29,9 +28,8 @@ pub fn typst_to_pdf(
     template_name: &str,
     library: Arc<LazyHash<Library>>,
 ) -> Result<Vec<u8>> {
-    let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{app_name}/{template_name}.json");
-    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
+    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes.to_vec()))]);
 
     typst_world::compile_to_pdf(
         fonts,
@@ -310,7 +308,7 @@ mod tests {
 #set page(margin: 1cm)
 Hello, world!
 "#;
-        let data = serde_json::json!({});
+        let data = serde_json::to_vec(&serde_json::json!({}))?;
         let bytes = typst_to_pdf(
             source.to_string(),
             &data,
@@ -331,7 +329,7 @@ Hello, world!
 #let data = json("/data/test/app.json")
 #data.at("name", default: "")
 "#;
-        let data = serde_json::json!({"name": "Test User"});
+        let data = serde_json::to_vec(&serde_json::json!({"name": "Test User"}))?;
         let bytes = typst_to_pdf(
             source.to_string(),
             &data,
@@ -349,7 +347,7 @@ Hello, world!
     #[test]
     fn typst_to_pdf_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
-        let data = serde_json::json!({});
+        let data = serde_json::to_vec(&serde_json::json!({}))?;
         let result = typst_to_pdf(
             source.to_string(),
             &data,
@@ -741,7 +739,7 @@ Hello, world!
 #set page(margin: 1cm)
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
-        let data = serde_json::json!({});
+        let data = serde_json::to_vec(&serde_json::json!({}))?;
         let bytes = typst_to_pdf(
             source.to_string(),
             &data,

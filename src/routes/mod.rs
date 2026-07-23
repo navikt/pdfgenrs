@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use metrics::histogram;
-use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::error;
 
@@ -21,7 +20,8 @@ pub(crate) mod pdf;
 /// Common parameters extracted from state for template compilation.
 pub(crate) struct CompileParams {
     pub source: Arc<str>,
-    pub data: Value,
+    /// Pre-serialized JSON bytes, ready to be injected as a virtual file.
+    pub data: Vec<u8>,
     pub fonts: Arc<Fonts>,
     pub pdf_library: Arc<LazyHash<Library>>,
     pub html_library: Arc<LazyHash<Library>>,
@@ -46,9 +46,13 @@ pub(crate) async fn lookup_template_and_data(
         _ => return Err(ApiError::NotFound),
     };
 
+    #[allow(clippy::expect_used)]
+    let data_bytes =
+        serde_json::to_vec(&data).expect("serializing serde_json::Value to Vec<u8> is infallible");
+
     Ok(CompileParams {
         source,
-        data,
+        data: data_bytes,
         fonts: Arc::clone(&state.fonts),
         pdf_library: Arc::clone(&state.pdf_library),
         html_library: Arc::clone(&state.html_library),
@@ -57,12 +61,12 @@ pub(crate) async fn lookup_template_and_data(
     })
 }
 
-/// Looks up the template source for the given key and pairs it with the provided JSON data
+/// Looks up the template source for the given key and pairs it with the provided JSON bytes
 /// (used by POST handlers). Returns `ApiError::NotFound` if the template is missing.
 pub(crate) fn lookup_template_with_data(
     state: &AppState,
     template_key: &(String, String),
-    data: Value,
+    data: Vec<u8>,
 ) -> Result<CompileParams, ApiError> {
     let source = state
         .templates
@@ -443,8 +447,11 @@ mod tests {
     -> anyhow::Result<()> {
         let state = make_state(HashMap::new(), HashMap::new(), false)?;
         let key = ("myapp".to_string(), "missing".to_string());
-        let result =
-            super::lookup_template_with_data(&state, &key, serde_json::json!({"key": "value"}));
+        let result = super::lookup_template_with_data(
+            &state,
+            &key,
+            serde_json::to_vec(&serde_json::json!({"key": "value"}))?,
+        );
         assert!(result.is_err());
         let err = match result {
             Ok(_) => anyhow::bail!("expected NotFound error"),
@@ -464,13 +471,20 @@ mod tests {
         );
         let state = make_state(templates, HashMap::new(), false)?;
         let key = ("myapp".to_string(), "tmpl".to_string());
-        let result = super::lookup_template_with_data(&state, &key, serde_json::json!({"x": 1}));
+        let result = super::lookup_template_with_data(
+            &state,
+            &key,
+            serde_json::to_vec(&serde_json::json!({"x": 1}))?,
+        );
         let params = match result {
             Ok(p) => p,
             Err(_) => anyhow::bail!("expected Ok"),
         };
         assert_eq!(&*params.source, "Hello");
-        assert_eq!(params.data, serde_json::json!({"x": 1}));
+        assert_eq!(
+            params.data,
+            serde_json::to_vec(&serde_json::json!({"x": 1}))?
+        );
         Ok(())
     }
 
@@ -533,7 +547,10 @@ mod tests {
             Err(_) => anyhow::bail!("expected Ok"),
         };
         assert_eq!(&*params.source, "Hello");
-        assert_eq!(params.data, serde_json::json!({"key": "value"}));
+        assert_eq!(
+            params.data,
+            serde_json::to_vec(&serde_json::json!({"key": "value"}))?
+        );
         Ok(())
     }
 

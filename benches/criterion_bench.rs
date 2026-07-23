@@ -34,7 +34,7 @@ fn bench_typst_to_pdf(c: &mut Criterion) {
 #set page(margin: 1cm)
 Hello, world!
 ";
-    let data = serde_json::json!({});
+    let data = b"{}".to_vec();
 
     c.bench_function("typst_to_pdf_simple", |b| {
         b.iter(|| {
@@ -64,10 +64,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
 = #data.at("title", default: "Untitled")
 #data.at("body", default: "")
 "#;
-    let data = serde_json::json!({
-        "title": "Benchmark Document",
-        "body": "This is a benchmark document with JSON data injection for performance testing."
-    });
+    let data = br#"{"title":"Benchmark Document","body":"This is a benchmark document with JSON data injection for performance testing."}"#.to_vec();
 
     c.bench_function("typst_to_pdf_with_data", |b| {
         b.iter(|| {

@@ -5,7 +5,7 @@ use axum::{
     http::{HeaderMap, HeaderValue, header},
     response::{IntoResponse, Response},
 };
-use serde_json::Value;
+use serde_json::value::RawValue;
 use std::sync::Arc;
 use tracing::info;
 
@@ -59,12 +59,13 @@ pub(crate) async fn get_pdf(
 pub(crate) async fn post_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
-    Json(json_data): Json<Value>,
+    Json(json_data): Json<Box<RawValue>>,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name.clone(), template_name.clone());
 
-    let params = lookup_template_with_data(&state, &template_key, json_data)?;
+    let params =
+        lookup_template_with_data(&state, &template_key, json_data.get().as_bytes().to_vec())?;
 
     let pdf_bytes = compile_blocking(
         &state,
@@ -165,7 +166,7 @@ mod tests {
     use axum::routing::{get, post};
     use axum::{Json, Router};
     use axum_test::TestServer;
-    use serde_json::Value;
+    use serde_json::value::RawValue;
     use tokio::time::{Duration, timeout};
 
     use axum::body::Bytes;
@@ -195,7 +196,7 @@ mod tests {
     async fn delayed_post_pdf(
         State(state): State<AppState>,
         Path((app_name, template_name)): Path<(String, String)>,
-        Json(json_data): Json<Value>,
+        Json(json_data): Json<Box<RawValue>>,
     ) -> Response {
         tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
         post_pdf(
