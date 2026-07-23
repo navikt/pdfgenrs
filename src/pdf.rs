@@ -59,8 +59,9 @@ pub fn image_to_pdf<B>(
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
-    let (w, h) = image_dimensions(image_bytes.as_ref())
-        .context("Unsupported or corrupted image: unable to determine dimensions")?;
+let (w, h) = image_dimensions(image_bytes.as_ref()).with_context(|| {
+    format!("Unsupported or corrupted image '{image_path}': unable to determine dimensions")
+})?;
     let is_landscape = w > h;
 
     let mut vfiles = HashMap::new();
