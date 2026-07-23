@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784809148819,
+  "lastUpdate": 1784819100385,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3449,6 +3449,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 123590,
             "range": "± 6679",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f516ee81eddd10e60cb17da11be8fb4cdaaa75e6",
+          "message": "Merge pull request #345 from navikt/copilot/structured-error-detail\n\nfeat: include structured error detail in GenerationFailed response in dev mode",
+          "timestamp": "2026-07-23T17:03:04+02:00",
+          "tree_id": "3fa562b6865dea315ad9eaa5cefa7b59e496efbd",
+          "url": "https://github.com/navikt/pdfgenrs/commit/f516ee81eddd10e60cb17da11be8fb4cdaaa75e6"
+        },
+        "date": 1784819096552,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 217040,
+            "range": "± 1726",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 395902,
+            "range": "± 2729",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 145386,
+            "range": "± 2925",
             "unit": "ns/iter"
           }
         ]
