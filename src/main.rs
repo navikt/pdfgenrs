@@ -3,7 +3,7 @@ mod tracing_setup;
 use anyhow::{Context, Result};
 use pdfgenrs::metrics;
 use pdfgenrs::state::{AppAliveness, AppState};
-use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
+use pdfgenrs::{build_router, config, template, typst_world};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -66,14 +66,6 @@ async fn main() -> Result<()> {
     })?);
     info!(count = fonts.fonts.len(), "Loaded fonts");
 
-    let (html_converter, html_font_count) =
-        build_html_converter(&cfg.root_dir.join(&cfg.fonts_dir), &cfg.root_dir);
-    let html_converter = Arc::new(html_converter);
-    info!(
-        count = html_font_count,
-        "Built HTML converter with font aliases"
-    );
-
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
@@ -102,7 +94,6 @@ async fn main() -> Result<()> {
         html_library: Arc::new(typst_world::build_library(
             [Feature::Html].into_iter().collect(),
         )),
-        html_converter,
         compile_semaphore,
     };
 
@@ -229,27 +220,6 @@ mod tests {
             .json(&serde_json::json!({}))
             .await;
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn build_router_post_pdf_from_html_returns_pdf() -> anyhow::Result<()> {
-        let server = TestServer::new(build_router(
-            make_empty_state(false)?,
-            metrics::test_metrics_handle(),
-        ));
-        let response = server
-            .post("/api/v1/genpdf/html/myapp")
-            .text("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>")
-            .await;
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert_eq!(
-            response
-                .headers()
-                .get("content-type")
-                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
-            "application/pdf"
-        );
         Ok(())
     }
 
@@ -423,37 +393,6 @@ mod tests {
         assert!(ct.starts_with("text/html"));
         let body = response.text();
         assert!(body.contains("<!DOCTYPE html>"));
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn build_router_post_pdf_from_html_full_flow() -> anyhow::Result<()> {
-        let state = make_empty_state(false)?;
-        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
-
-        let response = server
-            .post("/api/v1/genpdf/html/myapp")
-            .text("<!DOCTYPE html><html><body><h1>Full flow</h1><p>Test</p></body></html>")
-            .await;
-
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert_eq!(
-            response
-                .headers()
-                .get("content-type")
-                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
-                .to_str()?,
-            "application/pdf"
-        );
-        assert_eq!(
-            response
-                .headers()
-                .get("content-disposition")
-                .ok_or_else(|| anyhow::anyhow!("missing content-disposition header"))?
-                .to_str()?,
-            "inline"
-        );
-        assert!(response.as_bytes().starts_with(b"%PDF"));
         Ok(())
     }
 
@@ -790,22 +729,6 @@ Dev mode: #data.at("mode", default: "unknown")
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn build_router_enforces_body_limit_on_html_to_pdf() -> anyhow::Result<()> {
-        let state = make_empty_state(false)?;
-        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
-        let oversized = "x".repeat(3 * 1024 * 1024);
-
-        let response = server
-            .post("/api/v1/genpdf/html/myapp")
-            .content_type("text/plain")
-            .bytes(axum::body::Bytes::from(oversized))
-            .await;
-
-        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
         Ok(())
     }
 

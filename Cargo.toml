@@ -46,7 +46,6 @@ opentelemetry = { version = "0.32.0", features = ["trace"] }
 opentelemetry-otlp = { version = "0.32.0", features = ["grpc-tonic", "trace"] }
 opentelemetry_sdk = { version = "0.32.1", features = ["trace", "rt-tokio"] }
 tower-http = { version = "0.7.0", features = ["trace", "limit"] }
-ironpress = "1.4.3"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 uuid = { version = "1.23.4", features = ["v4"] }

@@ -1,149 +1,12 @@
 use anyhow::{Context, Result};
-use ironpress::HtmlConverter;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
-use tracing::warn;
+use std::path::Path;
+use std::sync::Arc;
 use typst::foundations::Bytes;
-use typst_library::text::Font;
-use walkdir::WalkDir;
 
 use crate::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
-
-/// Cached font data discovered from the fonts directory. Once loaded, subsequent
-/// calls to [`build_html_converter`] reuse the cached data instead of re-reading
-/// files from disk.
-type FontCache = (PathBuf, Vec<(String, Vec<u8>)>);
-static FONT_CACHE: OnceLock<FontCache> = OnceLock::new();
-
-/// Derives a CSS-friendly font name from a font's family and variant.
-///
-/// For regular weight (400) and normal style, returns just the family name.
-/// For other variants, appends the weight/style descriptor (e.g. "bold", "italic").
-fn css_font_name(family: &str, variant: &typst_library::text::FontVariant) -> String {
-    use typst_library::text::{FontStyle, FontWeight};
-
-    let weight_suffix = match variant.weight {
-        FontWeight::THIN => Some("thin"),
-        FontWeight::EXTRALIGHT => Some("extra light"),
-        FontWeight::LIGHT => Some("light"),
-        FontWeight::REGULAR => None,
-        FontWeight::MEDIUM => Some("medium"),
-        FontWeight::SEMIBOLD => Some("semi bold"),
-        FontWeight::BOLD => Some("bold"),
-        FontWeight::EXTRABOLD => Some("extra bold"),
-        FontWeight::BLACK => Some("black"),
-        _ => None,
-    };
-
-    let style_suffix = match variant.style {
-        FontStyle::Normal => None,
-        FontStyle::Italic => Some("italic"),
-        FontStyle::Oblique => Some("oblique"),
-    };
-
-    match (weight_suffix, style_suffix) {
-        (None, None) => family.to_string(),
-        (Some(w), None) => format!("{family} {w}"),
-        (None, Some(s)) => format!("{family} {s}"),
-        (Some(w), Some(s)) => format!("{family} {w} {s}"),
-    }
-}
-
-/// Discovers all fonts in `fonts_dir` and returns `(css_name, font_bytes)` pairs,
-/// using a process-wide cache to avoid redundant file I/O.
-fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Vec<u8>)] {
-    let (_, fonts) = FONT_CACHE.get_or_init(|| {
-        let mut loaded: Vec<(String, Vec<u8>)> = Vec::new();
-
-        let entries = match WalkDir::new(fonts_dir)
-            .into_iter()
-            .collect::<std::result::Result<Vec<_>, _>>()
-        {
-            Ok(entries) => entries,
-            Err(error) => {
-                warn!(
-                    fonts_dir = %fonts_dir.display(),
-                    "Failed to read fonts directory: {error}"
-                );
-                return (fonts_dir.to_path_buf(), loaded);
-            }
-        };
-
-        for entry in entries {
-            let path = entry.path();
-            if !entry.file_type().is_file() || !is_supported_font_file(path) {
-                continue;
-            }
-
-            let font_bytes = match std::fs::read(path) {
-                Ok(bytes) => bytes,
-                Err(error) => {
-                    warn!(
-                        font_path = %path.display(),
-                        "Failed to read font file: {error}"
-                    );
-                    continue;
-                }
-            };
-
-            let fonts_from_file: Vec<Font> = Font::iter(Bytes::new(font_bytes.clone())).collect();
-
-            if fonts_from_file.is_empty() {
-                warn!(
-                    font_path = %path.display(),
-                    "Font file did not contain any readable font faces"
-                );
-                continue;
-            }
-
-            for font in &fonts_from_file {
-                let info = font.info();
-                let name = css_font_name(&info.family, &info.variant);
-                loaded.push((name, font_bytes.clone()));
-            }
-        }
-
-        (fonts_dir.to_path_buf(), loaded)
-    });
-    fonts
-}
-
-/// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
-fn is_supported_font_file(path: &Path) -> bool {
-    match path.extension().and_then(|ext| ext.to_str()) {
-        Some(ext) => {
-            ext.eq_ignore_ascii_case("ttf")
-                || ext.eq_ignore_ascii_case("otf")
-                || ext.eq_ignore_ascii_case("ttc")
-        }
-        None => false,
-    }
-}
-
-/// Builds a pre-configured [`HtmlConverter`] with fonts discovered from `fonts_dir`.
-///
-/// Font data is cached in a process-wide [`OnceLock`] so that repeated calls
-/// (e.g. in tests) avoid redundant file I/O. The converter itself is constructed fresh
-/// each call with the given `base_path`, but the expensive disk reads happen at most once.
-///
-/// Font files that cannot be read are skipped and logged as warnings (on first load only).
-///
-/// Returns a tuple of `(converter, count)` where `count` is the number of
-/// fonts successfully loaded.
-#[must_use]
-pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverter, usize) {
-    let fonts = discover_fonts(fonts_dir);
-    let mut converter = HtmlConverter::new().base_path(base_path);
-
-    for (name, font_bytes) in fonts {
-        converter = converter.add_font(name, font_bytes.clone());
-    }
-
-    (converter, fonts.len())
-}
 
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
 ///
@@ -179,14 +42,6 @@ pub fn typst_to_pdf(
         vfiles,
         library,
     )
-}
-
-/// Converts an HTML document into PDF bytes using a pre-built converter.
-#[must_use = "this returns a Result that should be handled"]
-pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
-    converter
-        .convert(html)
-        .context("Failed to convert HTML to PDF")
 }
 
 /// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes.
@@ -511,36 +366,6 @@ Hello, world!
             result.is_err(),
             "Expected an error for invalid Typst source"
         );
-        Ok(())
-    }
-
-    #[test]
-    fn html_to_pdf_simple_document_returns_pdf_bytes() -> Result<()> {
-        let source = "<!DOCTYPE html><html><body><h1>Hello, world!</h1></body></html>";
-        let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
-        let bytes = html_to_pdf(source, &converter)?;
-        assert!(is_pdf(&bytes));
-        Ok(())
-    }
-
-    #[test]
-    fn html_to_pdf_with_source_sans_pro_alias_returns_pdf_bytes() -> Result<()> {
-        let source = r#"<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        h1 {
-            font-family: "Source Sans Pro" !important;
-        }
-    </style>
-</head>
-<body>
-    <h1>Hello, world!</h1>
-</body>
-</html>"#;
-        let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
-        let bytes = html_to_pdf(source, &converter)?;
-        assert!(is_pdf(&bytes));
         Ok(())
     }
 
@@ -923,123 +748,6 @@ Hello, world!
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
-    }
-
-    // --- css_font_name tests ---
-
-    #[test]
-    fn css_font_name_regular_weight_normal_style_returns_family_only() {
-        use typst_library::text::{FontStyle, FontVariant, FontWeight};
-        let variant = FontVariant {
-            weight: FontWeight::REGULAR,
-            style: FontStyle::Normal,
-            ..Default::default()
-        };
-        assert_eq!(css_font_name("Source Sans 3", &variant), "Source Sans 3");
-    }
-
-    #[test]
-    fn css_font_name_bold_weight_returns_family_with_bold() {
-        use typst_library::text::{FontStyle, FontVariant, FontWeight};
-        let variant = FontVariant {
-            weight: FontWeight::BOLD,
-            style: FontStyle::Normal,
-            ..Default::default()
-        };
-        assert_eq!(
-            css_font_name("Source Sans 3", &variant),
-            "Source Sans 3 bold"
-        );
-    }
-
-    #[test]
-    fn css_font_name_italic_style_returns_family_with_italic() {
-        use typst_library::text::{FontStyle, FontVariant, FontWeight};
-        let variant = FontVariant {
-            weight: FontWeight::REGULAR,
-            style: FontStyle::Italic,
-            ..Default::default()
-        };
-        assert_eq!(
-            css_font_name("Source Sans 3", &variant),
-            "Source Sans 3 italic"
-        );
-    }
-
-    #[test]
-    fn css_font_name_bold_italic_returns_family_with_both() {
-        use typst_library::text::{FontStyle, FontVariant, FontWeight};
-        let variant = FontVariant {
-            weight: FontWeight::BOLD,
-            style: FontStyle::Italic,
-            ..Default::default()
-        };
-        assert_eq!(
-            css_font_name("Source Sans 3", &variant),
-            "Source Sans 3 bold italic"
-        );
-    }
-
-    #[test]
-    fn css_font_name_light_weight() {
-        use typst_library::text::{FontStyle, FontVariant, FontWeight};
-        let variant = FontVariant {
-            weight: FontWeight::LIGHT,
-            style: FontStyle::Normal,
-            ..Default::default()
-        };
-        assert_eq!(
-            css_font_name("Source Sans 3", &variant),
-            "Source Sans 3 light"
-        );
-    }
-
-    #[test]
-    fn css_font_name_semibold_oblique() {
-        use typst_library::text::{FontStyle, FontVariant, FontWeight};
-        let variant = FontVariant {
-            weight: FontWeight::SEMIBOLD,
-            style: FontStyle::Oblique,
-            ..Default::default()
-        };
-        assert_eq!(
-            css_font_name("MyFont", &variant),
-            "MyFont semi bold oblique"
-        );
-    }
-
-    // --- is_supported_font_file tests ---
-
-    #[test]
-    fn is_supported_font_file_accepts_ttf() {
-        assert!(is_supported_font_file(Path::new("font.ttf")));
-        assert!(is_supported_font_file(Path::new("font.TTF")));
-    }
-
-    #[test]
-    fn is_supported_font_file_accepts_otf() {
-        assert!(is_supported_font_file(Path::new("font.otf")));
-        assert!(is_supported_font_file(Path::new("font.OTF")));
-    }
-
-    #[test]
-    fn is_supported_font_file_accepts_ttc() {
-        assert!(is_supported_font_file(Path::new("font.ttc")));
-        assert!(is_supported_font_file(Path::new("font.TTC")));
-    }
-
-    #[test]
-    fn is_supported_font_file_rejects_unsupported_extensions() {
-        assert!(!is_supported_font_file(Path::new("font.woff")));
-        assert!(!is_supported_font_file(Path::new("font.woff2")));
-        assert!(!is_supported_font_file(Path::new("font.svg")));
-        assert!(!is_supported_font_file(Path::new("readme.txt")));
-    }
-
-    #[test]
-    fn is_supported_font_file_rejects_no_extension() {
-        assert!(!is_supported_font_file(Path::new("font")));
-        assert!(!is_supported_font_file(Path::new(".")));
     }
 
     // --- SVG dimension edge cases ---

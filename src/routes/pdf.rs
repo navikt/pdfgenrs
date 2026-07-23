@@ -89,26 +89,6 @@ pub(crate) async fn post_pdf(
     Ok(pdf_response(pdf_bytes))
 }
 
-/// Handles `POST /api/v1/genpdf/html/{app_name}`.
-///
-/// Accepts an HTML body and converts it to PDF.
-pub(crate) async fn post_pdf_from_html(
-    State(state): State<AppState>,
-    Path(app_name): Path<String>,
-    html: String,
-) -> Result<Response, ApiError> {
-    let start = std::time::Instant::now();
-    let html_converter = Arc::clone(&state.html_converter);
-
-    let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::html_to_pdf(&html, &html_converter)
-    })
-    .await?;
-
-    info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
-    Ok(pdf_response(pdf_bytes))
-}
-
 /// Handles `POST /api/v1/genpdf/image/{app_name}`.
 ///
 /// Accepts a PNG, JPEG, WebP, or SVG body and converts it to PDF.
@@ -191,7 +171,7 @@ mod tests {
     use axum::body::Bytes;
     use axum::http::HeaderValue;
 
-    use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
+    use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_image};
     use crate::state::AppState;
     use crate::testutil::make_state;
 
@@ -205,7 +185,6 @@ mod tests {
     fn make_router(state: AppState, dev_mode: bool) -> Router {
         let mut router = Router::new()
             .route("/{app_name}/{template}", post(post_pdf))
-            .route("/html/{app_name}", post(post_pdf_from_html))
             .route("/image/{app_name}", post(post_pdf_from_image));
         if dev_mode {
             router = router.route("/{app_name}/{template}", get(get_pdf));
@@ -375,42 +354,6 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(is_pdf(response.as_bytes()));
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn post_pdf_from_html_returns_pdf() -> anyhow::Result<()> {
-        let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false)?,
-            false,
-        ));
-
-        let response = server
-            .post("/html/myapp")
-            .text(
-                r#"<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        h1 {
-            font-family: "Source Sans Pro" !important;
-        }
-    </style>
-</head>
-<body><h1>Hello</h1></body>
-</html>"#,
-            )
-            .await;
-
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert_eq!(
-            response
-                .headers()
-                .get("content-type")
-                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
-            "application/pdf"
-        );
         assert!(is_pdf(response.as_bytes()));
         Ok(())
     }
@@ -743,44 +686,6 @@ mod tests {
         assert!(body.ok().is_some_and(|b| b.is_empty()));
     }
 
-    // --- HTML-to-PDF error path tests ---
-
-    #[tokio::test]
-    async fn post_pdf_from_html_returns_pdf_for_empty_html() -> anyhow::Result<()> {
-        let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false)?,
-            false,
-        ));
-
-        let response = server.post("/html/myapp").text("").await;
-
-        // Empty HTML still produces a PDF (the converter renders a blank page)
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(is_pdf(response.as_bytes()));
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn post_pdf_from_html_returns_pdf_for_minimal_html() -> anyhow::Result<()> {
-        let server = TestServer::new(make_router(
-            make_state(HashMap::new(), HashMap::new(), false)?,
-            false,
-        ));
-
-        let response = server.post("/html/myapp").text("<p>Hello</p>").await;
-
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert_eq!(
-            response
-                .headers()
-                .get("content-type")
-                .map(|v| v.to_str().ok()),
-            Some(Some("application/pdf"))
-        );
-        assert!(is_pdf(response.as_bytes()));
-        Ok(())
-    }
-
     // --- Image-to-PDF error path tests ---
 
     #[tokio::test]
@@ -850,18 +755,7 @@ mod tests {
         Ok(())
     }
 
-    // --- Timeout tests for HTML and image endpoints ---
-
-    async fn delayed_post_pdf_from_html(
-        State(state): State<AppState>,
-        Path(app_name): Path<String>,
-        html: String,
-    ) -> Response {
-        tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
-        post_pdf_from_html(State(state), Path(app_name), html)
-            .await
-            .into_response()
-    }
+    // --- Timeout tests for image endpoint ---
 
     async fn delayed_post_pdf_from_image(
         State(state): State<AppState>,
@@ -873,28 +767,6 @@ mod tests {
         post_pdf_from_image(State(state), Path(app_name), headers, image_bytes)
             .await
             .into_response()
-    }
-
-    #[tokio::test]
-    async fn post_pdf_from_html_client_timeout_cancels_and_followup_succeeds() -> anyhow::Result<()>
-    {
-        let state = make_state(HashMap::new(), HashMap::new(), false)?;
-        let router = Router::new()
-            .route("/html/{app_name}", post(delayed_post_pdf_from_html))
-            .with_state(state);
-        let server = TestServer::new(router);
-
-        let timed_out = timeout(
-            Duration::from_millis(CLIENT_TIMEOUT_DURATION_MS),
-            server.post("/html/myapp").text("<p>Hello</p>"),
-        )
-        .await;
-        assert!(timed_out.is_err());
-
-        let response = server.post("/html/myapp").text("<p>Hello</p>").await;
-        assert_eq!(response.status_code(), StatusCode::OK);
-        assert!(is_pdf(response.as_bytes()));
-        Ok(())
     }
 
     #[tokio::test]
