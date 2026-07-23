@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784819100385,
+  "lastUpdate": 1784821499410,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3491,6 +3491,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 145386,
             "range": "± 2925",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a09df9c3f9d21ae7eb7a70b8a6d49dc88680416b",
+          "message": "Merge pull request #346 from navikt/copilot/optimize-templates-storage\n\nrefactor: change template storage from Arc<String> to Arc<str>",
+          "timestamp": "2026-07-23T17:43:07+02:00",
+          "tree_id": "74838c9d632a6f499575859027e13f36c9dd37ff",
+          "url": "https://github.com/navikt/pdfgenrs/commit/a09df9c3f9d21ae7eb7a70b8a6d49dc88680416b"
+        },
+        "date": 1784821495674,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 216796,
+            "range": "± 8184",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 400871,
+            "range": "± 2038",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 136876,
+            "range": "± 2870",
             "unit": "ns/iter"
           }
         ]
