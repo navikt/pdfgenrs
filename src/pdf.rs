@@ -59,9 +59,9 @@ pub fn image_to_pdf<B>(
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
-    let is_landscape = image_dimensions(image_bytes.as_ref())
-        .map(|(w, h)| w > h)
-        .unwrap_or(false);
+    let (w, h) = image_dimensions(image_bytes.as_ref())
+        .context("Unsupported or corrupted image: unable to determine dimensions")?;
+    let is_landscape = w > h;
 
     let mut vfiles = HashMap::new();
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
@@ -401,6 +401,24 @@ Hello, world!
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_returns_error_for_unsupported_image_type() {
+        let result = image_to_pdf(
+            b"not a valid image".to_vec(),
+            "/image.png",
+            test_fonts().unwrap(),
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+        );
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Unsupported or corrupted image"),
+            "Expected unsupported image error, got: {err_msg}"
+        );
     }
 
     #[test]
