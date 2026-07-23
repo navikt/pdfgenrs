@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784824851758,
+  "lastUpdate": 1784826564041,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3575,6 +3575,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 153194,
             "range": "± 4383",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40a00cabac03f31edbef0804752c490b59e269e5",
+          "message": "Merge pull request #347 from navikt/copilot/image-to-pdf-content-validation\n\nReturn error for unsupported/corrupted image types instead of silent portrait fallback",
+          "timestamp": "2026-07-23T19:07:02+02:00",
+          "tree_id": "f7909db8308775483f6d97e6834db88c1d712393",
+          "url": "https://github.com/navikt/pdfgenrs/commit/40a00cabac03f31edbef0804752c490b59e269e5"
+        },
+        "date": 1784826559303,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 190003,
+            "range": "± 8275",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 395524,
+            "range": "± 3024",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 122495,
+            "range": "± 5173",
             "unit": "ns/iter"
           }
         ]
