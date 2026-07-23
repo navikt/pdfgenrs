@@ -411,10 +411,12 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
         );
-        assert!(
-            result.is_err(),
-            "Expected an error for unsupported image type"
-        );
+let err = result.expect_err("Expected an error for unsupported image type");
+assert!(
+    err.to_string()
+        .contains("Unsupported or corrupted image: unable to determine dimensions"),
+    "Unexpected error: {err:#}"
+);
         Ok(())
     }
 
