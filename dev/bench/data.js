@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784295020197,
+  "lastUpdate": 1784809148819,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3407,6 +3407,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 145001,
             "range": "± 1956",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81340721d501e680c579057a04235d2e0457b892",
+          "message": "Merge pull request #344 from navikt/copilot/ironpress-alternatives\n\nRemove ironpress dependency and HTML-to-PDF endpoint (pure Typst migration)",
+          "timestamp": "2026-07-23T14:10:05+02:00",
+          "tree_id": "d4c1b5dbfdff3db327208cdaa41699197475475b",
+          "url": "https://github.com/navikt/pdfgenrs/commit/81340721d501e680c579057a04235d2e0457b892"
+        },
+        "date": 1784809143525,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 174307,
+            "range": "± 4738",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 399022,
+            "range": "± 4702",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 123590,
+            "range": "± 6679",
             "unit": "ns/iter"
           }
         ]
