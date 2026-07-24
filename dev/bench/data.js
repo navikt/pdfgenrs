@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784904018736,
+  "lastUpdate": 1784904514488,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3827,6 +3827,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 143521,
             "range": "± 2448",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "565cc39246b5921ea53cab2a1c6df5bf0391208b",
+          "message": "Merge pull request #350 from navikt/dependabot/cargo/typst-html-0.15.1\n\nchore(deps): bump typst-html from 0.15.0 to 0.15.1",
+          "timestamp": "2026-07-24T16:45:23+02:00",
+          "tree_id": "f3c588d91af655aa972b910a8f5be936c0af5f98",
+          "url": "https://github.com/navikt/pdfgenrs/commit/565cc39246b5921ea53cab2a1c6df5bf0391208b"
+        },
+        "date": 1784904509935,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 215202,
+            "range": "± 1684",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 401938,
+            "range": "± 18190",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 145511,
+            "range": "± 2375",
             "unit": "ns/iter"
           }
         ]
