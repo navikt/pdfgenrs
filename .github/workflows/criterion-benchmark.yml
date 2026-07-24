@@ -49,6 +49,7 @@ jobs:
           alert-threshold: '200%'
           comment-on-alert: true
           fail-on-alert: false
+          max-items-in-chart: 10
           benchmark-data-dir-path: dev/bench
       - name: Deploy Criterion HTML report to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
