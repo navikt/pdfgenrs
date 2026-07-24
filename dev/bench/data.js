@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784907717001,
+  "lastUpdate": 1784909174306,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "07d08d96f6047bcdb28605ba97013f557ccad0e7",
-          "message": "Merge pull request #353 from navikt/dependabot/github_actions/github/codeql-action-4.37.1\n\nchore(deps): bump github/codeql-action from 4.37.0 to 4.37.1",
-          "timestamp": "2026-07-24T15:45:20+02:00",
-          "tree_id": "121a158aad9fe4dc45413cb60e90e5fb268b772e",
-          "url": "https://github.com/navikt/pdfgenrs/commit/07d08d96f6047bcdb28605ba97013f557ccad0e7"
-        },
-        "date": 1784900843849,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 238177,
-            "range": "± 18995",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 430172,
-            "range": "± 4617",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 153265,
-            "range": "± 5269",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 159397,
             "range": "± 8014",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b0285638aaf4343bd62eb8b011327cf54d47f028",
+          "message": "Merge pull request #362 from navikt/copilot/html-to-pdf\n\nRemove stale html_to_pdf benchmark from criterion report",
+          "timestamp": "2026-07-24T18:03:47+02:00",
+          "tree_id": "210dd630584778d65fe594af630f5a9af45bf305",
+          "url": "https://github.com/navikt/pdfgenrs/commit/b0285638aaf4343bd62eb8b011327cf54d47f028"
+        },
+        "date": 1784909170449,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 233723,
+            "range": "± 18117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 428290,
+            "range": "± 2039",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 158323,
+            "range": "± 4664",
             "unit": "ns/iter"
           }
         ]
