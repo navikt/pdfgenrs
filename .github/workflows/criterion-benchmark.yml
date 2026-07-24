@@ -31,6 +31,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+      - name: Clean stale Criterion data
+        run: rm -rf target/criterion/html_to_pdf
       - name: Run Criterion benchmark
         run: cargo bench --bench criterion_bench -- --output-format bencher | tee output.txt
       - name: Upload Criterion HTML report
