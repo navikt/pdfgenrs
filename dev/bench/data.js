@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784906272842,
+  "lastUpdate": 1784906509916,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
@@ -3953,6 +3953,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 140369,
             "range": "± 6010",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1ebec05c0665fbec4f80b7552836c2a34d9ffea",
+          "message": "Remove cleaning of old Criterion reports\n\nRemoved step to clean old Criterion reports before running benchmarks.",
+          "timestamp": "2026-07-24T17:19:57+02:00",
+          "tree_id": "388dfb341f5c365511865eafbe154f0347e3ed6d",
+          "url": "https://github.com/navikt/pdfgenrs/commit/b1ebec05c0665fbec4f80b7552836c2a34d9ffea"
+        },
+        "date": 1784906505644,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 213386,
+            "range": "± 14817",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 396553,
+            "range": "± 2266",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 143332,
+            "range": "± 2131",
             "unit": "ns/iter"
           }
         ]
