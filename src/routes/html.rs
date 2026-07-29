@@ -33,7 +33,7 @@ pub(crate) async fn get_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                params.source.to_string(),
+                &params.source,
                 &params.data,
                 params.fonts,
                 &params.root,
@@ -71,7 +71,7 @@ pub(crate) async fn post_html(
         Some(template_key.1.clone()),
         move || {
             gen_html::typst_to_html(
-                params.source.to_string(),
+                &params.source,
                 &params.data,
                 params.fonts,
                 &params.root,

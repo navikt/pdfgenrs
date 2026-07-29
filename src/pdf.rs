@@ -20,7 +20,7 @@ use typst::utils::LazyHash;
 #[must_use = "this returns a Result that should be handled"]
 #[allow(clippy::too_many_arguments)]
 pub fn typst_to_pdf(
-    template_source: String,
+    template_source: &str,
     json_data: &serde_json::Value,
     fonts: Arc<Fonts>,
     root: &Path,
@@ -80,7 +80,7 @@ where
         root,
         resources_dir,
         "/main.typ",
-        source,
+        &source,
         vfiles,
         library,
     )
@@ -312,7 +312,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),
@@ -333,7 +333,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({"name": "Test User"});
         let bytes = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),
@@ -351,7 +351,7 @@ Hello, world!
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
         let result = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),
@@ -743,7 +743,7 @@ Hello, world!
 "#;
         let data = serde_json::json!({});
         let bytes = typst_to_pdf(
-            source.to_string(),
+            source,
             &data,
             test_fonts()?,
             &root_dir(),

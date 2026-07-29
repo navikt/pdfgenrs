@@ -34,7 +34,7 @@ pub(crate) async fn get_pdf(
         Some(template_key.1.clone()),
         move || {
             gen_pdf::typst_to_pdf(
-                params.source.to_string(),
+                &params.source,
                 &params.data,
                 params.fonts,
                 &params.root,
@@ -72,7 +72,7 @@ pub(crate) async fn post_pdf(
         Some(template_key.1.clone()),
         move || {
             gen_pdf::typst_to_pdf(
-                params.source.to_string(),
+                &params.source,
                 &params.data,
                 params.fonts,
                 &params.root,

@@ -158,14 +158,14 @@ impl PdfgenWorld {
         root: &Path,
         resources_dir: &Path,
         main_path: &str,
-        main_source: String,
+        main_source: &str,
         virtual_files: HashMap<String, Bytes>,
         library: Arc<LazyHash<Library>>,
     ) -> Result<Self> {
         let main_vpath = VirtualPath::new(main_path)
             .map_err(|e| anyhow::anyhow!("Invalid main path '{main_path}': {e}"))?;
         let main_id = FileId::new(RootedPath::new(VirtualRoot::Project, main_vpath));
-        let source = Source::new(main_id, main_source);
+        let source = Source::new(main_id, main_source.to_owned());
 
         let mut vfiles: HashMap<FileId, Bytes> = HashMap::new();
         for (path, bytes) in virtual_files {
@@ -281,7 +281,7 @@ pub fn compile_to_pdf(
     root: &Path,
     resources_dir: &Path,
     main_path: &str,
-    main_source: String,
+    main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
 ) -> Result<Vec<u8>> {
@@ -333,7 +333,7 @@ pub fn compile_to_html(
     root: &Path,
     resources_dir: &Path,
     main_path: &str,
-    main_source: String,
+    main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
 ) -> Result<String> {
@@ -450,7 +450,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            source.to_string(),
+            source,
             HashMap::new(),
             Arc::clone(&library),
         )?;
@@ -461,7 +461,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            source.to_string(),
+            source,
             HashMap::new(),
             Arc::clone(&library),
         )?;
@@ -474,8 +474,7 @@ Hello, world!
     fn compilation_succeeds_after_full_cache_eviction() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let root = root_dir();
-        let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test."
-            .to_string();
+        let source = "#set document(title: \"Test\")\n#set page(margin: 1cm)\nCache eviction test.";
 
         comemo::evict(0);
 
@@ -521,7 +520,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            "Hello".to_string(),
+            "Hello",
             HashMap::from([("/data.json".to_string(), Bytes::new(vec![0xff, 0xfe]))]),
             pdf_library(),
         )?;
@@ -546,7 +545,7 @@ Hello, world!
             dir.path(),
             &resources_dir(),
             "/main.typ",
-            "Main".to_string(),
+            "Main",
             HashMap::new(),
             pdf_library(),
         )?;
@@ -571,7 +570,7 @@ Hello, world!
             root.path(),
             resources.path(),
             "/main.typ",
-            "Main".to_string(),
+            "Main",
             HashMap::new(),
             pdf_library(),
         )?;
@@ -594,7 +593,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             "/main.typ",
-            "Hello".to_string(),
+            "Hello",
             HashMap::new(),
             pdf_library(),
         )?;
@@ -618,7 +617,7 @@ Hello, world!
                 &root,
                 &resources_dir(),
                 "/main.typ",
-                source,
+                &source,
                 HashMap::new(),
                 Arc::clone(&library),
             )?;
@@ -637,7 +636,7 @@ Hello, world!
                 &root,
                 &resources_dir(),
                 "/main.typ",
-                source,
+                &source,
                 HashMap::new(),
                 Arc::clone(&library),
             );
