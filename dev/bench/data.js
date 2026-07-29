@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784909174306,
+  "lastUpdate": 1785311662142,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "279ffcf0442e2314ac52a584bc60a1cace896dc3",
-          "message": "Merge pull request #359 from navikt/dependabot/cargo/http-body-util-0.1.4\n\nchore(deps): bump http-body-util from 0.1.3 to 0.1.4",
-          "timestamp": "2026-07-24T15:45:33+02:00",
-          "tree_id": "4bf681369d52faf1c7f424fc0e6b87f3577fdede",
-          "url": "https://github.com/navikt/pdfgenrs/commit/279ffcf0442e2314ac52a584bc60a1cace896dc3"
-        },
-        "date": 1784900869913,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 216126,
-            "range": "± 7898",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 399400,
-            "range": "± 2333",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 141068,
-            "range": "± 2591",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 158323,
             "range": "± 4664",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e9d73b53e833891664ffb83b46139738364e7a4",
+          "message": "Merge pull request #363 from navikt/copilot/testutil-duplicates-reduction\n\nrefactor: eliminate duplication between make_state and make_state_with_body_limit",
+          "timestamp": "2026-07-29T09:52:29+02:00",
+          "tree_id": "a80d9734cf6671cda186df7678a34f1f511dc648",
+          "url": "https://github.com/navikt/pdfgenrs/commit/7e9d73b53e833891664ffb83b46139738364e7a4"
+        },
+        "date": 1785311658860,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 216239,
+            "range": "± 11855",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 400748,
+            "range": "± 8198",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 134989,
+            "range": "± 3245",
             "unit": "ns/iter"
           }
         ]
