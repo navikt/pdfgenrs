@@ -189,7 +189,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
                 .cloned()
-                .unwrap_or_else(|| serde_json::json!({}))
+                .unwrap_or_else(|| Arc::new(serde_json::json!({})))
         };
 
         let start = std::time::Instant::now();
@@ -290,7 +290,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
                 .cloned()
-                .unwrap_or_else(|| serde_json::json!({}))
+                .unwrap_or_else(|| Arc::new(serde_json::json!({})))
         };
 
         let start = std::time::Instant::now();

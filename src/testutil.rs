@@ -15,7 +15,7 @@ use typst::{Feature, Features};
 /// `request_body_limit_bytes` value.
 pub fn make_state_with_body_limit(
     templates: HashMap<(String, String), String>,
-    data: HashMap<(String, String), Value>,
+    data: HashMap<(String, String), Arc<Value>>,
     dev_mode: bool,
     request_body_limit_bytes: usize,
 ) -> anyhow::Result<AppState> {
@@ -61,7 +61,7 @@ pub fn make_state_with_body_limit(
 /// Templates and data may be empty when not needed by the test.
 pub fn make_state(
     templates: HashMap<(String, String), String>,
-    data: HashMap<(String, String), Value>,
+    data: HashMap<(String, String), Arc<Value>>,
     dev_mode: bool,
 ) -> anyhow::Result<AppState> {
     make_state_with_body_limit(

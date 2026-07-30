@@ -176,6 +176,7 @@ async fn shutdown_signal(aliveness: AppAliveness, drain_seconds: u64) -> Result<
 mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
+    use std::sync::Arc;
 
     use axum::http::StatusCode;
     use axum_test::TestServer;
@@ -498,7 +499,7 @@ Dev mode: #data.at("mode", default: "unknown")
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({"mode": "dev"}),
+            Arc::new(serde_json::json!({"mode": "dev"})),
         );
         let state = make_state(templates, data, true)?;
         let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
@@ -521,7 +522,7 @@ Dev mode: #data.at("mode", default: "unknown")
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let state = make_state(templates, data, true)?;
         let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
@@ -866,7 +867,7 @@ Dev mode: #data.at("mode", default: "unknown")
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "broken".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let state = make_state(templates, data, true)?;
         let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
@@ -888,7 +889,7 @@ Dev mode: #data.at("mode", default: "unknown")
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "broken".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let state = make_state(templates, data, true)?;
         let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));

@@ -33,7 +33,7 @@ pub struct LoadDiagnostic {
 #[derive(Debug, Default)]
 pub struct TestDataLoadResult {
     /// Successfully parsed values keyed by `(app_name, template_name)`.
-    pub data: HashMap<(String, String), Value>,
+    pub data: HashMap<(String, String), Arc<Value>>,
     /// All non-fatal loading issues encountered during traversal and parsing.
     pub diagnostics: Vec<LoadDiagnostic>,
 }
@@ -193,7 +193,7 @@ pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
 
         result
             .data
-            .insert((app_name.to_string(), template_name.to_string()), value);
+            .insert((app_name.to_string(), template_name.to_string()), Arc::new(value));
     }
 
     result

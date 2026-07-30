@@ -158,6 +158,7 @@ fn image_virtual_path(content_type: Option<&HeaderValue>) -> Option<&'static str
 mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
+    use std::sync::Arc;
 
     use axum::extract::{Path, State};
     use axum::http::StatusCode;
@@ -471,7 +472,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
 
@@ -512,7 +513,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let server = TestServer::new(make_router(make_state(HashMap::new(), data, true)?, true));
 
@@ -816,7 +817,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
 
