@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785314862107,
+  "lastUpdate": 1785398141934,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "7f6a69af851a595513fa85f6c7854cd25860e9b9",
-          "message": "Merge pull request #355 from navikt/dependabot/cargo/uuid-1.24.0\n\nchore(deps): bump uuid from 1.23.4 to 1.24.0",
-          "timestamp": "2026-07-24T15:46:05+02:00",
-          "tree_id": "af2bcdd325e40a5dbf3e2bcfeb491c91c944529c",
-          "url": "https://github.com/navikt/pdfgenrs/commit/7f6a69af851a595513fa85f6c7854cd25860e9b9"
-        },
-        "date": 1784900896010,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 215947,
-            "range": "± 9652",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 399913,
-            "range": "± 2564",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 137741,
-            "range": "± 2937",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 148109,
             "range": "± 4328",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "377aa07f155462b039105434720b620644b6a7de",
+          "message": "Merge pull request #366 from navikt/copilot/add-compilation-duration-histogram-metric\n\nAdd compilation duration histogram metric",
+          "timestamp": "2026-07-30T09:47:39+02:00",
+          "tree_id": "0e87b97ccbe776bb26301797c5f998adc0df708f",
+          "url": "https://github.com/navikt/pdfgenrs/commit/377aa07f155462b039105434720b620644b6a7de"
+        },
+        "date": 1785398138946,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 225891,
+            "range": "± 2116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 417577,
+            "range": "± 15582",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 148680,
+            "range": "± 5278",
             "unit": "ns/iter"
           }
         ]
