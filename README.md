@@ -107,14 +107,14 @@ Example:
 
 ### Endpoint overview
 
-| Endpoint                                    | Method | Request Content-Type        | Response Content-Type      | Notes                |
-|---------------------------------------------|--------|-----------------------------|----------------------------|----------------------|
-| `/api/v1/genpdf/{your_appname}/{template}`  | `POST` | `application/json`          | `application/pdf`          | Typst + JSON to PDF  |
-| `/api/v1/genpdf/image/{your_appname}`       | `POST` | `image/png` or `image/jpeg` | `application/pdf`          | Image to PDF         |
-| `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json`          | `text/html; charset=utf-8` | Typst + JSON to HTML |
-| `/internal/is_alive`                        | `GET`  | -                           | -                          | Liveness             |
-| `/internal/is_ready`                        | `GET`  | -                           | -                          | Readiness            |
-| `/internal/metrics`                         | `GET`  | -                           | `text/plain`               | Prometheus metrics   |
+| Endpoint                                    | Method | Request Content-Type                                        | Response Content-Type      | Notes                |
+|---------------------------------------------|--------|-------------------------------------------------------------|----------------------------|----------------------|
+| `/api/v1/genpdf/{your_appname}/{template}`  | `POST` | `application/json`                                          | `application/pdf`          | Typst + JSON to PDF  |
+| `/api/v1/genpdf/image/{your_appname}`       | `POST` | `image/png`, `image/jpeg`, `image/webp`, or `image/svg+xml` | `application/pdf`          | Image to PDF         |
+| `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json`                                          | `text/html; charset=utf-8` | Typst + JSON to HTML |
+| `/internal/is_alive`                        | `GET`  | -                                                           | -                          | Liveness             |
+| `/internal/is_ready`                        | `GET`  | -                                                           | -                          | Readiness            |
+| `/internal/metrics`                         | `GET`  | -                                                           | `text/plain`               | Prometheus metrics   |
 
 ### Request body size limit
 
@@ -166,10 +166,12 @@ Converts an image to PDF.
 - Supported Request Content-Type:
   - `image/png`
   - `image/jpeg`
+  - `image/webp`
+  - `image/svg+xml`
 - Response Content-Type: `application/pdf`
 - Success: `200 OK`
 - Common errors:
-  - `415 Unsupported Media Type` (if not PNG/JPEG)
+  - `415 Unsupported Media Type` (if the image format is not supported)
   - `500 Internal Server Error`
 
 ```bash
