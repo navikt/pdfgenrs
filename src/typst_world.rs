@@ -681,7 +681,11 @@ Hello, world!
             result.is_err(),
             "Directory with only invalid font files should fail"
         );
-        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        let err_msg = result
+            .as_ref()
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
         assert!(
             err_msg.contains("No valid font faces"),
             "Error should mention no valid font faces: {err_msg}"
@@ -699,7 +703,11 @@ Hello, world!
             result.is_err(),
             "Directory with no font-extension files should fail"
         );
-        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        let err_msg = result
+            .as_ref()
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
         assert!(
             err_msg.contains("No font files found"),
             "Error should mention no font files found: {err_msg}"
@@ -711,7 +719,8 @@ Hello, world!
     fn extremely_large_template_compiles_successfully() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         // Generate a template with many paragraphs to stress the compiler
-        let mut source = String::from("#set document(title: \"Large\", date: auto)\n#set page(margin: 1cm)\n");
+        let mut source =
+            String::from("#set document(title: \"Large\", date: auto)\n#set page(margin: 1cm)\n");
         for i in 0..500 {
             source.push_str(&format!("Paragraph {i}. This is filler text to create a large template document that stresses the Typst compiler. "));
             if i % 10 == 0 {
@@ -732,10 +741,7 @@ Hello, world!
             "Large template should compile successfully: {:?}",
             result.err()
         );
-        assert!(
-            is_pdf(&result?),
-            "Result should be a valid PDF"
-        );
+        assert!(is_pdf(&result?), "Result should be a valid PDF");
         Ok(())
     }
 
@@ -774,7 +780,9 @@ Hello, world!
         }
 
         for (i, handle) in handles.into_iter().enumerate() {
-            let result = handle.await.map_err(|e| anyhow::anyhow!("Join error: {e}"))??;
+            let result = handle
+                .await
+                .map_err(|e| anyhow::anyhow!("Join error: {e}"))??;
             assert!(
                 is_pdf(&result),
                 "Concurrent compilation {i} should produce a valid PDF"

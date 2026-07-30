@@ -21,7 +21,7 @@ pub(crate) mod pdf;
 /// Common parameters extracted from state for template compilation.
 pub(crate) struct CompileParams {
     pub source: Arc<str>,
-    pub data: Value,
+    pub data: Arc<Value>,
     pub fonts: Arc<Fonts>,
     pub pdf_library: Arc<LazyHash<Library>>,
     pub html_library: Arc<LazyHash<Library>>,
@@ -72,7 +72,7 @@ pub(crate) fn lookup_template_with_data(
 
     Ok(CompileParams {
         source,
-        data,
+        data: Arc::new(data),
         fonts: Arc::clone(&state.fonts),
         pdf_library: Arc::clone(&state.pdf_library),
         html_library: Arc::clone(&state.html_library),
@@ -470,7 +470,7 @@ mod tests {
             Err(_) => anyhow::bail!("expected Ok"),
         };
         assert_eq!(&*params.source, "Hello");
-        assert_eq!(params.data, serde_json::json!({"x": 1}));
+        assert_eq!(*params.data, serde_json::json!({"x": 1}));
         Ok(())
     }
 
@@ -480,7 +480,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "tmpl".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let state = make_state(HashMap::new(), data, true)?;
         let key = ("myapp".to_string(), "tmpl".to_string());
@@ -523,7 +523,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "tmpl".to_string()),
-            serde_json::json!({"key": "value"}),
+            Arc::new(serde_json::json!({"key": "value"})),
         );
         let state = make_state(templates, data, true)?;
         let key = ("myapp".to_string(), "tmpl".to_string());
@@ -533,7 +533,7 @@ mod tests {
             Err(_) => anyhow::bail!("expected Ok"),
         };
         assert_eq!(&*params.source, "Hello");
-        assert_eq!(params.data, serde_json::json!({"key": "value"}));
+        assert_eq!(*params.data, serde_json::json!({"key": "value"}));
         Ok(())
     }
 

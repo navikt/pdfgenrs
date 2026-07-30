@@ -103,6 +103,7 @@ fn html_response(html: String) -> Response {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::sync::Arc;
 
     use axum::body::Bytes;
     use axum::extract::{Path, State};
@@ -288,7 +289,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
 
@@ -330,7 +331,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let server = TestServer::new(make_router(make_state(HashMap::new(), data, true)?, true));
 
@@ -350,7 +351,7 @@ mod tests {
         let mut data = HashMap::new();
         data.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
-            serde_json::json!({}),
+            Arc::new(serde_json::json!({})),
         );
         let server = TestServer::new(make_router(make_state(templates, data, true)?, true));
 

@@ -189,7 +189,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
                 .cloned()
-                .unwrap_or_else(|| serde_json::json!({}))
+                .unwrap_or_else(|| Arc::new(serde_json::json!({})))
         };
 
         let start = std::time::Instant::now();
@@ -200,7 +200,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
             let url = format!("{base_url}/api/v1/genpdf/{app_name}/{template_name}");
             let data = json_data.clone();
             join_set.spawn(async move {
-                let response = client.post(&url).json(&data).send().await?;
+                let response = client.post(&url).json(data.as_ref()).send().await?;
                 assert!(response.status().is_success());
                 let bytes = response.bytes().await?;
                 assert!(!bytes.is_empty());
@@ -290,14 +290,14 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
                 .cloned()
-                .unwrap_or_else(|| serde_json::json!({}))
+                .unwrap_or_else(|| Arc::new(serde_json::json!({})))
         };
 
         let start = std::time::Instant::now();
 
         for _ in 0..passes {
             let url = format!("/api/v1/genpdf/{app_name}/{template_name}");
-            let response = server.post(&url).json(&json_data).await;
+            let response = server.post(&url).json(json_data.as_ref()).await;
             response.assert_status_success();
             assert!(!response.as_bytes().is_empty());
         }

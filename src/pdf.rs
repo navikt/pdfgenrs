@@ -812,7 +812,11 @@ Hello, world!
             result.is_err(),
             "Truncated PNG with valid magic should fail"
         );
-        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        let err_msg = result
+            .as_ref()
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
         assert!(
             err_msg.contains("Unsupported or corrupted image"),
             "Error should mention corrupted image: {err_msg}"
@@ -832,11 +836,12 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
         );
-        assert!(
-            result.is_err(),
-            "Truncated JPEG with valid SOI should fail"
-        );
-        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(result.is_err(), "Truncated JPEG with valid SOI should fail");
+        let err_msg = result
+            .as_ref()
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
         assert!(
             err_msg.contains("Unsupported or corrupted image"),
             "Error should mention corrupted image: {err_msg}"
@@ -864,7 +869,11 @@ Hello, world!
             result.is_err(),
             "Truncated WebP with valid RIFF header should fail"
         );
-        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        let err_msg = result
+            .as_ref()
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
         assert!(
             err_msg.contains("Unsupported or corrupted image"),
             "Error should mention corrupted image: {err_msg}"
