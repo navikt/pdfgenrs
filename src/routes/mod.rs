@@ -445,15 +445,10 @@ mod tests {
 
         // First task will exceed the timeout
         let state1 = state.clone();
-        let result: Result<(), _> = compile_blocking(
-            &state1,
-            "app".to_string(),
-            None,
-            || {
-                std::thread::sleep(Duration::from_secs(10));
-                Ok(())
-            },
-        )
+        let result: Result<(), _> = compile_blocking(&state1, "app".to_string(), None, || {
+            std::thread::sleep(Duration::from_secs(10));
+            Ok(())
+        })
         .await;
         assert!(result.is_err(), "expected timeout");
 
