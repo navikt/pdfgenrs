@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 /// Maximum number of evictions to perform on the comemo memoization cache after
 /// each compilation. This bounds memory growth while preserving frequently-used
@@ -8,6 +9,7 @@ use std::sync::Arc;
 const COMEMO_EVICTION_THRESHOLD: usize = 15;
 
 use anyhow::{Context, Result};
+use metrics::histogram;
 use time::OffsetDateTime;
 use typst::foundations::Bytes;
 use typst::utils::LazyHash;
@@ -295,7 +297,10 @@ pub fn compile_to_pdf(
         library,
     )?;
 
+    let start = Instant::now();
     let result = typst::compile::<typst_layout::PagedDocument>(&world);
+    let duration = start.elapsed().as_secs_f64();
+    histogram!("typst_compilation_duration_seconds", &[("output", "pdf")]).record(duration);
 
     comemo::evict(COMEMO_EVICTION_THRESHOLD);
 
@@ -347,7 +352,10 @@ pub fn compile_to_html(
         library,
     )?;
 
+    let start = Instant::now();
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
+    let duration = start.elapsed().as_secs_f64();
+    histogram!("typst_compilation_duration_seconds", &[("output", "html")]).record(duration);
 
     comemo::evict(COMEMO_EVICTION_THRESHOLD);
 
@@ -652,6 +660,126 @@ Hello, world!
              Ensure comemo::evict() is called after each compilation in compile_to_pdf."
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn load_fonts_returns_error_for_nonexistent_directory() {
+        let result = load_fonts(Path::new("/nonexistent/fonts/directory"));
+        assert!(
+            result.is_err(),
+            "Loading fonts from a nonexistent directory should fail"
+        );
+    }
+
+    #[test]
+    fn load_fonts_returns_error_for_directory_with_only_invalid_font_files() -> Result<()> {
+        let dir = TempDir::new()?;
+        fs::write(dir.path().join("fake.ttf"), b"not a real font file")?;
+        let result = load_fonts(dir.path());
+        assert!(
+            result.is_err(),
+            "Directory with only invalid font files should fail"
+        );
+        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            err_msg.contains("No valid font faces"),
+            "Error should mention no valid font faces: {err_msg}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn load_fonts_skips_non_font_extensions() -> Result<()> {
+        let dir = TempDir::new()?;
+        fs::write(dir.path().join("readme.txt"), b"not a font")?;
+        fs::write(dir.path().join("data.json"), b"{}")?;
+        let result = load_fonts(dir.path());
+        assert!(
+            result.is_err(),
+            "Directory with no font-extension files should fail"
+        );
+        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            err_msg.contains("No font files found"),
+            "Error should mention no font files found: {err_msg}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn extremely_large_template_compiles_successfully() -> Result<()> {
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        // Generate a template with many paragraphs to stress the compiler
+        let mut source = String::from("#set document(title: \"Large\", date: auto)\n#set page(margin: 1cm)\n");
+        for i in 0..500 {
+            source.push_str(&format!("Paragraph {i}. This is filler text to create a large template document that stresses the Typst compiler. "));
+            if i % 10 == 0 {
+                source.push('\n');
+            }
+        }
+        let result = compile_to_pdf(
+            fonts,
+            &root_dir(),
+            &resources_dir(),
+            "/main.typ",
+            &source,
+            HashMap::new(),
+            pdf_library(),
+        );
+        assert!(
+            result.is_ok(),
+            "Large template should compile successfully: {:?}",
+            result.err()
+        );
+        assert!(
+            is_pdf(&result?),
+            "Result should be a valid PDF"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn concurrent_compilations_under_semaphore_pressure_all_succeed() -> Result<()> {
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let library = pdf_library();
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(2));
+
+        let mut handles = Vec::new();
+        for i in 0..6 {
+            let fonts = Arc::clone(&fonts);
+            let library = Arc::clone(&library);
+            let sem = Arc::clone(&semaphore);
+            let root = root_dir();
+            let resources = resources_dir();
+            handles.push(tokio::spawn(async move {
+                let _permit = sem.acquire().await.map_err(|e| anyhow::anyhow!("{e}"))?;
+                tokio::task::spawn_blocking(move || {
+                    let source = format!(
+                        "#set document(title: \"Concurrent {i}\", date: auto)\n#set page(margin: 1cm)\nDocument {i}.\n"
+                    );
+                    compile_to_pdf(
+                        fonts,
+                        &root,
+                        &resources,
+                        "/main.typ",
+                        &source,
+                        HashMap::new(),
+                        library,
+                    )
+                })
+                .await
+                .map_err(|e| anyhow::anyhow!("Join error: {e}"))?
+            }));
+        }
+
+        for (i, handle) in handles.into_iter().enumerate() {
+            let result = handle.await.map_err(|e| anyhow::anyhow!("Join error: {e}"))??;
+            assert!(
+                is_pdf(&result),
+                "Concurrent compilation {i} should produce a valid PDF"
+            );
+        }
         Ok(())
     }
 }

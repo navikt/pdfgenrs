@@ -792,4 +792,106 @@ Hello, world!
         let svg = b"<svg width='120' height='80'></svg>";
         assert_eq!(image_dimensions(svg), Some((120, 80)));
     }
+
+    // --- Corrupted/truncated image tests for image_to_pdf ---
+
+    #[test]
+    fn image_to_pdf_returns_error_for_truncated_png_with_valid_magic() -> Result<()> {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        // Only 16 bytes of IHDR data — not enough for width+height (needs 24 total)
+        let result = image_to_pdf(
+            data,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+        );
+        assert!(
+            result.is_err(),
+            "Truncated PNG with valid magic should fail"
+        );
+        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            err_msg.contains("Unsupported or corrupted image"),
+            "Error should mention corrupted image: {err_msg}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_returns_error_for_truncated_jpeg_with_valid_soi() -> Result<()> {
+        // Valid SOI + SOF0 marker but truncated before dimensions
+        let data = vec![0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x11, 0x08];
+        let result = image_to_pdf(
+            data,
+            "/image.jpg",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+        );
+        assert!(
+            result.is_err(),
+            "Truncated JPEG with valid SOI should fail"
+        );
+        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            err_msg.contains("Unsupported or corrupted image"),
+            "Error should mention corrupted image: {err_msg}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_returns_error_for_truncated_webp_with_valid_riff_header() -> Result<()> {
+        // Valid RIFF + WEBP header but no VP8 chunk data
+        let mut data = Vec::new();
+        data.extend_from_slice(b"RIFF");
+        data.extend_from_slice(&100u32.to_le_bytes());
+        data.extend_from_slice(b"WEBP");
+        // Only 12 bytes — no VP8 chunk follows
+        let result = image_to_pdf(
+            data,
+            "/image.webp",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+        );
+        assert!(
+            result.is_err(),
+            "Truncated WebP with valid RIFF header should fail"
+        );
+        let err_msg = result.as_ref().err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(
+            err_msg.contains("Unsupported or corrupted image"),
+            "Error should mention corrupted image: {err_msg}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_returns_error_for_png_with_valid_dimensions_but_corrupted_body() -> Result<()> {
+        // Valid PNG header with dimensions but no actual image data
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]); // IHDR chunk length/type placeholder
+        data.extend_from_slice(&100u32.to_be_bytes()); // width
+        data.extend_from_slice(&200u32.to_be_bytes()); // height
+        // Dimensions are parseable but the image data is garbage — Typst should fail to render
+        let result = image_to_pdf(
+            data,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+        );
+        assert!(
+            result.is_err(),
+            "PNG with valid header but corrupted body should fail during compilation"
+        );
+        Ok(())
+    }
 }
