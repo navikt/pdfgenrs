@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,12 +11,15 @@ use crate::typst_world::Fonts;
 use typst::Library;
 use typst::utils::LazyHash;
 
+/// Shared, cheaply-cloneable map of pre-loaded test JSON data keyed by `(app_name, template_name)`.
+pub type DataMap = Arc<RwLock<HashMap<(String, String), Arc<Value>>>>;
+
 #[derive(Clone)]
 pub struct AppState {
     /// Pre-loaded Typst templates keyed by `(app_name, template_name)`.
-    pub templates: Arc<std::collections::HashMap<(String, String), Arc<str>>>,
+    pub templates: Arc<HashMap<(String, String), Arc<str>>>,
     /// Test JSON data keyed by `(app_name, template_name)`, used in dev mode.
-    pub data: Arc<RwLock<std::collections::HashMap<(String, String), Arc<Value>>>>,
+    pub data: DataMap,
     /// Liveness / readiness flags exposed via the NAIS health endpoints.
     pub aliveness: AppAliveness,
     /// Server configuration derived from environment variables.
