@@ -7,6 +7,8 @@
 
 `pdfgenrs` is a Rust application for generating PDFs through an API. It supports PDF/A-2a and PDF/UA-1 standards at once.
 
+> **Note:** This project is tailored to NAV's [NAIS platform](https://doc.nais.io/), but it can be adapted to suit other environments and needs with small changes (e.g., adjusting health-check paths, removing OpenTelemetry/NAIS-specific configuration, or swapping the base image).
+
 ## Table of contents
 
 - [Quick start](#quick-start)
