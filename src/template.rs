@@ -191,9 +191,10 @@ pub fn load_test_data(data_dir: &Path) -> TestDataLoadResult {
             }
         };
 
-        result
-            .data
-            .insert((app_name.to_string(), template_name.to_string()), Arc::new(value));
+        result.data.insert(
+            (app_name.to_string(), template_name.to_string()),
+            Arc::new(value),
+        );
     }
 
     result
