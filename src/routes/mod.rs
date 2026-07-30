@@ -123,14 +123,8 @@ where
     let permit = acquire_compile_permit(state).await?;
 
     let start = Instant::now();
-    let result = tokio::time::timeout(
-        timeout_duration,
-        tokio::task::spawn_blocking(move || {
-            let _permit = permit;
-            task()
-        }),
-    )
-    .await;
+    let mut handle = tokio::task::spawn_blocking(move || task());
+    let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
     let labels = [
@@ -146,6 +140,7 @@ where
 
     match result {
         Ok(join_result) => {
+            drop(permit);
             let inner = join_result.unwrap_or_else(|e| {
                 error!("spawn_blocking task panicked: {e}");
                 Err(anyhow::anyhow!("Task join error: {e}"))
@@ -157,10 +152,14 @@ where
                 dev_mode: state.config.dev_mode,
             })
         }
-        Err(_elapsed) => Err(ApiError::RequestTimeout {
-            app_name,
-            template_name,
-        }),
+        Err(_elapsed) => {
+            handle.abort();
+            drop(permit);
+            Err(ApiError::RequestTimeout {
+                app_name,
+                template_name,
+            })
+        }
     }
 }
 
@@ -435,6 +434,43 @@ mod tests {
         };
         assert_eq!(v1, 1);
         assert_eq!(v2, 2);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_releases_permit_on_timeout() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 1;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
+
+        // First task will exceed the timeout
+        let state1 = state.clone();
+        let result: Result<(), _> = compile_blocking(
+            &state1,
+            "app".to_string(),
+            None,
+            || {
+                std::thread::sleep(Duration::from_secs(10));
+                Ok(())
+            },
+        )
+        .await;
+        assert!(result.is_err(), "expected timeout");
+
+        // The permit should be released immediately, allowing a second task to proceed
+        let state2 = state.clone();
+        let result2 = tokio::time::timeout(
+            Duration::from_millis(500),
+            compile_blocking(&state2, "app".to_string(), None, || Ok(42)),
+        )
+        .await
+        .context("second task should acquire permit without delay")?;
+
+        let value = match result2 {
+            Ok(v) => v,
+            Err(e) => anyhow::bail!("second task failed: {e:?}"),
+        };
+        assert_eq!(value, 42);
         Ok(())
     }
 
