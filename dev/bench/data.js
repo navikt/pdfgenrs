@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785398141934,
+  "lastUpdate": 1785398257360,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "d180f3554ca49ef5165efa2f829bc93eb252c0c6",
-          "message": "Merge pull request #354 from navikt/dependabot/cargo/tokio-1.53.0\n\nchore(deps): bump tokio from 1.52.3 to 1.53.0",
-          "timestamp": "2026-07-24T16:37:45+02:00",
-          "tree_id": "d1cf822d7756544bcfd43bd8c881e0d489d156eb",
-          "url": "https://github.com/navikt/pdfgenrs/commit/d180f3554ca49ef5165efa2f829bc93eb252c0c6"
-        },
-        "date": 1784904013985,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 213879,
-            "range": "± 7250",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 396971,
-            "range": "± 3800",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 143521,
-            "range": "± 2448",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 148680,
             "range": "± 5278",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9d0824cbf7a451a4a3b4af884fa0276184310c6",
+          "message": "Merge pull request #367 from navikt/copilot/missing-tests-for-image-and-template-issues\n\nAdd missing tests for corrupted images, large templates, concurrent compilation, font loading failures, and exact-boundary body limits",
+          "timestamp": "2026-07-30T09:49:41+02:00",
+          "tree_id": "0dc21a11894918bc5e065fce3a54d70db9cb6c0c",
+          "url": "https://github.com/navikt/pdfgenrs/commit/d9d0824cbf7a451a4a3b4af884fa0276184310c6"
+        },
+        "date": 1785398252676,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 179769,
+            "range": "± 5370",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 399831,
+            "range": "± 3075",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 118170,
+            "range": "± 7111",
             "unit": "ns/iter"
           }
         ]
