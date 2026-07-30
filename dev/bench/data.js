@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785398257360,
+  "lastUpdate": 1785399925090,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "565cc39246b5921ea53cab2a1c6df5bf0391208b",
-          "message": "Merge pull request #350 from navikt/dependabot/cargo/typst-html-0.15.1\n\nchore(deps): bump typst-html from 0.15.0 to 0.15.1",
-          "timestamp": "2026-07-24T16:45:23+02:00",
-          "tree_id": "f3c588d91af655aa972b910a8f5be936c0af5f98",
-          "url": "https://github.com/navikt/pdfgenrs/commit/565cc39246b5921ea53cab2a1c6df5bf0391208b"
-        },
-        "date": 1784904509935,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 215202,
-            "range": "± 1684",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 401938,
-            "range": "± 18190",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 145511,
-            "range": "± 2375",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 118170,
             "range": "± 7111",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80108e82ad84b58a2cba78dc38db9a473beee9be",
+          "message": "Merge pull request #368 from navikt/copilot/replace-hashmap-value-with-arc-value\n\nReplace HashMap<..., Value> with HashMap<..., Arc<Value>>",
+          "timestamp": "2026-07-30T10:23:45+02:00",
+          "tree_id": "1691b3a0c506043bdbf321df1fbd46aa423f668c",
+          "url": "https://github.com/navikt/pdfgenrs/commit/80108e82ad84b58a2cba78dc38db9a473beee9be"
+        },
+        "date": 1785399920469,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 225509,
+            "range": "± 14598",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 419588,
+            "range": "± 5860",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 147853,
+            "range": "± 4909",
             "unit": "ns/iter"
           }
         ]
