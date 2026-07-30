@@ -190,4 +190,29 @@ mod tests {
         );
         Ok(())
     }
+
+    #[tokio::test]
+    async fn body_limit_allows_request_exactly_at_limit() -> anyhow::Result<()> {
+        use crate::testutil::make_state_with_body_limit;
+
+        let limit: usize = 1024;
+        let state = make_state_with_body_limit(HashMap::new(), HashMap::new(), false, limit)?;
+        let metrics_handle = metrics::test_metrics_handle();
+        let router = build_router(state, metrics_handle);
+        let server = TestServer::new(router);
+
+        let exactly_at_limit = vec![b'a'; limit];
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from(exactly_at_limit))
+            .await;
+
+        assert_ne!(
+            response.status_code(),
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Request exactly at body limit should not be rejected as 413"
+        );
+        Ok(())
+    }
 }
