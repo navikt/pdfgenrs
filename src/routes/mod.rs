@@ -123,7 +123,7 @@ where
     let permit = acquire_compile_permit(state).await?;
 
     let start = Instant::now();
-    let mut handle = tokio::task::spawn_blocking(move || task());
+    let mut handle = tokio::task::spawn_blocking(task);
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
