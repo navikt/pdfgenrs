@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785483553169,
+  "lastUpdate": 1785485615922,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "710d8e8e7b346ce31024f25f3192d478fa5fa8e6",
-          "message": "Merge pull request #361 from navikt/copilot/store-last-10-commits\n\nLimit benchmark history to last 10 commits",
-          "timestamp": "2026-07-24T17:39:59+02:00",
-          "tree_id": "0ab4a5a50ee937a5eeb24f4faeddd209363e6368",
-          "url": "https://github.com/navikt/pdfgenrs/commit/710d8e8e7b346ce31024f25f3192d478fa5fa8e6"
-        },
-        "date": 1784907713901,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 233477,
-            "range": "± 9966",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 427681,
-            "range": "± 5457",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 159397,
-            "range": "± 8014",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 110305,
             "range": "± 7319",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "067bdb073779a84040b5d80fdd92cebc2e19af70",
+          "message": "Merge pull request #376 from navikt/copilot/allow-clippy-too-many-arguments\n\nrefactor: introduce CompileRequest struct to eliminate too_many_arguments suppression",
+          "timestamp": "2026-07-31T10:12:02+02:00",
+          "tree_id": "749e811973f426c583ae1422558c59d9ac85d3a7",
+          "url": "https://github.com/navikt/pdfgenrs/commit/067bdb073779a84040b5d80fdd92cebc2e19af70"
+        },
+        "date": 1785485611353,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 230599,
+            "range": "± 15131",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 427437,
+            "range": "± 4336",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 154325,
+            "range": "± 4207",
             "unit": "ns/iter"
           }
         ]
