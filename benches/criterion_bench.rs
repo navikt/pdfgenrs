@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
 use typst::Features;
@@ -109,10 +110,169 @@ fn bench_image_to_pdf(c: &mut Criterion) {
     });
 }
 
+fn bench_typst_to_pdf_large_json(c: &mut Criterion) {
+    let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
+        return;
+    };
+    let fonts = Arc::new(fonts);
+    let library = pdf_library();
+    let source = r#"#set document(date: auto)
+#set page(margin: 1cm)
+#let data = json("/data/bench/large.json")
+= #data.at("title", default: "Report")
+#for item in data.at("items", default: ()) [
+  - *#item.at("name", default: "")* — #item.at("description", default: "")
+]
+"#;
+
+    let items: Vec<serde_json::Value> = (0..100)
+        .map(|i| {
+            serde_json::json!({
+                "name": format!("Item {i}"),
+                "description": format!("Description for item number {i} in the benchmark payload."),
+                "value": i,
+                "active": i % 2 == 0,
+            })
+        })
+        .collect();
+    let data = serde_json::json!({
+        "title": "Large JSON Benchmark Report",
+        "items": items,
+    });
+
+    c.bench_function("typst_to_pdf_large_json", |b| {
+        b.iter(|| {
+            let _ = typst_to_pdf(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: Arc::clone(&fonts),
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "bench",
+                template_name: "large",
+                library: Arc::clone(&library),
+            });
+        });
+    });
+}
+
+fn bench_typst_to_pdf_concurrent(c: &mut Criterion) {
+    let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
+        return;
+    };
+    let fonts = Arc::new(fonts);
+    let library = pdf_library();
+    let source = r"#set document(date: auto)
+#set page(margin: 1cm)
+Hello, concurrent world!
+";
+    let data = Arc::new(serde_json::json!({}));
+
+    let concurrency_levels = [2usize, 4, 8];
+    let mut group = c.benchmark_group("typst_to_pdf_concurrent");
+
+    for &threads in &concurrency_levels {
+        group.bench_with_input(
+            BenchmarkId::from_parameter(threads),
+            &threads,
+            |b, &threads| {
+                b.iter_custom(|iters| {
+                    let total_tasks = iters as usize * threads;
+                    let start = Instant::now();
+
+                    std::thread::scope(|s| {
+                        let handles: Vec<_> = (0..total_tasks)
+                            .map(|_| {
+                                let fonts = Arc::clone(&fonts);
+                                let library = Arc::clone(&library);
+                                let data = Arc::clone(&data);
+                                let root = root_dir();
+                                let resources = resources_dir();
+                                s.spawn(move || {
+                                    let _ = typst_to_pdf(CompileRequest {
+                                        template_source: source,
+                                        json_data: &data,
+                                        fonts,
+                                        root: &root,
+                                        resources_dir: &resources,
+                                        app_name: "bench",
+                                        template_name: "concurrent",
+                                        library,
+                                    });
+                                })
+                            })
+                            .collect();
+                        for h in handles {
+                            let _ = h.join();
+                        }
+                    });
+
+                    start.elapsed() / threads as u32
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+fn bench_image_to_pdf_jpeg(c: &mut Criterion) {
+    let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
+        return;
+    };
+    let fonts = Arc::new(fonts);
+    let library = pdf_library();
+    let Ok(image_bytes) = std::fs::read(root_dir().join("resources").join("NAVLogoRed.jpg")) else {
+        return;
+    };
+
+    c.bench_function("image_to_pdf_jpeg", |b| {
+        b.iter(|| {
+            let _ = image_to_pdf(
+                image_bytes.clone(),
+                "/image.jpg",
+                Arc::clone(&fonts),
+                &root_dir(),
+                &resources_dir(),
+                Arc::clone(&library),
+            );
+        });
+    });
+}
+
+fn bench_image_to_pdf_svg(c: &mut Criterion) {
+    let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
+        return;
+    };
+    let fonts = Arc::new(fonts);
+    let library = pdf_library();
+    let Ok(image_bytes) = std::fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))
+    else {
+        return;
+    };
+
+    c.bench_function("image_to_pdf_svg", |b| {
+        b.iter(|| {
+            let _ = image_to_pdf(
+                image_bytes.clone(),
+                "/image.svg",
+                Arc::clone(&fonts),
+                &root_dir(),
+                &resources_dir(),
+                Arc::clone(&library),
+            );
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bench_typst_to_pdf,
     bench_typst_to_pdf_with_data,
+    bench_typst_to_pdf_large_json,
+    bench_typst_to_pdf_concurrent,
     bench_image_to_pdf,
+    bench_image_to_pdf_jpeg,
+    bench_image_to_pdf_svg,
 );
 criterion_main!(benches);
