@@ -30,7 +30,7 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
     let request_id = request
         .headers()
         .get(&X_REQUEST_ID)
-        .cloned()
+        .and_then(|request_id| request_id.to_str().ok().map(|_| request_id.clone()))
         .or_else(|| HeaderValue::from_str(&Uuid::new_v4().to_string()).ok())
         .unwrap_or_else(|| HeaderValue::from_static("unknown"));
 
@@ -99,6 +99,26 @@ mod tests {
             .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
         let value = header.to_str()?;
         assert_eq!(value, "my-custom-id");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn replaces_invalid_request_id_from_request() -> anyhow::Result<()> {
+        let server = TestServer::new(test_app());
+        let response = server
+            .get("/")
+            .add_header(X_REQUEST_ID.clone(), HeaderValue::from_bytes(b"\xFF")?)
+            .await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        let header = response
+            .headers()
+            .get("x-request-id")
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
+        assert!(
+            Uuid::parse_str(value).is_ok(),
+            "expected valid UUID, got: {value}"
+        );
         Ok(())
     }
 }
