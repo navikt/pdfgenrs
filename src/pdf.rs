@@ -238,7 +238,7 @@ fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
         let abs = start + rel;
         // Verify word boundary: the character before the match must be whitespace or '<'
         let prev = tag[..abs].chars().next_back();
-        if prev.map_or(true, |c| c.is_ascii_whitespace() || c == '<') {
+        if prev.is_none_or(|c| c.is_ascii_whitespace() || c == '<') {
             break abs;
         }
         start = abs + 1;
