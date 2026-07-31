@@ -1,12 +1,9 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::path::Path;
-use std::sync::Arc;
 use typst::foundations::Bytes;
 
-use crate::typst_world::{self, Fonts};
-use typst::Library;
-use typst::utils::LazyHash;
+use crate::pdf::CompileRequest;
+use crate::typst_world;
 
 /// Compiles a Typst template with JSON data and returns the resulting HTML string.
 ///
@@ -17,39 +14,32 @@ use typst::utils::LazyHash;
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn typst_to_html(
-    template_source: &str,
-    json_data: &serde_json::Value,
-    fonts: Arc<Fonts>,
-    root: &Path,
-    resources_dir: &Path,
-    app_name: &str,
-    template_name: &str,
-    library: Arc<LazyHash<Library>>,
-) -> Result<String> {
-    let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
-    let data_path = format!("/data/{app_name}/{template_name}.json");
+pub(crate) fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
+    let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
+    let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
     typst_world::compile_to_html(
-        fonts,
-        root,
-        resources_dir,
+        req.fonts,
+        req.root,
+        req.resources_dir,
         "/main.typ",
-        template_source,
+        req.template_source,
         vfiles,
-        library,
+        req.library,
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pdf::CompileRequest;
     use crate::typst_world::{build_library, load_fonts};
     use std::path::PathBuf;
     use std::sync::Arc;
     use typst::Feature;
+    use typst::Library;
+    use typst::utils::LazyHash;
 
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -71,16 +61,16 @@ mod tests {
     fn typst_to_html_simple_template_returns_html_string() -> Result<()> {
         let source = "Hello, world!\n";
         let data = serde_json::json!({});
-        let html = typst_to_html(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir())?),
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "simple",
-            html_library(),
-        )?;
+        let html = typst_to_html(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: Arc::new(load_fonts(&fonts_dir())?),
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "simple",
+            library: html_library(),
+        })?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
             "Expected HTML document"
@@ -95,16 +85,16 @@ mod tests {
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let html = typst_to_html(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir())?),
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "app",
-            html_library(),
-        )?;
+        let html = typst_to_html(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: Arc::new(load_fonts(&fonts_dir())?),
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "app",
+            library: html_library(),
+        })?;
         assert!(html.contains("Test User"));
         Ok(())
     }
@@ -113,16 +103,16 @@ mod tests {
     fn typst_to_html_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_html(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir())?),
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "invalid",
-            html_library(),
-        );
+        let result = typst_to_html(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: Arc::new(load_fonts(&fonts_dir())?),
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "invalid",
+            library: html_library(),
+        });
         assert!(
             result.is_err(),
             "Expected an error for invalid Typst source"
@@ -141,16 +131,16 @@ mod tests {
                 "age": 30
             }
         });
-        let html = typst_to_html(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir())?),
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "nested",
-            html_library(),
-        )?;
+        let html = typst_to_html(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: Arc::new(load_fonts(&fonts_dir())?),
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "nested",
+            library: html_library(),
+        })?;
         assert!(html.contains("Alice"));
         Ok(())
     }
@@ -165,16 +155,16 @@ mod tests {
         let data = serde_json::json!({
             "items": ["alpha", "beta", "gamma"]
         });
-        let html = typst_to_html(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir())?),
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "array",
-            html_library(),
-        )?;
+        let html = typst_to_html(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: Arc::new(load_fonts(&fonts_dir())?),
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "array",
+            library: html_library(),
+        })?;
         assert!(html.contains("alpha"));
         assert!(html.contains("beta"));
         assert!(html.contains("gamma"));
@@ -187,16 +177,16 @@ mod tests {
 Empty: #data.keys().len()
 "#;
         let data = serde_json::json!({});
-        let html = typst_to_html(
-            source,
-            &data,
-            Arc::new(load_fonts(&fonts_dir())?),
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "empty",
-            html_library(),
-        )?;
+        let html = typst_to_html(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: Arc::new(load_fonts(&fonts_dir())?),
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "empty",
+            library: html_library(),
+        })?;
         assert!(html.contains("<!DOCTYPE html>"));
         Ok(())
     }

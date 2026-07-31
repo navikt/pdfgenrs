@@ -32,16 +32,16 @@ pub(crate) async fn get_html(
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
-            gen_html::typst_to_html(
-                &params.source,
-                &params.data,
-                params.fonts,
-                &params.root,
-                &params.resources_dir,
-                &app_name,
-                &template_name,
-                params.html_library,
-            )
+            gen_html::typst_to_html(crate::pdf::CompileRequest {
+                template_source: &params.source,
+                json_data: &params.data,
+                fonts: params.fonts,
+                root: &params.root,
+                resources_dir: &params.resources_dir,
+                app_name: &app_name,
+                template_name: &template_name,
+                library: params.html_library,
+            })
         },
     )
     .await?;
@@ -70,16 +70,16 @@ pub(crate) async fn post_html(
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
-            gen_html::typst_to_html(
-                &params.source,
-                &params.data,
-                params.fonts,
-                &params.root,
-                &params.resources_dir,
-                &app_name,
-                &template_name,
-                params.html_library,
-            )
+            gen_html::typst_to_html(crate::pdf::CompileRequest {
+                template_source: &params.source,
+                json_data: &params.data,
+                fonts: params.fonts,
+                root: &params.root,
+                resources_dir: &params.resources_dir,
+                app_name: &app_name,
+                template_name: &template_name,
+                library: params.html_library,
+            })
         },
     )
     .await?;

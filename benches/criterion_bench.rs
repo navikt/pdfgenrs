@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pdfgenrs::pdf::{image_to_pdf, typst_to_pdf};
+use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
 use typst::Features;
 use typst::Library;
@@ -38,16 +38,16 @@ Hello, world!
 
     c.bench_function("typst_to_pdf_simple", |b| {
         b.iter(|| {
-            let _ = typst_to_pdf(
-                source,
-                &data,
-                Arc::clone(&fonts),
-                &root_dir(),
-                &resources_dir(),
-                "bench",
-                "simple",
-                Arc::clone(&library),
-            );
+            let _ = typst_to_pdf(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: Arc::clone(&fonts),
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "bench",
+                template_name: "simple",
+                library: Arc::clone(&library),
+            });
         });
     });
 }
@@ -71,16 +71,16 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
 
     c.bench_function("typst_to_pdf_with_data", |b| {
         b.iter(|| {
-            let _ = typst_to_pdf(
-                source,
-                &data,
-                Arc::clone(&fonts),
-                &root_dir(),
-                &resources_dir(),
-                "bench",
-                "template",
-                Arc::clone(&library),
-            );
+            let _ = typst_to_pdf(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: Arc::clone(&fonts),
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "bench",
+                template_name: "template",
+                library: Arc::clone(&library),
+            });
         });
     });
 }
