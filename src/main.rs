@@ -29,6 +29,28 @@ async fn main() -> Result<()> {
     );
     info!(count = templates.len(), "Loaded templates");
 
+    info!("Validating template syntax");
+    let syntax_result = template::validate_template_syntax(&templates);
+    for error in &syntax_result.errors {
+        warn!(
+            app = %error.app_name,
+            template = %error.template_name,
+            messages = %error.messages.join("; "),
+            "Template has syntax errors"
+        );
+    }
+    if cfg.dev_mode && !syntax_result.is_ok() {
+        return Err(anyhow::anyhow!(
+            "{} template(s) have syntax errors; fix them before starting in dev mode",
+            syntax_result.error_count()
+        ));
+    }
+    info!(
+        templates = templates.len(),
+        invalid = syntax_result.error_count(),
+        "Template syntax validation complete"
+    );
+
     let data = if cfg.dev_mode {
         info!(path = %cfg.data_dir.display(), "Loading test data");
         let result = template::load_test_data(&cfg.data_dir);

@@ -96,6 +96,61 @@ pub fn load_templates_from_dir(
     Ok(templates)
 }
 
+/// A syntax error found in a Typst template during startup validation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateSyntaxError {
+    /// Application name of the template that has errors.
+    pub app_name: String,
+    /// Template name (without `.typ` extension) that has errors.
+    pub template_name: String,
+    /// Human-readable error messages from the Typst parser.
+    pub messages: Vec<String>,
+}
+
+/// Result of validating all loaded templates for syntax errors.
+#[derive(Debug, Default)]
+pub struct TemplateSyntaxValidationResult {
+    /// Templates that contained at least one syntax error.
+    pub errors: Vec<TemplateSyntaxError>,
+}
+
+impl TemplateSyntaxValidationResult {
+    /// Returns `true` if every template parsed without syntax errors.
+    pub fn is_ok(&self) -> bool {
+        self.errors.is_empty()
+    }
+
+    /// Returns the total number of templates that had at least one error.
+    pub fn error_count(&self) -> usize {
+        self.errors.len()
+    }
+}
+
+/// Parses every loaded template for syntax errors using the Typst parser.
+///
+/// Each template is parsed with [`typst_syntax::parse`].  Errors are collected
+/// and returned in a [`TemplateSyntaxValidationResult`]; the function never
+/// fails outright so callers can decide whether to abort or merely warn.
+pub fn validate_template_syntax(
+    templates: &HashMap<(String, String), Arc<str>>,
+) -> TemplateSyntaxValidationResult {
+    let mut result = TemplateSyntaxValidationResult::default();
+
+    for ((app_name, template_name), source) in templates {
+        let node = typst_syntax::parse(source);
+        let (errors, _warnings) = node.errors_and_warnings();
+        if !errors.is_empty() {
+            result.errors.push(TemplateSyntaxError {
+                app_name: app_name.clone(),
+                template_name: template_name.clone(),
+                messages: errors.iter().map(|e| e.message.to_string()).collect(),
+            });
+        }
+    }
+
+    result
+}
+
 /// Loads test JSON data files from a two-level directory structure under `data_dir`.
 ///
 /// Files must be at exactly depth 2 (`<app_name>/<template_name>.json`).
@@ -525,5 +580,65 @@ mod tests {
         assert_eq!(summary.get(&LoadErrorKind::InvalidJson), Some(&2));
         assert_eq!(summary.get(&LoadErrorKind::ReadFile), Some(&1));
         assert_eq!(summary.len(), 2);
+    }
+
+    #[test]
+    fn test_validate_template_syntax_valid_template() {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("app".to_string(), "hello".to_string()),
+            Arc::from("Hello, Typst!"),
+        );
+
+        let result = validate_template_syntax(&templates);
+
+        assert!(result.is_ok());
+        assert_eq!(result.error_count(), 0);
+    }
+
+    #[test]
+    fn test_validate_template_syntax_invalid_template() {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("app".to_string(), "bad".to_string()),
+            Arc::from("#let x = ("),
+        );
+
+        let result = validate_template_syntax(&templates);
+
+        assert!(!result.is_ok());
+        assert_eq!(result.error_count(), 1);
+        assert_eq!(result.errors[0].app_name, "app");
+        assert_eq!(result.errors[0].template_name, "bad");
+        assert!(!result.errors[0].messages.is_empty());
+    }
+
+    #[test]
+    fn test_validate_template_syntax_mixed_templates() {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("app".to_string(), "good".to_string()),
+            Arc::from("= Hello\nThis is valid Typst."),
+        );
+        templates.insert(
+            ("app".to_string(), "bad".to_string()),
+            Arc::from("#let x = ("),
+        );
+
+        let result = validate_template_syntax(&templates);
+
+        assert!(!result.is_ok());
+        assert_eq!(result.error_count(), 1);
+        assert_eq!(result.errors[0].template_name, "bad");
+    }
+
+    #[test]
+    fn test_validate_template_syntax_empty_map() {
+        let templates = HashMap::new();
+
+        let result = validate_template_syntax(&templates);
+
+        assert!(result.is_ok());
+        assert_eq!(result.error_count(), 0);
     }
 }
