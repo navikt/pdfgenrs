@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785492824503,
+  "lastUpdate": 1785493895541,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "d9d0824cbf7a451a4a3b4af884fa0276184310c6",
-          "message": "Merge pull request #367 from navikt/copilot/missing-tests-for-image-and-template-issues\n\nAdd missing tests for corrupted images, large templates, concurrent compilation, font loading failures, and exact-boundary body limits",
-          "timestamp": "2026-07-30T09:49:41+02:00",
-          "tree_id": "0dc21a11894918bc5e065fce3a54d70db9cb6c0c",
-          "url": "https://github.com/navikt/pdfgenrs/commit/d9d0824cbf7a451a4a3b4af884fa0276184310c6"
-        },
-        "date": 1785398252676,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 179769,
-            "range": "± 5370",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 399831,
-            "range": "± 3075",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 118170,
-            "range": "± 7111",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -539,6 +497,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 351737,
             "range": "± 5235",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79245ed648c647e304082def0d9d52fef465639a",
+          "message": "Merge pull request #382 from navikt/copilot/no-sub-list-typst-to-pdf-concurrent\n\nbench: flatten typst_to_pdf_concurrent into a top-level benchmark",
+          "timestamp": "2026-07-31T12:29:04+02:00",
+          "tree_id": "c61df4786ea292266a387985342fe80d10f01a71",
+          "url": "https://github.com/navikt/pdfgenrs/commit/79245ed648c647e304082def0d9d52fef465639a"
+        },
+        "date": 1785493890222,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 229939,
+            "range": "± 12236",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 422116,
+            "range": "± 4949",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5323455,
+            "range": "± 62271",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 91600,
+            "range": "± 8482",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 175242,
+            "range": "± 4963",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 213146,
+            "range": "± 10828",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 363108,
+            "range": "± 2341",
             "unit": "ns/iter"
           }
         ]
