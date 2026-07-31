@@ -650,7 +650,7 @@ Hello, world!
         assert!(
             growth_kb < 90_000,
             "RSS grew by {growth_kb} KB after 200 compilations – possible memory leak. \
-             Ensure comemo::evict() is called after each compilation in compile_to_pdf."
+             Ensure comemo::evict() is called after each compilation."
         );
 
         Ok(())

@@ -198,7 +198,8 @@ Hello, concurrent world!
                                     app_name: "bench",
                                     template_name: "concurrent",
                                     library: Arc::clone(&library),
-                                    comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                                    comemo_eviction_threshold:
+                                        pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
                                 });
                             }
                         })
