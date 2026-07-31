@@ -168,7 +168,7 @@ Hello, concurrent world!
 ";
     let data = Arc::new(serde_json::json!({}));
 
-    let concurrency_levels = [2usize, 4, 8];
+    let concurrency_levels = [8usize];
     let mut group = c.benchmark_group("typst_to_pdf_concurrent");
 
     for &threads in &concurrency_levels {
