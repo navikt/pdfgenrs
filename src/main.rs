@@ -27,8 +27,6 @@ async fn main() -> Result<()> {
             e
         })?,
     );
-    info!(count = templates.len(), "Loaded templates");
-
     let data = if cfg.dev_mode {
         info!(path = %cfg.data_dir.display(), "Loading test data");
         let result = template::load_test_data(&cfg.data_dir);
@@ -44,14 +42,8 @@ async fn main() -> Result<()> {
         if !summary.is_empty() {
             warn!(?summary, "Test data loading completed with errors");
         }
-        info!(
-            count = result.data.len(),
-            errors = result.diagnostics.len(),
-            "Loaded test data entries"
-        );
         result.data
     } else {
-        info!("Dev mode disabled, skipping test data loading");
         HashMap::new()
     };
 
@@ -64,21 +56,15 @@ async fn main() -> Result<()> {
         );
         e
     })?);
-    info!(count = fonts.fonts.len(), "Loaded fonts");
 
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
     let compile_semaphore = if cfg.max_concurrent_compilations > 0 {
-        info!(
-            max = cfg.max_concurrent_compilations,
-            "Limiting concurrent compilations"
-        );
         Some(Arc::new(tokio::sync::Semaphore::new(
             cfg.max_concurrent_compilations,
         )))
     } else {
-        info!("No concurrent compilation limit configured");
         None
     };
 
@@ -97,12 +83,25 @@ async fn main() -> Result<()> {
         compile_semaphore,
     };
 
+    let template_count = state.templates.len();
+    let font_count = state.fonts.fonts.len();
+
     let metrics_handle = metrics::setup_metrics_recorder()?;
 
     let app = build_router(state, metrics_handle);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
-    info!(address = %addr, "Starting pdfgenrs server");
+    info!(
+        address = %addr,
+        template_count,
+        font_count,
+        dev_mode = cfg.dev_mode,
+        max_concurrent_compilations = cfg.max_concurrent_compilations,
+        compile_timeout_seconds = cfg.compile_timeout_seconds,
+        request_body_limit_bytes = cfg.request_body_limit_bytes,
+        comemo_eviction_threshold = cfg.comemo_eviction_threshold,
+        "Starting pdfgenrs server"
+    );
 
     aliveness_clone.set_alive(true);
     aliveness_clone.set_ready(true);
