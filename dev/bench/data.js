@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785506376323,
+  "lastUpdate": 1785506495762,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "0f9bc02a0961c32e253998bb3f5b3aff9a763379",
-          "message": "Merge pull request #374 from navikt/copilot/fix-svg-attribute-matching\n\nfix: word boundary check in extract_svg_attr to prevent partial attribute name matches",
-          "timestamp": "2026-07-31T09:37:45+02:00",
-          "tree_id": "78d4f1067790c6d39acf4c10365edd5c4359daa8",
-          "url": "https://github.com/navikt/pdfgenrs/commit/0f9bc02a0961c32e253998bb3f5b3aff9a763379"
-        },
-        "date": 1785483548199,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 165789,
-            "range": "± 6611",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 362570,
-            "range": "± 16857",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 110305,
-            "range": "± 7319",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -635,6 +593,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 351534,
             "range": "± 5339",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3048309e80ddd553fe2c6a1d733b185d98980721",
+          "message": "Merge pull request #391 from navikt/dependabot/cargo/serde_json-1.0.151\n\nchore(deps): bump serde_json from 1.0.150 to 1.0.151",
+          "timestamp": "2026-07-31T15:57:33+02:00",
+          "tree_id": "ef5689c31a355a2658241f2f4055ae33b7cfb711",
+          "url": "https://github.com/navikt/pdfgenrs/commit/3048309e80ddd553fe2c6a1d733b185d98980721"
+        },
+        "date": 1785506489714,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 184934,
+            "range": "± 7235",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 405609,
+            "range": "± 6130",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5125183,
+            "range": "± 27201",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 96325,
+            "range": "± 6068",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 132303,
+            "range": "± 6424",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 199912,
+            "range": "± 8566",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 329635,
+            "range": "± 4472",
             "unit": "ns/iter"
           }
         ]
