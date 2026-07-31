@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
 use typst::Features;
@@ -168,52 +168,46 @@ Hello, concurrent world!
 ";
     let data = Arc::new(serde_json::json!({}));
 
-    let concurrency_levels = [8usize];
+    const THREADS: usize = 8;
     let mut group = c.benchmark_group("typst_to_pdf_concurrent");
 
-    for &threads in &concurrency_levels {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(threads),
-            &threads,
-            |b, &threads| {
-                b.iter_custom(|iters| {
-                    let iters = iters as usize;
-                    let start = Instant::now();
+    group.bench_function("typst_to_pdf_concurrent", |b| {
+        b.iter_custom(|iters| {
+            let iters = iters as usize;
+            let start = Instant::now();
 
-                    std::thread::scope(|s| {
-                        let handles: Vec<_> = (0..threads)
-                            .map(|_| {
-                                let fonts = Arc::clone(&fonts);
-                                let library = Arc::clone(&library);
-                                let data = Arc::clone(&data);
-                                let root = root_dir();
-                                let resources = resources_dir();
-                                s.spawn(move || {
-                                    for _ in 0..iters {
-                                        let _ = typst_to_pdf(CompileRequest {
-                                            template_source: source,
-                                            json_data: &data,
-                                            fonts: Arc::clone(&fonts),
-                                            root: &root,
-                                            resources_dir: &resources,
-                                            app_name: "bench",
-                                            template_name: "concurrent",
-                                            library: Arc::clone(&library),
-                                        });
-                                    }
-                                })
-                            })
-                            .collect();
-                        for h in handles {
-                            let _ = h.join();
-                        }
-                    });
+            std::thread::scope(|s| {
+                let handles: Vec<_> = (0..THREADS)
+                    .map(|_| {
+                        let fonts = Arc::clone(&fonts);
+                        let library = Arc::clone(&library);
+                        let data = Arc::clone(&data);
+                        let root = root_dir();
+                        let resources = resources_dir();
+                        s.spawn(move || {
+                            for _ in 0..iters {
+                                let _ = typst_to_pdf(CompileRequest {
+                                    template_source: source,
+                                    json_data: &data,
+                                    fonts: Arc::clone(&fonts),
+                                    root: &root,
+                                    resources_dir: &resources,
+                                    app_name: "bench",
+                                    template_name: "concurrent",
+                                    library: Arc::clone(&library),
+                                });
+                            }
+                        })
+                    })
+                    .collect();
+                for h in handles {
+                    let _ = h.join();
+                }
+            });
 
-                    start.elapsed() / threads as u32
-                });
-            },
-        );
-    }
+            start.elapsed() / THREADS as u32
+        });
+    });
 
     group.finish();
 }
