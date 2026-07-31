@@ -257,7 +257,17 @@ fn svg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
 fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
     // Match attr_name followed by = and a quoted value
     let search = format!("{attr_name}=");
-    let pos = tag.find(&search)?;
+    let mut start = 0;
+    let pos = loop {
+        let rel = tag[start..].find(&search)?;
+        let abs = start + rel;
+        // Verify word boundary: the character before the match must be whitespace or '<'
+        let prev = tag[..abs].chars().next_back();
+        if prev.is_none_or(|c| c.is_ascii_whitespace() || c == '<') {
+            break abs;
+        }
+        start = abs + 1;
+    };
     let after_eq = &tag[pos + search.len()..];
     let quote = after_eq.as_bytes().first()?;
     if *quote != b'"' && *quote != b'\'' {
@@ -816,6 +826,14 @@ Hello, world!
     fn svg_dimensions_with_single_quotes() {
         let svg = b"<svg width='120' height='80'></svg>";
         assert_eq!(image_dimensions(svg), Some((120, 80)));
+    }
+
+    #[test]
+    fn svg_dimensions_no_partial_attr_name_match() {
+        // stroke-width= must not be matched when searching for width=
+        let svg =
+            br#"<svg stroke-width="5" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        assert_eq!(image_dimensions(svg), Some((200, 100)));
     }
 
     // --- Corrupted/truncated image tests for image_to_pdf ---
