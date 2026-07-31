@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785488654292,
+  "lastUpdate": 1785491684896,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "9787e370ec68177266eb1f28caa2f4d8a87f3a25",
-          "message": "Merge pull request #364 from navikt/copilot/optimize-template-storage\n\nrefactor: accept &str instead of String in template compilation APIs to avoid per-request allocation",
-          "timestamp": "2026-07-29T10:45:26+02:00",
-          "tree_id": "e7c93eae2c55a4c33605b27c48eeb7829510eeb0",
-          "url": "https://github.com/navikt/pdfgenrs/commit/9787e370ec68177266eb1f28caa2f4d8a87f3a25"
-        },
-        "date": 1785314858826,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 231733,
-            "range": "± 25131",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 420835,
-            "range": "± 8122",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 148109,
-            "range": "± 4328",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -491,6 +449,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 369389,
             "range": "± 2216",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0ccc0137f2dd6ff3160453b0983dee8f058ed9d",
+          "message": "Merge pull request #379 from navikt/copilot/typst-to-pdf-concurrent-8\n\nbench: only run typst_to_pdf_concurrent at concurrency 8",
+          "timestamp": "2026-07-31T11:52:18+02:00",
+          "tree_id": "60ed188b1e0b6269a27088efbe461d8c95cdf424",
+          "url": "https://github.com/navikt/pdfgenrs/commit/e0ccc0137f2dd6ff3160453b0983dee8f058ed9d"
+        },
+        "date": 1785491679794,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 233239,
+            "range": "± 16791",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 426448,
+            "range": "± 3151",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5229899,
+            "range": "± 32153",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent/8",
+            "value": 92792,
+            "range": "± 7965",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 163179,
+            "range": "± 2993",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 211253,
+            "range": "± 7098",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 367434,
+            "range": "± 7511",
             "unit": "ns/iter"
           }
         ]
