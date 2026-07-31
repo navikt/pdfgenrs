@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785493895541,
+  "lastUpdate": 1785495397433,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "80108e82ad84b58a2cba78dc38db9a473beee9be",
-          "message": "Merge pull request #368 from navikt/copilot/replace-hashmap-value-with-arc-value\n\nReplace HashMap<..., Value> with HashMap<..., Arc<Value>>",
-          "timestamp": "2026-07-30T10:23:45+02:00",
-          "tree_id": "1691b3a0c506043bdbf321df1fbd46aa423f668c",
-          "url": "https://github.com/navikt/pdfgenrs/commit/80108e82ad84b58a2cba78dc38db9a473beee9be"
-        },
-        "date": 1785399920469,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 225509,
-            "range": "± 14598",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 419588,
-            "range": "± 5860",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 147853,
-            "range": "± 4909",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -563,6 +521,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 363108,
             "range": "± 2341",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d04ce8af338ab4f5438f697719a2ffe5c1baa7b1",
+          "message": "Merge pull request #381 from navikt/copilot/expose-comemo-eviction-threshold\n\nExpose COMEMO_EVICTION_THRESHOLD as env-var config option",
+          "timestamp": "2026-07-31T12:54:18+02:00",
+          "tree_id": "d1ec5ab078cf689e891be57518d712a4b9e8beb2",
+          "url": "https://github.com/navikt/pdfgenrs/commit/d04ce8af338ab4f5438f697719a2ffe5c1baa7b1"
+        },
+        "date": 1785495391979,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 231351,
+            "range": "± 13155",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 427549,
+            "range": "± 2798",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5254082,
+            "range": "± 180324",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 92372,
+            "range": "± 7842",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 163308,
+            "range": "± 4054",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 215531,
+            "range": "± 7710",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 364819,
+            "range": "± 2603",
             "unit": "ns/iter"
           }
         ]
