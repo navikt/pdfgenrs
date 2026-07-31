@@ -169,9 +169,8 @@ Hello, concurrent world!
     let data = Arc::new(serde_json::json!({}));
 
     const THREADS: usize = 8;
-    let mut group = c.benchmark_group("typst_to_pdf_concurrent");
 
-    group.bench_function("typst_to_pdf_concurrent", |b| {
+    c.bench_function("typst_to_pdf_concurrent", |b| {
         b.iter_custom(|iters| {
             let iters = iters as usize;
             let start = Instant::now();
@@ -208,8 +207,6 @@ Hello, concurrent world!
             start.elapsed() / THREADS as u32
         });
     });
-
-    group.finish();
 }
 
 fn bench_image_to_pdf_jpeg(c: &mut Criterion) {
