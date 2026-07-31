@@ -281,7 +281,6 @@ pub fn compile_to_pdf(
     main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
-    comemo_eviction_threshold: usize,
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(
         fonts,
@@ -297,8 +296,6 @@ pub fn compile_to_pdf(
     let result = typst::compile::<typst_layout::PagedDocument>(&world);
     let duration = start.elapsed().as_secs_f64();
     histogram!("typst_compilation_duration_seconds", &[("output", "pdf")]).record(duration);
-
-    comemo::evict(comemo_eviction_threshold);
 
     let document = result
         .output
@@ -337,7 +334,6 @@ pub fn compile_to_html(
     main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
-    comemo_eviction_threshold: usize,
 ) -> Result<String> {
     let world = PdfgenWorld::new(
         fonts,
@@ -353,8 +349,6 @@ pub fn compile_to_html(
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
     let duration = start.elapsed().as_secs_f64();
     histogram!("typst_compilation_duration_seconds", &[("output", "html")]).record(duration);
-
-    comemo::evict(comemo_eviction_threshold);
 
     let document = result
         .output
@@ -458,7 +452,6 @@ Hello, world!
             source,
             HashMap::new(),
             Arc::clone(&library),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
@@ -470,7 +463,6 @@ Hello, world!
             source,
             HashMap::new(),
             Arc::clone(&library),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
 
@@ -493,7 +485,6 @@ Hello, world!
             source,
             HashMap::new(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(
             is_pdf(&pdf),
@@ -628,8 +619,8 @@ Hello, world!
                 &source,
                 HashMap::new(),
                 Arc::clone(&library),
-                crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             )?;
+            comemo::evict(crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
         }
 
         let Some(rss_before) = rss_kb() else {
@@ -648,8 +639,8 @@ Hello, world!
                 &source,
                 HashMap::new(),
                 Arc::clone(&library),
-                crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             );
+            comemo::evict(crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }
 
@@ -737,7 +728,6 @@ Hello, world!
             &source,
             HashMap::new(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_ok(),
@@ -775,7 +765,6 @@ Hello, world!
                         &source,
                         HashMap::new(),
                         library,
-                        crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
                     )
                 })
                 .await

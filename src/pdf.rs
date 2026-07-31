@@ -60,7 +60,7 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
-    typst_world::compile_to_pdf(
+    let result = typst_world::compile_to_pdf(
         req.fonts,
         req.root,
         req.resources_dir,
@@ -68,8 +68,9 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
         req.template_source,
         vfiles,
         req.library,
-        req.comemo_eviction_threshold,
-    )
+    );
+    comemo::evict(req.comemo_eviction_threshold);
+    result
 }
 
 /// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes.
@@ -104,7 +105,7 @@ where
 "#
     );
 
-    typst_world::compile_to_pdf(
+    let result = typst_world::compile_to_pdf(
         fonts,
         root,
         resources_dir,
@@ -112,8 +113,9 @@ where
         &source,
         vfiles,
         library,
-        comemo_eviction_threshold,
-    )
+    );
+    comemo::evict(comemo_eviction_threshold);
+    result
 }
 
 /// Extracts (width, height) from PNG, JPEG, WebP, or SVG image bytes by parsing headers.

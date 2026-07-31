@@ -20,7 +20,7 @@ pub(crate) fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
-    typst_world::compile_to_html(
+    let result = typst_world::compile_to_html(
         req.fonts,
         req.root,
         req.resources_dir,
@@ -28,8 +28,9 @@ pub(crate) fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
         req.template_source,
         vfiles,
         req.library,
-        req.comemo_eviction_threshold,
-    )
+    );
+    comemo::evict(req.comemo_eviction_threshold);
+    result
 }
 
 #[cfg(test)]
