@@ -17,6 +17,7 @@ use typst::utils::LazyHash;
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
+#[must_use = "this returns a Result that should be handled"]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn typst_to_html(
     template_source: &str,
