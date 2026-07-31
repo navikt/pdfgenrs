@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785495397433,
+  "lastUpdate": 1785498336943,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "e41c3676177e4951b23850b6d11e32765d4783f6",
-          "message": "Merge pull request #371 from navikt/copilot/timeout-behavior-fix\n\nfix: release semaphore permit on timeout and abort orphaned spawn_blocking task",
-          "timestamp": "2026-07-30T18:23:35+02:00",
-          "tree_id": "ef3c1d17d9bf04f2ee0ca401fc30cb1a379d73d7",
-          "url": "https://github.com/navikt/pdfgenrs/commit/e41c3676177e4951b23850b6d11e32765d4783f6"
-        },
-        "date": 1785428711263,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 229290,
-            "range": "± 13154",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 425966,
-            "range": "± 10178",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 150841,
-            "range": "± 4362",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -587,6 +545,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 364819,
             "range": "± 2603",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20a80e25ae5df0f42a11cd7a47c99a7e9db7ce12",
+          "message": "Merge pull request #384 from navikt/copilot/structured-logging-improvement\n\nfeat: single structured startup summary log",
+          "timestamp": "2026-07-31T13:43:19+02:00",
+          "tree_id": "908fae0c9c50482812b7fc92481a45b4b47bdcfb",
+          "url": "https://github.com/navikt/pdfgenrs/commit/20a80e25ae5df0f42a11cd7a47c99a7e9db7ce12"
+        },
+        "date": 1785498331424,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 230714,
+            "range": "± 10384",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 422350,
+            "range": "± 15223",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5164647,
+            "range": "± 105125",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 91845,
+            "range": "± 6518",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 161810,
+            "range": "± 4406",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 215728,
+            "range": "± 11139",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 366018,
+            "range": "± 5385",
             "unit": "ns/iter"
           }
         ]
