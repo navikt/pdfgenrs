@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785485615922,
+  "lastUpdate": 1785488347526,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "b0285638aaf4343bd62eb8b011327cf54d47f028",
-          "message": "Merge pull request #362 from navikt/copilot/html-to-pdf\n\nRemove stale html_to_pdf benchmark from criterion report",
-          "timestamp": "2026-07-24T18:03:47+02:00",
-          "tree_id": "210dd630584778d65fe594af630f5a9af45bf305",
-          "url": "https://github.com/navikt/pdfgenrs/commit/b0285638aaf4343bd62eb8b011327cf54d47f028"
-        },
-        "date": 1784909170449,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 233723,
-            "range": "± 18117",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 428290,
-            "range": "± 2039",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 158323,
-            "range": "± 4664",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,84 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 154325,
             "range": "± 4207",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6ccb6ada29f648358c61fbd79db01a1efcd311b0",
+          "message": "Merge pull request #378 from navikt/copilot/expand-benchmarks-for-typst\n\nExpand criterion benchmarks: concurrent compilation, large JSON payloads, image format variants",
+          "timestamp": "2026-07-31T10:56:27+02:00",
+          "tree_id": "a50a87484f3e30816151f89f7ca41a1d02d31dfc",
+          "url": "https://github.com/navikt/pdfgenrs/commit/6ccb6ada29f648358c61fbd79db01a1efcd311b0"
+        },
+        "date": 1785488343317,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 233138,
+            "range": "± 20840",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 425106,
+            "range": "± 1661",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5179836,
+            "range": "± 48975",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent/2",
+            "value": 146173,
+            "range": "± 3995",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent/4",
+            "value": 82882,
+            "range": "± 8425",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent/8",
+            "value": 90810,
+            "range": "± 6910",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 156848,
+            "range": "± 4060",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 216745,
+            "range": "± 8663",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 363536,
+            "range": "± 5735",
             "unit": "ns/iter"
           }
         ]
