@@ -277,6 +277,7 @@ All configuration is done through environment variables. If an environment varia
 | `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` means no limit.                                                                              | `0`               |
 | `SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS` | Maximum time in seconds to wait for a compilation semaphore permit. Exceeded timeout returns `503 Service Unavailable`.                              | `10`              |
+| `COMEMO_EVICTION_THRESHOLD`         | Maximum number of cache entries to evict from the comemo memoization cache after each compilation. Higher values free more memory at the cost of cache hit rate. Set to `0` to evict the entire cache. | `15`              |
 
 ### Logging and tracing
 
