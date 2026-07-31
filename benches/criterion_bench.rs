@@ -48,6 +48,7 @@ Hello, world!
                 app_name: "bench",
                 template_name: "simple",
                 library: Arc::clone(&library),
+                comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             });
         });
     });
@@ -81,6 +82,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
                 app_name: "bench",
                 template_name: "template",
                 library: Arc::clone(&library),
+                comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             });
         });
     });
@@ -105,6 +107,7 @@ fn bench_image_to_pdf(c: &mut Criterion) {
                 &root_dir(),
                 &resources_dir(),
                 Arc::clone(&library),
+                pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             );
         });
     });
@@ -151,6 +154,7 @@ fn bench_typst_to_pdf_large_json(c: &mut Criterion) {
                 app_name: "bench",
                 template_name: "large",
                 library: Arc::clone(&library),
+                comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             });
         });
     });
@@ -194,6 +198,8 @@ Hello, concurrent world!
                                     app_name: "bench",
                                     template_name: "concurrent",
                                     library: Arc::clone(&library),
+                                    comemo_eviction_threshold:
+                                        pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
                                 });
                             }
                         })
@@ -228,6 +234,7 @@ fn bench_image_to_pdf_jpeg(c: &mut Criterion) {
                 &root_dir(),
                 &resources_dir(),
                 Arc::clone(&library),
+                pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             );
         });
     });
@@ -253,6 +260,7 @@ fn bench_image_to_pdf_svg(c: &mut Criterion) {
                 &root_dir(),
                 &resources_dir(),
                 Arc::clone(&library),
+                pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             );
         });
     });

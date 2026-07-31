@@ -41,6 +41,7 @@ pub(crate) async fn get_html(
                 app_name: &app_name,
                 template_name: &template_name,
                 library: params.html_library,
+                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
         },
     )
@@ -79,6 +80,7 @@ pub(crate) async fn post_html(
                 app_name: &app_name,
                 template_name: &template_name,
                 library: params.html_library,
+                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
         },
     )

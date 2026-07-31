@@ -42,6 +42,7 @@ pub(crate) async fn get_pdf(
                 app_name: &app_name,
                 template_name: &template_name,
                 library: params.pdf_library,
+                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
         },
     )
@@ -80,6 +81,7 @@ pub(crate) async fn post_pdf(
                 app_name: &app_name,
                 template_name: &template_name,
                 library: params.pdf_library,
+                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
         },
     )
@@ -107,6 +109,7 @@ pub(crate) async fn post_pdf_from_image(
     let root = Arc::clone(&state.root_dir);
     let resources_dir = Arc::clone(&state.resources_dir);
     let library = Arc::clone(&state.pdf_library);
+    let eviction_threshold = state.config.comemo_eviction_threshold;
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
         gen_pdf::image_to_pdf(
@@ -116,6 +119,7 @@ pub(crate) async fn post_pdf_from_image(
             &root,
             &resources_dir,
             library,
+            eviction_threshold,
         )
     })
     .await?;

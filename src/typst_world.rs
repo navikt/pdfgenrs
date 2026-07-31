@@ -3,11 +3,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-/// Maximum number of evictions to perform on the comemo memoization cache after
-/// each compilation. This bounds memory growth while preserving frequently-used
-/// cache entries to maintain a good hit rate.
-const COMEMO_EVICTION_THRESHOLD: usize = 15;
-
 use anyhow::{Context, Result};
 use metrics::histogram;
 use time::OffsetDateTime;
@@ -302,8 +297,6 @@ pub fn compile_to_pdf(
     let duration = start.elapsed().as_secs_f64();
     histogram!("typst_compilation_duration_seconds", &[("output", "pdf")]).record(duration);
 
-    comemo::evict(COMEMO_EVICTION_THRESHOLD);
-
     let document = result
         .output
         .map_err(|errors| format_typst_errors("compilation", &errors))?;
@@ -356,8 +349,6 @@ pub fn compile_to_html(
     let result = typst::compile::<typst_html::HtmlDocument>(&world);
     let duration = start.elapsed().as_secs_f64();
     histogram!("typst_compilation_duration_seconds", &[("output", "html")]).record(duration);
-
-    comemo::evict(COMEMO_EVICTION_THRESHOLD);
 
     let document = result
         .output
@@ -629,6 +620,7 @@ Hello, world!
                 HashMap::new(),
                 Arc::clone(&library),
             )?;
+            comemo::evict(crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
         }
 
         let Some(rss_before) = rss_kb() else {
@@ -648,6 +640,7 @@ Hello, world!
                 HashMap::new(),
                 Arc::clone(&library),
             );
+            comemo::evict(crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }
 
@@ -657,7 +650,7 @@ Hello, world!
         assert!(
             growth_kb < 90_000,
             "RSS grew by {growth_kb} KB after 200 compilations – possible memory leak. \
-             Ensure comemo::evict() is called after each compilation in compile_to_pdf."
+             Ensure comemo::evict() is called after each compilation."
         );
 
         Ok(())

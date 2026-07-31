@@ -20,7 +20,7 @@ pub(crate) fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
-    typst_world::compile_to_html(
+    let result = typst_world::compile_to_html(
         req.fonts,
         req.root,
         req.resources_dir,
@@ -28,7 +28,9 @@ pub(crate) fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
         req.template_source,
         vfiles,
         req.library,
-    )
+    );
+    comemo::evict(req.comemo_eviction_threshold);
+    result
 }
 
 #[cfg(test)]
@@ -71,6 +73,7 @@ mod tests {
             app_name: "test",
             template_name: "simple",
             library: html_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -95,6 +98,7 @@ mod tests {
             app_name: "test",
             template_name: "app",
             library: html_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -113,6 +117,7 @@ mod tests {
             app_name: "test",
             template_name: "invalid",
             library: html_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         });
         assert!(
             result.is_err(),
@@ -141,6 +146,7 @@ mod tests {
             app_name: "test",
             template_name: "nested",
             library: html_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(html.contains("Alice"));
         Ok(())
@@ -165,6 +171,7 @@ mod tests {
             app_name: "test",
             template_name: "array",
             library: html_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(html.contains("alpha"));
         assert!(html.contains("beta"));
@@ -187,6 +194,7 @@ Empty: #data.keys().len()
             app_name: "test",
             template_name: "empty",
             library: html_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(html.contains("<!DOCTYPE html>"));
         Ok(())
