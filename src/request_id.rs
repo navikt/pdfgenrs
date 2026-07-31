@@ -9,11 +9,23 @@ use uuid::Uuid;
 
 static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
+tokio::task_local! {
+    pub(crate) static CURRENT_REQUEST_ID: String;
+}
+
+/// Returns the request ID associated with the currently executing task, if any.
+pub(crate) fn current_request_id() -> Option<String> {
+    CURRENT_REQUEST_ID.try_with(|id| id.clone()).ok()
+}
+
 /// Middleware that propagates or generates an `X-Request-Id` header.
 ///
 /// If the incoming request contains an `X-Request-Id` header with a valid
 /// value, it is echoed back in the response. Otherwise a new UUID v4 is
 /// generated and attached to the response.
+///
+/// The resolved request ID is stored in a task-local so that error handlers
+/// can embed it in problem responses without requiring access to the request.
 pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Response {
     let request_id = request
         .headers()
@@ -22,11 +34,18 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
         .or_else(|| HeaderValue::from_str(&Uuid::new_v4().to_string()).ok())
         .unwrap_or_else(|| HeaderValue::from_static("unknown"));
 
+    let id_string = request_id
+        .to_str()
+        .unwrap_or("unknown")
+        .to_string();
+
     if let Ok(id_str) = request_id.to_str() {
         Span::current().record("request_id", id_str);
     }
 
-    let mut response = next.run(request).await;
+    let mut response = CURRENT_REQUEST_ID
+        .scope(id_string, next.run(request))
+        .await;
     response
         .headers_mut()
         .insert(X_REQUEST_ID.clone(), request_id);
