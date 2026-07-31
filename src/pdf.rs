@@ -28,6 +28,8 @@ pub struct CompileRequest<'a> {
     pub template_name: &'a str,
     /// The Typst standard library to use for compilation.
     pub library: Arc<LazyHash<Library>>,
+    /// Number of cache entries to evict from the comemo memoization cache after compilation.
+    pub comemo_eviction_threshold: usize,
 }
 
 impl std::fmt::Debug for CompileRequest<'_> {
@@ -66,6 +68,7 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
         req.template_source,
         vfiles,
         req.library,
+        req.comemo_eviction_threshold,
     )
 }
 
@@ -80,6 +83,7 @@ pub fn image_to_pdf<B>(
     root: &Path,
     resources_dir: &Path,
     library: Arc<LazyHash<Library>>,
+    comemo_eviction_threshold: usize,
 ) -> Result<Vec<u8>>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
@@ -108,6 +112,7 @@ where
         &source,
         vfiles,
         library,
+        comemo_eviction_threshold,
     )
 }
 
@@ -355,6 +360,7 @@ Hello, world!
             app_name: "test",
             template_name: "simple",
             library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -376,6 +382,7 @@ Hello, world!
             app_name: "test",
             template_name: "app",
             library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -394,6 +401,7 @@ Hello, world!
             app_name: "test",
             template_name: "invalid",
             library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         });
         assert!(
             result.is_err(),
@@ -412,6 +420,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -431,6 +440,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -445,6 +455,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.as_ref().err().is_some(),
@@ -786,6 +797,7 @@ Hello, world!
             app_name: "test",
             template_name: "resource",
             library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -803,6 +815,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -850,6 +863,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_err(),
@@ -878,6 +892,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(result.is_err(), "Truncated JPEG with valid SOI should fail");
         let err_msg = result
@@ -907,6 +922,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_err(),
@@ -939,6 +955,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_err(),

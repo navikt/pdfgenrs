@@ -3,11 +3,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-/// Maximum number of evictions to perform on the comemo memoization cache after
-/// each compilation. This bounds memory growth while preserving frequently-used
-/// cache entries to maintain a good hit rate.
-const COMEMO_EVICTION_THRESHOLD: usize = 15;
-
 use anyhow::{Context, Result};
 use metrics::histogram;
 use time::OffsetDateTime;
@@ -286,6 +281,7 @@ pub fn compile_to_pdf(
     main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
+    comemo_eviction_threshold: usize,
 ) -> Result<Vec<u8>> {
     let world = PdfgenWorld::new(
         fonts,
@@ -302,7 +298,7 @@ pub fn compile_to_pdf(
     let duration = start.elapsed().as_secs_f64();
     histogram!("typst_compilation_duration_seconds", &[("output", "pdf")]).record(duration);
 
-    comemo::evict(COMEMO_EVICTION_THRESHOLD);
+    comemo::evict(comemo_eviction_threshold);
 
     let document = result
         .output
@@ -341,6 +337,7 @@ pub fn compile_to_html(
     main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
+    comemo_eviction_threshold: usize,
 ) -> Result<String> {
     let world = PdfgenWorld::new(
         fonts,
@@ -357,7 +354,7 @@ pub fn compile_to_html(
     let duration = start.elapsed().as_secs_f64();
     histogram!("typst_compilation_duration_seconds", &[("output", "html")]).record(duration);
 
-    comemo::evict(COMEMO_EVICTION_THRESHOLD);
+    comemo::evict(comemo_eviction_threshold);
 
     let document = result
         .output
@@ -461,6 +458,7 @@ Hello, world!
             source,
             HashMap::new(),
             Arc::clone(&library),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&pdf1), "First result is not a valid PDF");
 
@@ -472,6 +470,7 @@ Hello, world!
             source,
             HashMap::new(),
             Arc::clone(&library),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&pdf2), "Second result is not a valid PDF");
 
@@ -494,6 +493,7 @@ Hello, world!
             source,
             HashMap::new(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(
             is_pdf(&pdf),
@@ -628,6 +628,7 @@ Hello, world!
                 &source,
                 HashMap::new(),
                 Arc::clone(&library),
+                crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             )?;
         }
 
@@ -647,6 +648,7 @@ Hello, world!
                 &source,
                 HashMap::new(),
                 Arc::clone(&library),
+                crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             );
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }
@@ -735,6 +737,7 @@ Hello, world!
             &source,
             HashMap::new(),
             pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_ok(),
@@ -772,6 +775,7 @@ Hello, world!
                         &source,
                         HashMap::new(),
                         library,
+                        crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
                     )
                 })
                 .await

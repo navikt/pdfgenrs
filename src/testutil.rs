@@ -36,6 +36,7 @@ pub fn make_state_with_body_limit(
         shutdown_drain_seconds: 5,
         max_concurrent_compilations: 0,
         semaphore_acquire_timeout_seconds: 10,
+        comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
     };
     Ok(AppState {
         templates: Arc::new(templates),
