@@ -177,11 +177,11 @@ Hello, concurrent world!
             &threads,
             |b, &threads| {
                 b.iter_custom(|iters| {
-                    let total_tasks = iters as usize * threads;
+                    let iters = iters as usize;
                     let start = Instant::now();
 
                     std::thread::scope(|s| {
-                        let handles: Vec<_> = (0..total_tasks)
+                        let handles: Vec<_> = (0..threads)
                             .map(|_| {
                                 let fonts = Arc::clone(&fonts);
                                 let library = Arc::clone(&library);
@@ -189,16 +189,18 @@ Hello, concurrent world!
                                 let root = root_dir();
                                 let resources = resources_dir();
                                 s.spawn(move || {
-                                    let _ = typst_to_pdf(CompileRequest {
-                                        template_source: source,
-                                        json_data: &data,
-                                        fonts,
-                                        root: &root,
-                                        resources_dir: &resources,
-                                        app_name: "bench",
-                                        template_name: "concurrent",
-                                        library,
-                                    });
+                                    for _ in 0..iters {
+                                        let _ = typst_to_pdf(CompileRequest {
+                                            template_source: source,
+                                            json_data: &data,
+                                            fonts: Arc::clone(&fonts),
+                                            root: &root,
+                                            resources_dir: &resources,
+                                            app_name: "bench",
+                                            template_name: "concurrent",
+                                            library: Arc::clone(&library),
+                                        });
+                                    }
                                 })
                             })
                             .collect();
