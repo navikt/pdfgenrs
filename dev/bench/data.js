@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785506495762,
+  "lastUpdate": 1785506498662,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "067bdb073779a84040b5d80fdd92cebc2e19af70",
-          "message": "Merge pull request #376 from navikt/copilot/allow-clippy-too-many-arguments\n\nrefactor: introduce CompileRequest struct to eliminate too_many_arguments suppression",
-          "timestamp": "2026-07-31T10:12:02+02:00",
-          "tree_id": "749e811973f426c583ae1422558c59d9ac85d3a7",
-          "url": "https://github.com/navikt/pdfgenrs/commit/067bdb073779a84040b5d80fdd92cebc2e19af70"
-        },
-        "date": 1785485611353,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 230599,
-            "range": "± 15131",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 427437,
-            "range": "± 4336",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 154325,
-            "range": "± 4207",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -659,6 +617,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 329635,
             "range": "± 4472",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e99f3b768a8306ad4d94e54727e40e7f1f00147c",
+          "message": "Merge pull request #389 from navikt/dependabot/cargo/tokio-1.53.1\n\nchore(deps): bump tokio from 1.53.0 to 1.53.1",
+          "timestamp": "2026-07-31T15:57:53+02:00",
+          "tree_id": "143d1e854f2a201e4d94b3b5b6bfaf02485540da",
+          "url": "https://github.com/navikt/pdfgenrs/commit/e99f3b768a8306ad4d94e54727e40e7f1f00147c"
+        },
+        "date": 1785506491833,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 126819,
+            "range": "± 4532",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 282241,
+            "range": "± 17153",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 3581955,
+            "range": "± 173186",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 66551,
+            "range": "± 7110",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 92972,
+            "range": "± 3914",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 144706,
+            "range": "± 10517",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 235428,
+            "range": "± 14538",
             "unit": "ns/iter"
           }
         ]
