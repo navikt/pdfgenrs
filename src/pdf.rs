@@ -8,6 +8,41 @@ use crate::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
+/// Bundles the arguments required to compile a Typst template with JSON data.
+///
+/// Used as the single parameter for [`typst_to_pdf`] and [`crate::html::typst_to_html`].
+pub struct CompileRequest<'a> {
+    /// The Typst source of the template.
+    pub template_source: &'a str,
+    /// The JSON data to inject into the template.
+    pub json_data: &'a serde_json::Value,
+    /// The loaded font set.
+    pub fonts: Arc<Fonts>,
+    /// The root directory of the Typst world.
+    pub root: &'a Path,
+    /// The directory containing shared resources.
+    pub resources_dir: &'a Path,
+    /// The application name, used to build the virtual JSON data path.
+    pub app_name: &'a str,
+    /// The template name, used to build the virtual JSON data path.
+    pub template_name: &'a str,
+    /// The Typst standard library to use for compilation.
+    pub library: Arc<LazyHash<Library>>,
+}
+
+impl std::fmt::Debug for CompileRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CompileRequest")
+            .field("template_source", &self.template_source)
+            .field("json_data", &self.json_data)
+            .field("root", &self.root)
+            .field("resources_dir", &self.resources_dir)
+            .field("app_name", &self.app_name)
+            .field("template_name", &self.template_name)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Compiles a Typst template with JSON data and returns the resulting PDF bytes.
 ///
 /// The JSON data is serialised and injected as a virtual file at
@@ -18,29 +53,19 @@ use typst::utils::LazyHash;
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
 #[must_use = "this returns a Result that should be handled"]
-#[allow(clippy::too_many_arguments)]
-pub fn typst_to_pdf(
-    template_source: &str,
-    json_data: &serde_json::Value,
-    fonts: Arc<Fonts>,
-    root: &Path,
-    resources_dir: &Path,
-    app_name: &str,
-    template_name: &str,
-    library: Arc<LazyHash<Library>>,
-) -> Result<Vec<u8>> {
-    let json_bytes = serde_json::to_vec(json_data).context("Failed to serialize JSON data")?;
-    let data_path = format!("/data/{app_name}/{template_name}.json");
+pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
+    let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
+    let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
     typst_world::compile_to_pdf(
-        fonts,
-        root,
-        resources_dir,
+        req.fonts,
+        req.root,
+        req.resources_dir,
         "/main.typ",
-        template_source,
+        req.template_source,
         vfiles,
-        library,
+        req.library,
     )
 }
 
@@ -321,16 +346,16 @@ mod tests {
 Hello, world!
 "#;
         let data = serde_json::json!({});
-        let bytes = typst_to_pdf(
-            source,
-            &data,
-            test_fonts()?,
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "simple",
-            pdf_library(),
-        )?;
+        let bytes = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "simple",
+            library: pdf_library(),
+        })?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
@@ -342,16 +367,16 @@ Hello, world!
 #data.at("name", default: "")
 "#;
         let data = serde_json::json!({"name": "Test User"});
-        let bytes = typst_to_pdf(
-            source,
-            &data,
-            test_fonts()?,
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "app",
-            pdf_library(),
-        )?;
+        let bytes = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "app",
+            library: pdf_library(),
+        })?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
@@ -360,16 +385,16 @@ Hello, world!
     fn typst_to_pdf_invalid_source_returns_error() -> Result<()> {
         let source = "#this-is-not-valid-typst-syntax(((";
         let data = serde_json::json!({});
-        let result = typst_to_pdf(
-            source,
-            &data,
-            test_fonts()?,
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "invalid",
-            pdf_library(),
-        );
+        let result = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "invalid",
+            library: pdf_library(),
+        });
         assert!(
             result.is_err(),
             "Expected an error for invalid Typst source"
@@ -752,16 +777,16 @@ Hello, world!
 #image("/resources/NAVLogoRed.png", width: 50%, alt: "NAV logo")
 "#;
         let data = serde_json::json!({});
-        let bytes = typst_to_pdf(
-            source,
-            &data,
-            test_fonts()?,
-            &root_dir(),
-            &resources_dir(),
-            "test",
-            "resource",
-            pdf_library(),
-        )?;
+        let bytes = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "resource",
+            library: pdf_library(),
+        })?;
         assert!(is_pdf(&bytes));
         Ok(())
     }
