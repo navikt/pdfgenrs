@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785428715325,
+  "lastUpdate": 1785481979842,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "4a724205dd7b8128afe21f5ee3fbbfe0a6df28d4",
-          "message": "Merge pull request #360 from navikt/copilot/remove-html-to-pdf\n\nClean stale Criterion reports before benchmark run",
-          "timestamp": "2026-07-24T17:15:59+02:00",
-          "tree_id": "2069ac64dd630ca3232063d1e1be9d4bc7f6d853",
-          "url": "https://github.com/navikt/pdfgenrs/commit/4a724205dd7b8128afe21f5ee3fbbfe0a6df28d4"
-        },
-        "date": 1784906268398,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 216902,
-            "range": "± 20205",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 400699,
-            "range": "± 12631",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 140369,
-            "range": "± 6010",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 150841,
             "range": "± 4362",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c53ff0ba36ed99ff2b727f3e0f65dffddfc1eb9",
+          "message": "Merge pull request #373 from navikt/copilot/add-must-use-annotation-html-typst-to-html\n\nAdd #[must_use] to html::typst_to_html",
+          "timestamp": "2026-07-31T09:11:33+02:00",
+          "tree_id": "609508fce762742dfc6d8d2a18e424ad37a52ddc",
+          "url": "https://github.com/navikt/pdfgenrs/commit/1c53ff0ba36ed99ff2b727f3e0f65dffddfc1eb9"
+        },
+        "date": 1785481976232,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 231741,
+            "range": "± 1508",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 432855,
+            "range": "± 27153",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 156069,
+            "range": "± 3620",
             "unit": "ns/iter"
           }
         ]
