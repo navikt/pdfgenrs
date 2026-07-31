@@ -1,50 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785481979842,
+  "lastUpdate": 1785483553169,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "b1ebec05c0665fbec4f80b7552836c2a34d9ffea",
-          "message": "Remove cleaning of old Criterion reports\n\nRemoved step to clean old Criterion reports before running benchmarks.",
-          "timestamp": "2026-07-24T17:19:57+02:00",
-          "tree_id": "388dfb341f5c365511865eafbe154f0347e3ed6d",
-          "url": "https://github.com/navikt/pdfgenrs/commit/b1ebec05c0665fbec4f80b7552836c2a34d9ffea"
-        },
-        "date": 1784906505644,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 213386,
-            "range": "± 14817",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 396553,
-            "range": "± 2266",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 143332,
-            "range": "± 2131",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -419,6 +377,48 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_png",
             "value": 156069,
             "range": "± 3620",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f9bc02a0961c32e253998bb3f5b3aff9a763379",
+          "message": "Merge pull request #374 from navikt/copilot/fix-svg-attribute-matching\n\nfix: word boundary check in extract_svg_attr to prevent partial attribute name matches",
+          "timestamp": "2026-07-31T09:37:45+02:00",
+          "tree_id": "78d4f1067790c6d39acf4c10365edd5c4359daa8",
+          "url": "https://github.com/navikt/pdfgenrs/commit/0f9bc02a0961c32e253998bb3f5b3aff9a763379"
+        },
+        "date": 1785483548199,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 165789,
+            "range": "± 6611",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 362570,
+            "range": "± 16857",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 110305,
+            "range": "± 7319",
             "unit": "ns/iter"
           }
         ]
