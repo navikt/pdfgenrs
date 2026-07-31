@@ -6,6 +6,8 @@ use opentelemetry::trace::TraceContextExt;
 use tracing::error;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+use crate::request_id::current_request_id;
+
 /// Centralized error type for API route handlers.
 ///
 /// Each variant maps to a specific HTTP status code and carries enough context
@@ -88,6 +90,10 @@ fn problem_response(status: StatusCode, problem_type: &str, detail: &str) -> Res
 
     if let Some(trace_id) = current_trace_id() {
         body["trace_id"] = serde_json::Value::String(trace_id);
+    }
+
+    if let Some(request_id) = current_request_id() {
+        body["request_id"] = serde_json::Value::String(request_id);
     }
 
     (
@@ -327,6 +333,32 @@ mod tests {
         assert_eq!(json["title"], "Service Unavailable");
         assert_eq!(json["status"], 503);
         assert_eq!(json["detail"], "Service is overloaded, try again later");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn no_request_id_field_without_middleware() -> anyhow::Result<()> {
+        let (_, body) = status_and_body(ApiError::NotFound).await?;
+        assert!(
+            body.get("request_id").is_none(),
+            "request_id should be absent when no task-local is set"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn request_id_included_when_task_local_set() -> anyhow::Result<()> {
+        use crate::request_id::CURRENT_REQUEST_ID;
+
+        let (_, body) = CURRENT_REQUEST_ID
+            .scope("test-req-abc".to_string(), async {
+                status_and_body(ApiError::NotFound).await
+            })
+            .await?;
+        assert_eq!(
+            body["request_id"],
+            serde_json::Value::String("test-req-abc".to_string())
+        );
         Ok(())
     }
 }
