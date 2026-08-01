@@ -422,6 +422,64 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn post_pdf_from_image_returns_pdf_for_webp() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/webp")
+            .bytes(Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("test.webp"),
+            )?))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
+            "application/pdf"
+        );
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_pdf_for_svg() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/svg+xml")
+            .bytes(Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("pdfgenrs-logo.svg"),
+            )?))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
+            "application/pdf"
+        );
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn post_pdf_from_image_returns_415_for_unsupported_media_type() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
