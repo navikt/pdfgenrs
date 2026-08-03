@@ -258,6 +258,7 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 - https://github.com/navikt/orkivar-pdfgen
 - https://github.com/navikt/mulighetsrommet/tree/main/mulighetsrommet-pdfgenrs
 - https://github.com/navikt/pia-pdfgen
+- https://github.com/navikt/oksty-pdfgenrs
 
 ## Environment variables
 
