@@ -30,7 +30,8 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
     let request_id = request
         .headers()
         .get(&X_REQUEST_ID)
-        .and_then(|request_id| request_id.to_str().ok().map(|_| request_id.clone()))
+        .filter(|v| v.to_str().is_ok())
+        .cloned()
         .or_else(|| HeaderValue::from_str(&Uuid::new_v4().to_string()).ok())
         .unwrap_or_else(|| HeaderValue::from_static("unknown"));
 

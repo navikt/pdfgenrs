@@ -70,8 +70,8 @@ mod imp {
         let status = response.status();
         if status.is_client_error() || status.is_server_error() {
             warn!(
-                http.request_path = uri.path().to_string(),
-                http.request_method = method.to_string(),
+                http.request_path = %uri.path(),
+                http.request_method = %method,
                 http.status_code = status.as_u16(),
                 latency_ms = latency.as_millis() as u64,
                 "HTTP error response"
