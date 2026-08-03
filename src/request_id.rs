@@ -35,10 +35,7 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
         .unwrap_or_else(|| HeaderValue::from_static("unknown"));
 
     let id_string = request_id.to_str().unwrap_or("unknown").to_string();
-
-    if let Ok(id_str) = request_id.to_str() {
-        Span::current().record("request_id", id_str);
-    }
+    Span::current().record("request_id", &id_string);
 
     let mut response = CURRENT_REQUEST_ID.scope(id_string, next.run(request)).await;
     response

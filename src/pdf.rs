@@ -231,18 +231,8 @@ fn svg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
         return Some((w, h));
     }
 
-    // Fall back to viewBox
+    // Fall back to viewBox (handles both space-separated and comma-separated values)
     if let Some(vb) = extract_svg_attr(svg_tag, "viewBox") {
-        let parts: Vec<&str> = vb.split_whitespace().collect();
-        if parts.len() == 4 {
-            let w: f64 = parts[2].parse().ok()?;
-            let h: f64 = parts[3].parse().ok()?;
-            if w > 0.0 && h > 0.0 {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                return Some((w as u32, h as u32));
-            }
-        }
-        // Also handle comma-separated viewBox values
         let parts: Vec<&str> = vb
             .split(|c: char| c == ',' || c.is_whitespace())
             .filter(|s| !s.is_empty())
