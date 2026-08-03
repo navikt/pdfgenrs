@@ -365,14 +365,14 @@ fn format_typst_errors(
     context: &str,
     errors: &[typst_library::diag::SourceDiagnostic],
 ) -> anyhow::Error {
-    let msgs: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+    let msgs: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
     anyhow::anyhow!("Typst {context} failed: {}", msgs.join("; "))
 }
 
 /// Logs Typst compilation warnings (if any) at the `warn` level.
 fn log_typst_warnings(warnings: &[typst_library::diag::SourceDiagnostic]) {
     if !warnings.is_empty() {
-        let warns: Vec<String> = warnings.iter().map(|w| w.message.to_string()).collect();
+        let warns: Vec<&str> = warnings.iter().map(|w| w.message.as_str()).collect();
         tracing::warn!(warnings = warns.join("; "), "Typst compilation warnings");
     }
 }
