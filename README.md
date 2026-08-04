@@ -70,6 +70,9 @@ Create the corresponding directories locally:
 mkdir -p fonts resources
 ```
 
+### Example implementaion
+see https://github.com/navikt/pdfgenrs-test
+
 ## Technologies and tools
 
 - [Rust](https://rust-lang.org/)
