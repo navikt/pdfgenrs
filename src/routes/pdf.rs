@@ -16,7 +16,7 @@ use crate::state::AppState;
 
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
-/// Looks up the template source and pre-loaded test JSON data for the given
+/// Looks up the template source and preloaded test JSON data for the given
 /// `app_name` / `template` combination and returns a PDF response.
 /// Returns `404` if the template or its test data cannot be found.
 pub(crate) async fn get_pdf(

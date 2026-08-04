@@ -93,14 +93,11 @@ mod tests {
     }
 
     async fn echo_handler(body: axum::body::Bytes) -> Response {
-        match Response::builder()
+        Response::builder()
             .status(StatusCode::OK)
             .header(axum::http::header::CONTENT_LENGTH, body.len().to_string())
             .body(Body::from(body))
-        {
-            Ok(response) => response,
-            Err(_) => Response::new(Body::empty()),
-        }
+            .unwrap_or_else(|_| Response::new(Body::empty()))
     }
 
     fn test_app() -> Router {
