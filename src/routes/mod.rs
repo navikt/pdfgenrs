@@ -124,10 +124,7 @@ where
 
     let start = Instant::now();
     let span = Span::current();
-    let mut handle = tokio::task::spawn_blocking(move || {
-        let _guard = span.enter();
-        task()
-    });
+    let mut handle = tokio::task::spawn_blocking(move || span.in_scope(task));
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
