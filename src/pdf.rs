@@ -183,8 +183,8 @@ fn webp_dimensions(data: &[u8]) -> Option<(u32, u32)> {
         return Some((width, height));
     }
     // VP8L lossless format
-    if &data[12..16] == b"VP8L" && data.len() >= 25 {
-        // Signature byte at offset 21, then 4 bytes of width/height
+    if &data[12..16] == b"VP8L" && data.len() >= 25 && data[20] == 0x2F {
+        // Signature byte at offset 20 verified; width/height packed in next 4 bytes
         let b0 = u32::from(data[21]);
         let b1 = u32::from(data[22]);
         let b2 = u32::from(data[23]);
