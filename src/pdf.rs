@@ -153,7 +153,7 @@ fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
         if marker == 0xD9 {
             return None;
         }
-        if matches!(marker, 0xC0..=0xC3) {
+        if matches!(marker, 0xC0..=0xC3 | 0xC9..=0xCB) {
             if data.len() < i + 9 {
                 return None;
             }
@@ -604,6 +604,36 @@ Hello, world!
         data.extend_from_slice(&768u16.to_be_bytes());
         data.extend_from_slice(&1024u16.to_be_bytes());
         assert_eq!(image_dimensions(&data), Some((1024, 768)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof9_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xC9];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&480u16.to_be_bytes());
+        data.extend_from_slice(&640u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((640, 480)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof10_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xCA];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&100u16.to_be_bytes());
+        data.extend_from_slice(&200u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((200, 100)));
+    }
+
+    #[test]
+    fn jpeg_dimensions_parses_sof11_marker() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xCB];
+        data.extend_from_slice(&[0x00, 0x11]);
+        data.push(0x08);
+        data.extend_from_slice(&300u16.to_be_bytes());
+        data.extend_from_slice(&400u16.to_be_bytes());
+        assert_eq!(image_dimensions(&data), Some((400, 300)));
     }
 
     #[test]
