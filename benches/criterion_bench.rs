@@ -3,11 +3,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use pdfgenrs::html::typst_to_html;
 use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
-use typst::Features;
 use typst::Library;
 use typst::utils::LazyHash;
+use typst::{Feature, Features};
 
 fn root_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -23,6 +24,12 @@ fn resources_dir() -> PathBuf {
 
 fn pdf_library() -> Arc<LazyHash<Library>> {
     Arc::new(typst_world::build_library(Features::default()))
+}
+
+fn html_library() -> Arc<LazyHash<Library>> {
+    Arc::new(typst_world::build_library(
+        [Feature::Html].into_iter().collect(),
+    ))
 }
 
 fn bench_typst_to_pdf(c: &mut Criterion) {
@@ -266,6 +273,67 @@ fn bench_image_to_pdf_svg(c: &mut Criterion) {
     });
 }
 
+fn bench_typst_to_html(c: &mut Criterion) {
+    let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
+        return;
+    };
+    let fonts = Arc::new(fonts);
+    let library = html_library();
+    let source = r"#set document(date: auto)
+Hello, world!
+";
+    let data = serde_json::json!({});
+
+    c.bench_function("typst_to_html_simple", |b| {
+        b.iter(|| {
+            let _ = typst_to_html(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: Arc::clone(&fonts),
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "bench",
+                template_name: "simple",
+                library: Arc::clone(&library),
+                comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            });
+        });
+    });
+}
+
+fn bench_typst_to_html_with_data(c: &mut Criterion) {
+    let Ok(fonts) = typst_world::load_fonts(&fonts_dir()) else {
+        return;
+    };
+    let fonts = Arc::new(fonts);
+    let library = html_library();
+    let source = r#"#set document(date: auto)
+#let data = json("/data/bench/template.json")
+= #data.at("title", default: "Untitled")
+#data.at("body", default: "")
+"#;
+    let data = serde_json::json!({
+        "title": "Benchmark Document",
+        "body": "This is a benchmark document with JSON data injection for performance testing."
+    });
+
+    c.bench_function("typst_to_html_with_data", |b| {
+        b.iter(|| {
+            let _ = typst_to_html(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: Arc::clone(&fonts),
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "bench",
+                template_name: "template",
+                library: Arc::clone(&library),
+                comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            });
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bench_typst_to_pdf,
@@ -275,5 +343,7 @@ criterion_group!(
     bench_image_to_pdf,
     bench_image_to_pdf_jpeg,
     bench_image_to_pdf_svg,
+    bench_typst_to_html,
+    bench_typst_to_html_with_data,
 );
 criterion_main!(benches);
