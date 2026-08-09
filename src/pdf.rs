@@ -149,6 +149,7 @@ fn detect_image_format(data: &[u8]) -> Option<&'static str> {
 /// Extracts (width, height) from PNG, JPEG, WebP, or SVG image bytes by parsing headers.
 ///
 /// Returns `None` if the format is unrecognised or the header is too short.
+#[cfg(test)]
 fn image_dimensions(data: &[u8]) -> Option<(u32, u32)> {
     let fmt = detect_image_format(data)?;
     image_dimensions_by_format(data, fmt)
