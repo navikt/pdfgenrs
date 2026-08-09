@@ -89,10 +89,7 @@ where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
     let data = image_bytes.as_ref();
-    let declared_ext = image_path
-        .rsplit('.')
-        .next()
-        .unwrap_or("");
+    let declared_ext = image_path.rsplit('.').next().unwrap_or("");
     let detected_ext = detect_image_format(data).ok_or_else(|| {
         anyhow::anyhow!(
             "Unsupported or corrupted image '{image_path}': unable to determine dimensions"
