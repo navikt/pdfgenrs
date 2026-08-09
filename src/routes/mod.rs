@@ -5,9 +5,10 @@ use std::time::{Duration, Instant};
 use metrics::histogram;
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
-use tracing::{Span, error};
+use tracing::{error, info_span};
 
 use self::error::ApiError;
+use crate::request_id::current_request_id;
 use crate::state::AppState;
 use crate::typst_world::Fonts;
 use typst::Library;
@@ -123,7 +124,8 @@ where
     let permit = acquire_compile_permit(state).await?;
 
     let start = Instant::now();
-    let span = Span::current();
+    let request_id = current_request_id().unwrap_or_default();
+    let span = info_span!("typst_compilation", request_id = %request_id);
     let mut handle = tokio::task::spawn_blocking(move || span.in_scope(task));
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
