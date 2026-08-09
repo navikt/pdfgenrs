@@ -140,7 +140,7 @@ fn detect_image_format(data: &[u8]) -> Option<&'static str> {
         Some("png")
     } else if data.starts_with(&[0xFF, 0xD8]) {
         Some("jpg")
-    } else if data.starts_with(b"RIFF") && data.len() >= 12 && &data[8..12] == b"WEBP" {
+    } else if data.starts_with(b"RIFF") && data.len() >= 30 && &data[8..12] == b"WEBP" {
         Some("webp")
     } else if is_svg(data) {
         Some("svg")
