@@ -5,9 +5,10 @@ use std::time::{Duration, Instant};
 use metrics::histogram;
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
-use tracing::{Span, error};
+use tracing::{error, info_span, warn};
 
 use self::error::ApiError;
+use crate::request_id::current_request_id;
 use crate::state::AppState;
 use crate::typst_world::Fonts;
 use typst::Library;
@@ -84,18 +85,29 @@ pub(crate) fn lookup_template_with_data(
 /// Acquires a compilation semaphore permit if a limit is configured.
 /// When no semaphore is set (unlimited mode), returns `Ok(None)` immediately.
 /// Returns `Err(ApiError::ServiceOverloaded)` if the permit cannot be acquired
-/// within the configured timeout.
+/// within the configured timeout, or `Err(ApiError::GenerationFailed)` if the
+/// semaphore was unexpectedly closed.
 pub(crate) async fn acquire_compile_permit(
     state: &AppState,
+    app_name: &str,
+    template_name: Option<&str>,
 ) -> Result<Option<OwnedSemaphorePermit>, ApiError> {
     if let Some(ref semaphore) = state.compile_semaphore {
         let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
         match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
             Ok(Ok(permit)) => Ok(Some(permit)),
-            // SAFETY: The semaphore lives inside an Arc in AppState for the entire application
-            // lifetime and is never explicitly closed, so acquire_owned() cannot fail with a
-            // closed error.
-            Ok(Err(_)) => unreachable!("semaphore is never closed"),
+            // The semaphore lives inside an Arc in AppState for the entire application
+            // lifetime and is never explicitly closed. Treat a closed semaphore as an
+            // internal error rather than panicking.
+            Ok(Err(source)) => {
+                error!("compile semaphore unexpectedly closed: {source}");
+                Err(ApiError::GenerationFailed {
+                    app_name: app_name.to_string(),
+                    template_name: template_name.map(str::to_string),
+                    source: anyhow::Error::new(source),
+                    dev_mode: state.config.dev_mode,
+                })
+            }
             Err(_elapsed) => Err(ApiError::ServiceOverloaded {
                 retry_after_seconds: state.config.semaphore_acquire_timeout_seconds,
             }),
@@ -120,10 +132,11 @@ where
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state).await?;
+    let permit = acquire_compile_permit(state, &app_name, template_name.as_deref()).await?;
 
     let start = Instant::now();
-    let span = Span::current();
+    let request_id = current_request_id().unwrap_or_default();
+    let span = info_span!("typst_compilation", request_id = %request_id);
     let mut handle = tokio::task::spawn_blocking(move || span.in_scope(task));
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
@@ -156,6 +169,12 @@ where
         Err(_elapsed) => {
             handle.abort();
             drop(permit);
+            warn!(
+                app_name = %app_name,
+                template_name = ?template_name,
+                timeout_seconds = state.config.compile_timeout_seconds,
+                "compilation timed out"
+            );
             Err(ApiError::RequestTimeout {
                 app_name,
                 template_name,
@@ -175,7 +194,7 @@ mod tests {
 
     use metrics_exporter_prometheus::PrometheusBuilder;
 
-    use super::compile_blocking;
+    use super::{acquire_compile_permit, compile_blocking};
     use crate::testutil::make_state;
 
     #[tokio::test]
@@ -467,6 +486,27 @@ mod tests {
             Err(e) => anyhow::bail!("second task failed: {e:?}"),
         };
         assert_eq!(value, 42);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn acquire_compile_permit_returns_500_when_semaphore_closed() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let semaphore = Arc::new(Semaphore::new(1));
+        semaphore.close();
+        state.compile_semaphore = Some(semaphore);
+
+        let result = acquire_compile_permit(&state, "myapp", Some("mytemplate")).await;
+
+        let err = match result {
+            Ok(_) => anyhow::bail!("expected error when semaphore is closed"),
+            Err(err) => err,
+        };
+        let response = axum::response::IntoResponse::into_response(err);
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
         Ok(())
     }
 

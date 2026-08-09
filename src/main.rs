@@ -593,6 +593,26 @@ Dev mode: #data.at("mode", default: "unknown")
         Ok(())
     }
 
+    #[tokio::test]
+    async fn build_router_zero_request_body_limit_rejects_any_body() -> anyhow::Result<()> {
+        use pdfgenrs::testutil::make_state_with_body_limit;
+
+        // REQUEST_BODY_LIMIT_BYTES=0 is parseable but semantically degenerate: it should
+        // cause every request carrying a body to be rejected as too large, not panic or
+        // silently accept the request.
+        let state = make_state_with_body_limit(HashMap::new(), HashMap::new(), false, 0)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from_static(b"{}"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
     // --- Nais endpoints accessible via full router ---
 
     #[tokio::test]

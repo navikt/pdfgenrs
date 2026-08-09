@@ -129,12 +129,10 @@ pub(crate) async fn post_pdf_from_image(
 }
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
-    let content_length = pdf_bytes.len().to_string();
     (
         [
             (header::CONTENT_TYPE, "application/pdf"),
             (header::CONTENT_DISPOSITION, "inline"),
-            (header::CONTENT_LENGTH, content_length.as_str()),
         ],
         Bytes::from(pdf_bytes),
     )
@@ -493,6 +491,34 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_error_for_mismatched_content_type() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        // Send PNG bytes but claim Content-Type: image/jpeg
+        let png_bytes = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("resources")
+                .join("NAVLogoRed.png"),
+        )?;
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/jpeg")
+            .bytes(Bytes::from(png_bytes))
+            .await;
+
+        assert_ne!(
+            response.status_code(),
+            StatusCode::OK,
+            "PNG bytes with Content-Type: image/jpeg should not produce a PDF"
+        );
         Ok(())
     }
 

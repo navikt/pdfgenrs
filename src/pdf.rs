@@ -88,7 +88,19 @@ pub fn image_to_pdf<B>(
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
-    let (w, h) = image_dimensions(image_bytes.as_ref()).with_context(|| {
+    let data = image_bytes.as_ref();
+    let declared_ext = image_path.rsplit('.').next().unwrap_or("");
+    let detected_ext = detect_image_format(data).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Unsupported or corrupted image '{image_path}': unable to determine dimensions"
+        )
+    })?;
+    if detected_ext != declared_ext {
+        return Err(anyhow::anyhow!(
+            "Image format mismatch for '{image_path}': declared '{declared_ext}' but bytes are '{detected_ext}'"
+        ));
+    }
+    let (w, h) = image_dimensions_by_format(data, detected_ext).with_context(|| {
         format!("Unsupported or corrupted image '{image_path}': unable to determine dimensions")
     })?;
     let is_landscape = w > h;
@@ -117,20 +129,43 @@ where
     result
 }
 
+/// Detects the image format from magic bytes and returns its canonical file extension.
+///
+/// Returns `None` if the format is unrecognised.
+fn detect_image_format(data: &[u8]) -> Option<&'static str> {
+    if data.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some("png")
+    } else if data.starts_with(&[0xFF, 0xD8]) {
+        Some("jpg")
+    } else if data.starts_with(b"RIFF") && data.len() >= 30 && &data[8..12] == b"WEBP" {
+        Some("webp")
+    } else if is_svg(data) {
+        Some("svg")
+    } else {
+        None
+    }
+}
+
 /// Extracts (width, height) from PNG, JPEG, WebP, or SVG image bytes by parsing headers.
 ///
 /// Returns `None` if the format is unrecognised or the header is too short.
+#[cfg(test)]
 fn image_dimensions(data: &[u8]) -> Option<(u32, u32)> {
-    if data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        png_dimensions(data)
-    } else if data.starts_with(&[0xFF, 0xD8]) {
-        jpeg_dimensions(data)
-    } else if data.starts_with(b"RIFF") && data.len() >= 30 && &data[8..12] == b"WEBP" {
-        webp_dimensions(data)
-    } else if is_svg(data) {
-        svg_dimensions(data)
-    } else {
-        None
+    let fmt = detect_image_format(data)?;
+    image_dimensions_by_format(data, fmt)
+}
+
+/// Extracts (width, height) for a known image format without re-detecting the format.
+///
+/// `fmt` must be one of `"png"`, `"jpg"`, `"webp"`, or `"svg"` as returned by
+/// [`detect_image_format`]. Returns `None` if the header is too short or malformed.
+fn image_dimensions_by_format(data: &[u8], fmt: &str) -> Option<(u32, u32)> {
+    match fmt {
+        "png" => png_dimensions(data),
+        "jpg" => jpeg_dimensions(data),
+        "webp" => webp_dimensions(data),
+        "svg" => svg_dimensions(data),
+        _ => None,
     }
 }
 
@@ -252,19 +287,27 @@ fn svg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
 /// Extracts the value of an attribute from an SVG/XML tag string.
 fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
     // Match attr_name followed by = and a quoted value
-    let search = format!("{attr_name}=");
+    let search_len = attr_name.len() + 1; // attr_name + '='
     let mut start = 0;
     let pos = loop {
-        let rel = tag[start..].find(&search)?;
+        let rel = tag[start..].find(attr_name)?;
         let abs = start + rel;
         // Verify word boundary: the character before the match must be whitespace or '<'
         let prev = tag[..abs].chars().next_back();
         if prev.is_none_or(|c| c.is_ascii_whitespace() || c == '<') {
-            break abs;
+            // Verify the character immediately after attr_name is '='
+            if tag.as_bytes().get(abs + attr_name.len()) == Some(&b'=') {
+                break abs;
+            }
+            // Boundary passes but '=' fails: skip past the full attr_name to avoid
+            // redundant re-scanning of the same occurrence.
+            start = abs + attr_name.len() + 1;
+        } else {
+            // Boundary fails: advance by 1 to search for the next candidate.
+            start = abs + 1;
         }
-        start = abs + 1;
     };
-    let after_eq = &tag[pos + search.len()..];
+    let after_eq = &tag[pos + search_len..];
     let quote = after_eq.as_bytes().first()?;
     if *quote != b'"' && *quote != b'\'' {
         return None;
@@ -982,6 +1025,74 @@ Hello, world!
             result.is_err(),
             "PNG with valid header but corrupted body should fail during compilation"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_returns_error_when_png_bytes_sent_with_jpeg_path() -> Result<()> {
+        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let result = image_to_pdf(
+            image_bytes,
+            "/image.jpg",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        );
+        match result {
+            Ok(_) => anyhow::bail!("PNG bytes with JPEG path should have failed"),
+            Err(e) => {
+                let err_msg = e.to_string();
+                assert!(
+                    err_msg.contains("format mismatch"),
+                    "Error should mention format mismatch: {err_msg}"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_returns_error_when_jpeg_bytes_sent_with_png_path() -> Result<()> {
+        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.jpg"))?;
+        let result = image_to_pdf(
+            image_bytes,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        );
+        match result {
+            Ok(_) => anyhow::bail!("JPEG bytes with PNG path should have failed"),
+            Err(e) => {
+                let err_msg = e.to_string();
+                assert!(
+                    err_msg.contains("format mismatch"),
+                    "Error should mention format mismatch: {err_msg}"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn detect_image_format_returns_correct_format_for_each_type() -> Result<()> {
+        let png = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        assert_eq!(detect_image_format(&png), Some("png"));
+
+        let jpg = std::fs::read(root_dir().join("resources").join("NAVLogoRed.jpg"))?;
+        assert_eq!(detect_image_format(&jpg), Some("jpg"));
+
+        let webp = std::fs::read(root_dir().join("resources").join("test.webp"))?;
+        assert_eq!(detect_image_format(&webp), Some("webp"));
+
+        let svg = std::fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))?;
+        assert_eq!(detect_image_format(&svg), Some("svg"));
+
+        assert_eq!(detect_image_format(b"not an image"), None);
         Ok(())
     }
 }
