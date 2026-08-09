@@ -95,6 +95,18 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
     }
 }
 
+fn html_bench_json_data() -> serde_json::Value {
+    serde_json::json!({
+        "title": "HTML Benchmark Document",
+        "body": "This document is used to benchmark HTML generation performance.",
+        "items": [
+            { "name": "Item 1", "value": "Value one" },
+            { "name": "Item 2", "value": "Value two" },
+            { "name": "Item 3", "value": "Value three" }
+        ]
+    })
+}
+
 fn fail_if_total_too_long(
     results: &[BenchResult],
     mode: &str,
@@ -277,15 +289,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark HTML generation
     {
-        let json_data = Arc::new(serde_json::json!({
-            "title": "HTML Benchmark Document",
-            "body": "This document is used to benchmark HTML generation performance.",
-            "items": [
-                { "name": "Item 1", "value": "Value one" },
-                { "name": "Item 2", "value": "Value two" },
-                { "name": "Item 3", "value": "Value three" }
-            ]
-        }));
+        let json_data = Arc::new(html_bench_json_data());
         let start = std::time::Instant::now();
         let mut join_set = JoinSet::new();
         for _ in 0..passes {
@@ -396,15 +400,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark HTML generation
     {
-        let json_data = serde_json::json!({
-            "title": "HTML Benchmark Document",
-            "body": "This document is used to benchmark HTML generation performance.",
-            "items": [
-                { "name": "Item 1", "value": "Value one" },
-                { "name": "Item 2", "value": "Value two" },
-                { "name": "Item 3", "value": "Value three" }
-            ]
-        });
+        let json_data = html_bench_json_data();
         let start = std::time::Instant::now();
         for _ in 0..passes {
             let response = server
