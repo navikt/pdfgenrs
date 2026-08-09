@@ -298,8 +298,13 @@ fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
             if tag.as_bytes().get(abs + attr_name.len()) == Some(&b'=') {
                 break abs;
             }
+            // Boundary passes but '=' fails: skip past the full attr_name to avoid
+            // redundant re-scanning of the same occurrence.
+            start = abs + attr_name.len() + 1;
+        } else {
+            // Boundary fails: advance by 1 to search for the next candidate.
+            start = abs + 1;
         }
-        start = abs + 1;
     };
     let after_eq = &tag[pos + search_len..];
     let quote = after_eq.as_bytes().first()?;
