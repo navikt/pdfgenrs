@@ -14,7 +14,7 @@ pub mod template;
 /// Typst world, font loading, and compilation utilities.
 pub mod typst_world;
 
-pub(crate) mod html;
+pub mod html;
 pub(crate) mod http_tracing;
 /// PDF generation functions: Typst-to-PDF and image-to-PDF.
 pub mod pdf;

@@ -14,7 +14,7 @@ use crate::typst_world;
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
-pub(crate) fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
+pub fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
     let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);

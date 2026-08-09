@@ -1,0 +1,9 @@
+{
+  "title": "HTML Benchmark Document",
+  "body": "This document is used to benchmark HTML generation performance.",
+  "items": [
+    { "name": "Item 1", "value": "Value one" },
+    { "name": "Item 2", "value": "Value two" },
+    { "name": "Item 3", "value": "Value three" }
+  ]
+}

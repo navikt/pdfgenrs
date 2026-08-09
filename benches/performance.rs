@@ -13,6 +13,8 @@ const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD: u128 = 600;
+const BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD: u128 = 700;
+const BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD: u128 = 700;
 
 #[derive(Clone, Debug)]
 struct BenchResult {
@@ -98,12 +100,14 @@ fn fail_if_total_too_long(
     mode: &str,
     default_max_ms: u128,
     image_max_ms: u128,
+    html_max_ms: u128,
 ) -> anyhow::Result<()> {
     let slow_results: Vec<String> = results
         .iter()
         .filter(|result| {
             let max = match result.app.as_str() {
                 "image" => image_max_ms,
+                "html" => html_max_ms,
                 _ => default_max_ms,
             };
             result.duration_ms > max
@@ -111,6 +115,7 @@ fn fail_if_total_too_long(
         .map(|result| {
             let max = match result.app.as_str() {
                 "image" => image_max_ms,
+                "html" => html_max_ms,
                 _ => default_max_ms,
             };
             format!(
@@ -151,12 +156,14 @@ fn main() -> anyhow::Result<()> {
         "Multi-thread",
         BENCH_MAX_TOTAL_MS_MULTI_THREAD,
         BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD,
+        BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD,
     )?;
     fail_if_total_too_long(
         &st_results,
         "Single-thread",
         BENCH_MAX_TOTAL_MS_SINGLE_THREAD,
         BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD,
+        BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD,
     )?;
 
     Ok(())
@@ -268,6 +275,44 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         });
     }
 
+    // Benchmark HTML generation
+    {
+        let json_data = Arc::new(serde_json::json!({
+            "title": "HTML Benchmark Document",
+            "body": "This document is used to benchmark HTML generation performance.",
+            "items": [
+                { "name": "Item 1", "value": "Value one" },
+                { "name": "Item 2", "value": "Value two" },
+                { "name": "Item 3", "value": "Value three" }
+            ]
+        }));
+        let start = std::time::Instant::now();
+        let mut join_set = JoinSet::new();
+        for _ in 0..passes {
+            let client = Arc::clone(&client);
+            let url = format!("{base_url}/api/v1/genhtml/bench/html-bench");
+            let data = json_data.clone();
+            join_set.spawn(async move {
+                let response = client.post(&url).json(data.as_ref()).send().await?;
+                assert!(response.status().is_success());
+                let bytes = response.bytes().await?;
+                assert!(!bytes.is_empty());
+                anyhow::Ok(())
+            });
+        }
+        while let Some(task_result) = join_set.join_next().await {
+            task_result??;
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(duration_ms, "Multi-thread HTML generation benchmark completed");
+        results.push(BenchResult {
+            app: "html".to_string(),
+            template: "html-bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
     server_handle.abort();
     Ok(results)
 }
@@ -344,6 +389,39 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "image".to_string(),
             template: "bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
+    // Benchmark HTML generation
+    {
+        let json_data = serde_json::json!({
+            "title": "HTML Benchmark Document",
+            "body": "This document is used to benchmark HTML generation performance.",
+            "items": [
+                { "name": "Item 1", "value": "Value one" },
+                { "name": "Item 2", "value": "Value two" },
+                { "name": "Item 3", "value": "Value three" }
+            ]
+        });
+        let start = std::time::Instant::now();
+        for _ in 0..passes {
+            let response = server
+                .post("/api/v1/genhtml/bench/html-bench")
+                .json(&json_data)
+                .await;
+            response.assert_status_success();
+            assert!(!response.as_bytes().is_empty());
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(
+            duration_ms,
+            "Single-thread HTML generation benchmark completed"
+        );
+        results.push(BenchResult {
+            app: "html".to_string(),
+            template: "html-bench".to_string(),
             passes,
             duration_ms,
         });
