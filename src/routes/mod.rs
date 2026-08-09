@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use metrics::histogram;
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
-use tracing::error;
+use tracing::{Span, error};
 
 use self::error::ApiError;
 use crate::state::AppState;
@@ -123,7 +123,8 @@ where
     let permit = acquire_compile_permit(state).await?;
 
     let start = Instant::now();
-    let mut handle = tokio::task::spawn_blocking(task);
+    let span = Span::current();
+    let mut handle = tokio::task::spawn_blocking(move || span.in_scope(task));
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
