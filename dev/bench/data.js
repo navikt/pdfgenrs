@@ -1,74 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786259091101,
+  "lastUpdate": 1786261732196,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "e6e2526dac72389916a7b60d466832230221524b",
-          "message": "Merge pull request #393 from navikt/copilot/review-repository-enhancements-bbd8fdd9-70d4-4b78-b4fa-aedaaeb918fb\n\nrefactor: simplify svg viewBox parsing and remove redundant to_str() call",
-          "timestamp": "2026-08-03T19:08:03+02:00",
-          "tree_id": "f7bc9d26dbecd9a26b1d7a9bbccc028e599af40a",
-          "url": "https://github.com/navikt/pdfgenrs/commit/e6e2526dac72389916a7b60d466832230221524b"
-        },
-        "date": 1785777017551,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 213469,
-            "range": "± 8367",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 397476,
-            "range": "± 39785",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5203561,
-            "range": "± 75303",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 87169,
-            "range": "± 7440",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 148584,
-            "range": "± 3431",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 209013,
-            "range": "± 7223",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 353875,
-            "range": "± 4475",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -657,6 +591,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 357172,
             "range": "± 2052",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2dd1588e24d1efb8f36b7c43812eeadce60ffd4f",
+          "message": "Merge pull request #403 from navikt/MikAoJk-patch-1\n\nchore: Add --release to clippy to share build artifacts with tests",
+          "timestamp": "2026-08-09T09:46:39+02:00",
+          "tree_id": "8821c38c6271f1f43ea7486168bcd4fa92b56248",
+          "url": "https://github.com/navikt/pdfgenrs/commit/2dd1588e24d1efb8f36b7c43812eeadce60ffd4f"
+        },
+        "date": 1786261725942,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 217050,
+            "range": "± 10908",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 404683,
+            "range": "± 40288",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5251614,
+            "range": "± 155262",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 88073,
+            "range": "± 4954",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 150309,
+            "range": "± 3824",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 215806,
+            "range": "± 3647",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 361630,
+            "range": "± 7506",
             "unit": "ns/iter"
           }
         ]
