@@ -70,7 +70,7 @@ Create the corresponding directories locally:
 mkdir -p fonts resources
 ```
 
-### Example implementaion
+### Example implementation
 see https://github.com/navikt/pdfgenrs-test
 
 ## Technologies and tools
@@ -136,9 +136,6 @@ COPY templates /app/templates
 ENV REQUEST_BODY_LIMIT_BYTES=3145728
 
 ```
-
-
-
 
 ### 1) Generate PDF from Typst + JSON
 
