@@ -1022,12 +1022,16 @@ Hello, world!
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
-        assert!(result.is_err(), "PNG bytes with JPEG path should fail");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("format mismatch"),
-            "Error should mention format mismatch: {err_msg}"
-        );
+        match result {
+            Ok(_) => anyhow::bail!("PNG bytes with JPEG path should have failed"),
+            Err(e) => {
+                let err_msg = e.to_string();
+                assert!(
+                    err_msg.contains("format mismatch"),
+                    "Error should mention format mismatch: {err_msg}"
+                );
+            }
+        }
         Ok(())
     }
 
@@ -1043,12 +1047,16 @@ Hello, world!
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
-        assert!(result.is_err(), "JPEG bytes with PNG path should fail");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("format mismatch"),
-            "Error should mention format mismatch: {err_msg}"
-        );
+        match result {
+            Ok(_) => anyhow::bail!("JPEG bytes with PNG path should have failed"),
+            Err(e) => {
+                let err_msg = e.to_string();
+                assert!(
+                    err_msg.contains("format mismatch"),
+                    "Error should mention format mismatch: {err_msg}"
+                );
+            }
+        }
         Ok(())
     }
 
