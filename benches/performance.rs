@@ -308,7 +308,10 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
             task_result??;
         }
         let duration_ms = start.elapsed().as_millis();
-        info!(duration_ms, "Multi-thread HTML generation benchmark completed");
+        info!(
+            duration_ms,
+            "Multi-thread HTML generation benchmark completed"
+        );
         results.push(BenchResult {
             app: "html".to_string(),
             template: "html-bench".to_string(),

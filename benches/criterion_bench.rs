@@ -3,12 +3,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
 use pdfgenrs::html::typst_to_html;
+use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
 use pdfgenrs::typst_world;
-use typst::{Feature, Features};
 use typst::Library;
 use typst::utils::LazyHash;
+use typst::{Feature, Features};
 
 fn root_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
