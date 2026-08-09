@@ -100,7 +100,7 @@ where
             "Image format mismatch for '{image_path}': declared '{declared_ext}' but bytes are '{detected_ext}'"
         ));
     }
-    let (w, h) = image_dimensions(data).with_context(|| {
+    let (w, h) = image_dimensions_by_format(data, detected_ext).with_context(|| {
         format!("Unsupported or corrupted image '{image_path}': unable to determine dimensions")
     })?;
     let is_landscape = w > h;
@@ -150,11 +150,20 @@ fn detect_image_format(data: &[u8]) -> Option<&'static str> {
 ///
 /// Returns `None` if the format is unrecognised or the header is too short.
 fn image_dimensions(data: &[u8]) -> Option<(u32, u32)> {
-    match detect_image_format(data) {
-        Some("png") => png_dimensions(data),
-        Some("jpg") => jpeg_dimensions(data),
-        Some("webp") => webp_dimensions(data),
-        Some("svg") => svg_dimensions(data),
+    let fmt = detect_image_format(data)?;
+    image_dimensions_by_format(data, fmt)
+}
+
+/// Extracts (width, height) for a known image format without re-detecting the format.
+///
+/// `fmt` must be one of `"png"`, `"jpg"`, `"webp"`, or `"svg"` as returned by
+/// [`detect_image_format`]. Returns `None` if the header is too short or malformed.
+fn image_dimensions_by_format(data: &[u8], fmt: &str) -> Option<(u32, u32)> {
+    match fmt {
+        "png" => png_dimensions(data),
+        "jpg" => jpeg_dimensions(data),
+        "webp" => webp_dimensions(data),
+        "svg" => svg_dimensions(data),
         _ => None,
     }
 }
@@ -277,19 +286,22 @@ fn svg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
 /// Extracts the value of an attribute from an SVG/XML tag string.
 fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
     // Match attr_name followed by = and a quoted value
-    let search = format!("{attr_name}=");
+    let search_len = attr_name.len() + 1; // attr_name + '='
     let mut start = 0;
     let pos = loop {
-        let rel = tag[start..].find(&search)?;
+        let rel = tag[start..].find(attr_name)?;
         let abs = start + rel;
         // Verify word boundary: the character before the match must be whitespace or '<'
         let prev = tag[..abs].chars().next_back();
         if prev.is_none_or(|c| c.is_ascii_whitespace() || c == '<') {
-            break abs;
+            // Verify the character immediately after attr_name is '='
+            if tag.as_bytes().get(abs + attr_name.len()) == Some(&b'=') {
+                break abs;
+            }
         }
         start = abs + 1;
     };
-    let after_eq = &tag[pos + search.len()..];
+    let after_eq = &tag[pos + search_len..];
     let quote = after_eq.as_bytes().first()?;
     if *quote != b'"' && *quote != b'\'' {
         return None;
