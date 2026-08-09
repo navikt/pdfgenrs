@@ -1,74 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786290382527,
+  "lastUpdate": 1786291364388,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "483c55dd5c04621c0628081b0d62ec98dcc2e903",
-          "message": "Merge pull request #398 from navikt/copilot/propagate-opentelemetry-span-context\n\nPropagate OTel span context into spawn_blocking in compile_blocking",
-          "timestamp": "2026-08-09T07:55:10+02:00",
-          "tree_id": "e9d65de6b5dbe72ec8f151acb58764a5cdcc19ea",
-          "url": "https://github.com/navikt/pdfgenrs/commit/483c55dd5c04621c0628081b0d62ec98dcc2e903"
-        },
-        "date": 1786255047905,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 232372,
-            "range": "± 15769",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 418005,
-            "range": "± 15579",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5172025,
-            "range": "± 177951",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 92595,
-            "range": "± 9150",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 160729,
-            "range": "± 4427",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 211669,
-            "range": "± 7379",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 359594,
-            "range": "± 7355",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -659,6 +593,72 @@ window.BENCHMARK_DATA = {
             "name": "image_to_pdf_svg",
             "value": 355492,
             "range": "± 7296",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc0fe169ecb5578d030459adb7257094929030a4",
+          "message": "Merge pull request #410 from navikt/copilot/replace-unreachable-with-apiexception\n\nReplace `unreachable!` panic in compile-permit acquisition with graceful ApiError",
+          "timestamp": "2026-08-09T18:00:27+02:00",
+          "tree_id": "a64690bb34a75817fb97eb9cf1cd86345d3f1544",
+          "url": "https://github.com/navikt/pdfgenrs/commit/cc0fe169ecb5578d030459adb7257094929030a4"
+        },
+        "date": 1786291356200,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 165150,
+            "range": "± 6391",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 307931,
+            "range": "± 4359",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 4085739,
+            "range": "± 33243",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 67579,
+            "range": "± 5544",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 115897,
+            "range": "± 2526",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 166252,
+            "range": "± 3507",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 272051,
+            "range": "± 1468",
             "unit": "ns/iter"
           }
         ]
