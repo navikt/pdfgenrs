@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use metrics::counter;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -69,6 +70,7 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
         req.library,
     );
     comemo::evict(req.comemo_eviction_threshold);
+    counter!("comemo_evictions_total", &[("output", "pdf")]).increment(1);
     result
 }
 
@@ -126,6 +128,7 @@ where
         library,
     );
     comemo::evict(comemo_eviction_threshold);
+    counter!("comemo_evictions_total", &[("output", "image")]).increment(1);
     result
 }
 
@@ -397,6 +400,42 @@ Hello, world!
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_pdf_records_comemo_evictions_total_metric() -> Result<()> {
+        let recorder = ::metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        ::metrics::with_local_recorder(&recorder, || -> Result<()> {
+            let source = r#"#set document(title: "Test", date: auto)
+#set page(margin: 1cm)
+Hello, world!
+"#;
+            let data = serde_json::json!({});
+            typst_to_pdf(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: test_fonts()?,
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "test",
+                template_name: "simple",
+                library: pdf_library(),
+                comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            })?;
+            Ok(())
+        })?;
+
+        let output = handle.render();
+        assert!(
+            output.contains("comemo_evictions_total"),
+            "expected comemo_evictions_total in output: {output}"
+        );
+        assert!(
+            output.contains(r#"output="pdf""#),
+            "expected output=\"pdf\" label: {output}"
+        );
         Ok(())
     }
 

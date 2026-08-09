@@ -87,6 +87,7 @@ async fn main() -> Result<()> {
     let font_count = state.fonts.fonts.len();
 
     let metrics_handle = metrics::setup_metrics_recorder()?;
+    ::metrics::gauge!("comemo_eviction_threshold").set(cfg.comemo_eviction_threshold as f64);
 
     let app = build_router(state, metrics_handle);
 
