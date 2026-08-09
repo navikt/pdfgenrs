@@ -496,6 +496,34 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn post_pdf_from_image_returns_error_for_mismatched_content_type() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        // Send PNG bytes but claim Content-Type: image/jpeg
+        let png_bytes = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("resources")
+                .join("NAVLogoRed.png"),
+        )?;
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/jpeg")
+            .bytes(Bytes::from(png_bytes))
+            .await;
+
+        assert_ne!(
+            response.status_code(),
+            StatusCode::OK,
+            "PNG bytes with Content-Type: image/jpeg should not produce a PDF"
+        );
+        Ok(())
+    }
+
     #[test]
     fn image_virtual_path_supports_png_and_jpeg() {
         assert_eq!(
