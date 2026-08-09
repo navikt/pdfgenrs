@@ -5,7 +5,7 @@ ENV RUSTFLAGS='-C target-feature=+crt-static'
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY fonts ./fonts
-RUN cargo auditable build --release
+RUN cargo auditable build --release --locked
 
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6
 WORKDIR /app
