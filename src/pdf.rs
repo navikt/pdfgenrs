@@ -429,12 +429,8 @@ Hello, world!
 
         let output = handle.render();
         assert!(
-            output.contains("comemo_evictions_total"),
-            "expected comemo_evictions_total in output: {output}"
-        );
-        assert!(
-            output.contains(r#"output="pdf""#),
-            "expected output=\"pdf\" label: {output}"
+            output.contains(r#"comemo_evictions_total{output="pdf"} 1"#),
+            "expected comemo_evictions_total{{output=\"pdf\"}} 1 in output: {output}"
         );
         Ok(())
     }
