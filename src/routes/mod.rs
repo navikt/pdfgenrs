@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use metrics::histogram;
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
-use tracing::{error, info_span};
+use tracing::{error, info_span, warn};
 
 use self::error::ApiError;
 use crate::request_id::current_request_id;
@@ -158,6 +158,12 @@ where
         Err(_elapsed) => {
             handle.abort();
             drop(permit);
+            warn!(
+                app_name = %app_name,
+                template_name = ?template_name,
+                timeout_seconds = state.config.compile_timeout_seconds,
+                "compilation timed out"
+            );
             Err(ApiError::RequestTimeout {
                 app_name,
                 template_name,
