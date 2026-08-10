@@ -137,7 +137,10 @@ where
     let start = Instant::now();
     let request_id = current_request_id().unwrap_or_default();
     let span = info_span!("typst_compilation", request_id = %request_id);
-    let mut handle = tokio::task::spawn_blocking(move || span.in_scope(task));
+    let mut handle = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        span.in_scope(task)
+    });
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
@@ -154,7 +157,6 @@ where
 
     match result {
         Ok(join_result) => {
-            drop(permit);
             let inner = join_result.unwrap_or_else(|e| {
                 error!("spawn_blocking task panicked: {e}");
                 Err(anyhow::anyhow!("Task join error: {e}"))
@@ -168,7 +170,6 @@ where
         }
         Err(_elapsed) => {
             handle.abort();
-            drop(permit);
             warn!(
                 app_name = %app_name,
                 template_name = ?template_name,
@@ -220,6 +221,68 @@ mod tests {
         };
         let response = axum::response::IntoResponse::into_response(err);
         assert_eq!(response.status(), axum::http::StatusCode::REQUEST_TIMEOUT);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn compile_blocking_keeps_permit_until_timed_out_task_finishes() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.compile_timeout_seconds = 1;
+        state.config.semaphore_acquire_timeout_seconds = 0;
+        state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
+
+        let (release_tx, release_rx) = tokio::sync::oneshot::channel::<()>();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
+        let timed_out_state = state.clone();
+        let timed_out_task = tokio::spawn(async move {
+            compile_blocking(&timed_out_state, "app".to_string(), None, move || {
+                started_tx.send(()).ok();
+                release_rx.blocking_recv().ok();
+                Ok(())
+            })
+            .await
+        });
+
+        started_rx
+            .await
+            .context("failed to receive timed-out task start signal")?;
+
+        let timed_out_result = timed_out_task.await.context("timed-out task join error")?;
+        let timed_out_error = match timed_out_result {
+            Ok(()) => anyhow::bail!("expected timed-out task to fail"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            axum::response::IntoResponse::into_response(timed_out_error).status(),
+            axum::http::StatusCode::REQUEST_TIMEOUT
+        );
+
+        let blocked_result: Result<(), _> =
+            compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
+        let blocked_error = match blocked_result {
+            Ok(()) => anyhow::bail!("expected permit to remain held"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            axum::response::IntoResponse::into_response(blocked_error).status(),
+            axum::http::StatusCode::SERVICE_UNAVAILABLE
+        );
+
+        if release_tx.send(()).is_err() {
+            anyhow::bail!("failed to release timed-out task");
+        }
+        let semaphore = state
+            .compile_semaphore
+            .as_ref()
+            .context("compile semaphore missing")?;
+        let permit = tokio::time::timeout(
+            Duration::from_secs(5),
+            Arc::clone(semaphore).acquire_owned(),
+        )
+        .await
+        .context("timed-out task did not release permit")??;
+        drop(permit);
+
         Ok(())
     }
 
@@ -454,38 +517,6 @@ mod tests {
         };
         assert_eq!(v1, 1);
         assert_eq!(v2, 2);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn compile_blocking_releases_permit_on_timeout() -> anyhow::Result<()> {
-        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
-        state.config.compile_timeout_seconds = 1;
-        state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
-
-        // First task will exceed the timeout
-        let state1 = state.clone();
-        let result: Result<(), _> = compile_blocking(&state1, "app".to_string(), None, || {
-            std::thread::sleep(Duration::from_secs(10));
-            Ok(())
-        })
-        .await;
-        assert!(result.is_err(), "expected timeout");
-
-        // The permit should be released immediately, allowing a second task to proceed
-        let state2 = state.clone();
-        let result2 = tokio::time::timeout(
-            Duration::from_millis(500),
-            compile_blocking(&state2, "app".to_string(), None, || Ok(42)),
-        )
-        .await
-        .context("second task should acquire permit without delay")?;
-
-        let value = match result2 {
-            Ok(v) => v,
-            Err(e) => anyhow::bail!("second task failed: {e:?}"),
-        };
-        assert_eq!(value, 42);
         Ok(())
     }
 
