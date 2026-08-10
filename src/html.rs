@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use metrics::counter;
 use std::collections::HashMap;
 use typst::foundations::Bytes;
 
@@ -29,6 +30,7 @@ pub fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
         req.library,
     );
     comemo::evict(req.comemo_eviction_threshold);
+    counter!("comemo_evictions_total", &[("output", "html")]).increment(1);
     result
 }
 

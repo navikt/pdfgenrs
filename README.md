@@ -243,6 +243,9 @@ Exposes Prometheus metrics for operational monitoring.
 | `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution   |
 | `http_request_body_size_bytes`  | Histogram | method, path, status | Request body size distribution |
 | `http_response_body_size_bytes` | Histogram | method, path, status | Response body size distribution|
+| `typst_compilation_duration_seconds` | Histogram | output           | Typst compilation latency distribution |
+| `comemo_evictions_total`        | Counter   | output               | Number of comemo cache eviction runs |
+| `comemo_eviction_threshold`     | Gauge     | -                    | Configured `COMEMO_EVICTION_THRESHOLD` value |
 
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 
