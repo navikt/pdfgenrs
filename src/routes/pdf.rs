@@ -129,10 +129,12 @@ pub(crate) async fn post_pdf_from_image(
 }
 
 fn pdf_response(pdf_bytes: Vec<u8>) -> Response {
+    let content_length = pdf_bytes.len().to_string();
     (
         [
             (header::CONTENT_TYPE, "application/pdf"),
             (header::CONTENT_DISPOSITION, "inline"),
+            (header::CONTENT_LENGTH, content_length.as_str()),
         ],
         Bytes::from(pdf_bytes),
     )
@@ -265,6 +267,13 @@ mod tests {
                 .get("content-type")
                 .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?,
             "application/pdf"
+        );
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_LENGTH)
+                .ok_or_else(|| anyhow::anyhow!("missing content-length header"))?,
+            response.as_bytes().len().to_string().as_str()
         );
         assert!(is_pdf(response.as_bytes()));
         Ok(())
