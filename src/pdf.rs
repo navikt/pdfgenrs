@@ -626,21 +626,27 @@ Hello, world!
     }
 
     #[test]
-    fn validate_image_dimensions_rejects_zero_dimensions() {
-        let error = validate_image_dimensions(0, 1, "/image.png").unwrap_err();
+    fn validate_image_dimensions_rejects_zero_dimensions() -> Result<()> {
+        let error = validate_image_dimensions(0, 1, "/image.png").err();
+        let error = error.context("zero dimensions should be rejected")?;
         assert!(error.to_string().contains("invalid dimensions"));
+        Ok(())
     }
 
     #[test]
-    fn validate_image_dimensions_rejects_excessive_dimension() {
-        let error = validate_image_dimensions(8_193, 1, "/image.png").unwrap_err();
+    fn validate_image_dimensions_rejects_excessive_dimension() -> Result<()> {
+        let error = validate_image_dimensions(8_193, 1, "/image.png").err();
+        let error = error.context("excessive dimensions should be rejected")?;
         assert!(error.to_string().contains("dimensions exceed"));
+        Ok(())
     }
 
     #[test]
-    fn validate_image_dimensions_rejects_excessive_pixel_count() {
-        let error = validate_image_dimensions(8_192, 3_052, "/image.png").unwrap_err();
+    fn validate_image_dimensions_rejects_excessive_pixel_count() -> Result<()> {
+        let error = validate_image_dimensions(8_192, 3_052, "/image.png").err();
+        let error = error.context("excessive pixel count should be rejected")?;
         assert!(error.to_string().contains("pixels, exceeding"));
+        Ok(())
     }
 
     #[test]
