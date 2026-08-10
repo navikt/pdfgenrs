@@ -47,11 +47,12 @@ async fn main() -> Result<()> {
         HashMap::new()
     };
 
-    info!(path = %cfg.fonts_dir.display(), "Loading fonts");
-    let fonts = Arc::new(typst_world::load_fonts(&cfg.fonts_dir).map_err(|e| {
+    let font_dir = cfg.font_dir();
+    info!(path = %font_dir.display(), "Loading fonts");
+    let fonts = Arc::new(typst_world::load_fonts(&font_dir).map_err(|e| {
         tracing::error!(
             error = %e,
-            path = %cfg.fonts_dir.display(),
+            path = %font_dir.display(),
             "Failed to load fonts"
         );
         e
