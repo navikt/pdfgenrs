@@ -248,7 +248,10 @@ mod tests {
             .context("failed to receive timed-out task start signal")?;
 
         let timed_out_result = timed_out_task.await.context("timed-out task join error")?;
-        let timed_out_error = timed_out_result.context("expected timed-out task to fail")?;
+        let timed_out_error = match timed_out_result {
+            Ok(()) => anyhow::bail!("expected timed-out task to fail"),
+            Err(error) => error,
+        };
         assert_eq!(
             axum::response::IntoResponse::into_response(timed_out_error).status(),
             axum::http::StatusCode::REQUEST_TIMEOUT
@@ -256,13 +259,18 @@ mod tests {
 
         let blocked_result: Result<(), _> =
             compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
-        let blocked_error = blocked_result.context("expected permit to remain held")?;
+        let blocked_error = match blocked_result {
+            Ok(()) => anyhow::bail!("expected permit to remain held"),
+            Err(error) => error,
+        };
         assert_eq!(
             axum::response::IntoResponse::into_response(blocked_error).status(),
             axum::http::StatusCode::SERVICE_UNAVAILABLE
         );
 
-        release_tx.send(()).context("failed to release timed-out task")?;
+        if release_tx.send(()).is_err() {
+            anyhow::bail!("failed to release timed-out task");
+        }
         let semaphore = state
             .compile_semaphore
             .as_ref()
