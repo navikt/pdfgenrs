@@ -1,74 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786294151119,
+  "lastUpdate": 1786343219454,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "2dd1588e24d1efb8f36b7c43812eeadce60ffd4f",
-          "message": "Merge pull request #403 from navikt/MikAoJk-patch-1\n\nchore: Add --release to clippy to share build artifacts with tests",
-          "timestamp": "2026-08-09T09:46:39+02:00",
-          "tree_id": "8821c38c6271f1f43ea7486168bcd4fa92b56248",
-          "url": "https://github.com/navikt/pdfgenrs/commit/2dd1588e24d1efb8f36b7c43812eeadce60ffd4f"
-        },
-        "date": 1786261725942,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 217050,
-            "range": "± 10908",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 404683,
-            "range": "± 40288",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5251614,
-            "range": "± 155262",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 88073,
-            "range": "± 4954",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 150309,
-            "range": "± 3824",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 215806,
-            "range": "± 3647",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 361630,
-            "range": "± 7506",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -671,6 +605,84 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 19045,
             "range": "± 98",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa8a71589d5063c6a1c4b96fb36001c34aaabd77",
+          "message": "Merge pull request #415 from navikt/copilot/tune-comemo-cache-eviction\n\nAdd Prometheus metrics for comemo cache eviction tuning",
+          "timestamp": "2026-08-10T08:23:57+02:00",
+          "tree_id": "ee028cfccadb93388bcde69326fbee5cb7da3034",
+          "url": "https://github.com/navikt/pdfgenrs/commit/fa8a71589d5063c6a1c4b96fb36001c34aaabd77"
+        },
+        "date": 1786343210883,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 178563,
+            "range": "± 7681",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 392050,
+            "range": "± 6346",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 4971887,
+            "range": "± 97697",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 97169,
+            "range": "± 7033",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 124656,
+            "range": "± 5658",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 198066,
+            "range": "± 16229",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 327532,
+            "range": "± 19823",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 14305,
+            "range": "± 92",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 21395,
+            "range": "± 65",
             "unit": "ns/iter"
           }
         ]
