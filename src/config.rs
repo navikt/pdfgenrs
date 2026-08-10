@@ -246,10 +246,7 @@ mod tests {
             config.shutdown_drain_seconds,
             DEFAULT_SHUTDOWN_DRAIN_SECONDS
         );
-        assert_eq!(
-            config.max_concurrent_compilations,
-            4
-        );
+        assert_eq!(config.max_concurrent_compilations, 4);
         assert_eq!(
             config.semaphore_acquire_timeout_seconds,
             DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS
