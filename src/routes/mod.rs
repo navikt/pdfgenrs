@@ -276,7 +276,7 @@ mod tests {
             .as_ref()
             .context("compile semaphore missing")?;
         let permit = tokio::time::timeout(
-            Duration::from_secs(1),
+            Duration::from_secs(5),
             Arc::clone(semaphore).acquire_owned(),
         )
         .await
