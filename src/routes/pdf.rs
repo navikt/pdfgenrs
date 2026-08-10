@@ -174,7 +174,7 @@ mod tests {
     use tokio::time::{Duration, timeout};
 
     use axum::body::Bytes;
-    use axum::http::HeaderValue;
+    use axum::http::{HeaderValue, header};
 
     use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_image};
     use crate::state::AppState;
