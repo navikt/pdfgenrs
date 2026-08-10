@@ -26,7 +26,7 @@ const DEFAULT_FONTS_DIR: &str = "fonts";
 pub(crate) const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
-const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 0;
+const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
 
@@ -65,8 +65,8 @@ pub struct Config {
     /// new traffic before existing connections are drained. Defaults to `5`
     /// (`SHUTDOWN_DRAIN_SECONDS`).
     pub shutdown_drain_seconds: u64,
-    /// Maximum number of concurrent compilation tasks allowed. When set to `0` (default),
-    /// no limit is enforced. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
+    /// Maximum number of concurrent compilation tasks allowed. Defaults to `4`; set to `0`
+    /// to disable the limit. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
     pub max_concurrent_compilations: usize,
     /// Maximum time in seconds to wait for a compilation semaphore permit.
     /// When the timeout is exceeded, the server responds with `503 Service Unavailable`.
@@ -248,7 +248,7 @@ mod tests {
         );
         assert_eq!(
             config.max_concurrent_compilations,
-            DEFAULT_MAX_CONCURRENT_COMPILATIONS
+            4
         );
         assert_eq!(
             config.semaphore_acquire_timeout_seconds,
