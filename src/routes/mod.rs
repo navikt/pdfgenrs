@@ -30,7 +30,7 @@ pub(crate) struct CompileParams {
     pub resources_dir: Arc<PathBuf>,
 }
 
-/// Looks up the template source and pre-loaded test data for the given key (used by GET handlers).
+/// Looks up the template source and preloaded test data for the given key (used by GET handlers).
 /// Returns `ApiError::NotFound` if either the template or its test data is missing.
 pub(crate) async fn lookup_template_and_data(
     state: &AppState,
