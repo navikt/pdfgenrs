@@ -38,6 +38,18 @@ pub struct TestDataLoadResult {
     pub diagnostics: Vec<LoadDiagnostic>,
 }
 
+fn insert_template(
+    templates: &mut HashMap<(String, String), Arc<str>>,
+    key: (String, String),
+    source: Arc<str>,
+) -> anyhow::Result<()> {
+    if templates.contains_key(&key) {
+        anyhow::bail!("Duplicate template key: {}/{}", key.0, key.1);
+    }
+    templates.insert(key, source);
+    Ok(())
+}
+
 impl TestDataLoadResult {
     /// Returns the number of diagnostics grouped by error kind.
     pub fn error_summary(&self) -> HashMap<LoadErrorKind, usize> {
@@ -87,10 +99,11 @@ pub fn load_templates_from_dir(
                 ));
             }
             let source = std::fs::read_to_string(path).context("Failed to read template file")?;
-            templates.insert(
+            insert_template(
+                &mut templates,
                 (app_name.to_string(), template_name.to_string()),
                 Arc::from(source),
-            );
+            )?;
         }
     }
     Ok(templates)
@@ -280,6 +293,20 @@ mod tests {
         assert_eq!(templates.len(), 2);
         assert!(templates.contains_key(&("app1".to_string(), "one".to_string())));
         assert!(templates.contains_key(&("app2".to_string(), "two".to_string())));
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_template_rejects_duplicate_key() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        let key = ("myapp".to_string(), "template".to_string());
+        insert_template(&mut templates, key.clone(), Arc::from("first"))?;
+
+        let err = insert_template(&mut templates, key.clone(), Arc::from("second"))
+            .expect_err("duplicate template key should be rejected");
+
+        assert!(err.to_string().contains("myapp/template"));
+        assert_eq!(templates[&key].as_ref(), "first");
         Ok(())
     }
 
