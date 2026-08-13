@@ -343,7 +343,7 @@ fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
     Some(&after_eq[value_start..value_end])
 }
 
-/// Parses a unitless or pixel SVG length value to a u32.
+/// Parses a unitless or pixel SVG length value to an u32.
 fn parse_svg_length(value: &str) -> Option<u32> {
     let trimmed = value.trim();
     let numeric = if let Some(stripped) = trimmed.strip_suffix("px") {
@@ -428,9 +428,9 @@ Hello, world!
 
     #[test]
     fn typst_to_pdf_records_comemo_evictions_total_metric() -> Result<()> {
-        let recorder = ::metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+        let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
-        ::metrics::with_local_recorder(&recorder, || -> Result<()> {
+        metrics::with_local_recorder(&recorder, || -> Result<()> {
             let source = r#"#set document(title: "Test", date: auto)
 #set page(margin: 1cm)
 Hello, world!
