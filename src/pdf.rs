@@ -15,8 +15,9 @@ use typst::utils::LazyHash;
 
 /// Cached font data discovered from the fonts directory. Once loaded, subsequent
 /// calls to [`build_html_converter`] reuse the cached data instead of re-reading
-/// files from disk.
-type FontCache = (PathBuf, Vec<(String, Vec<u8>)>);
+/// files from disk. The `Arc<Vec<u8>>` wrapping lets multiple font faces from the
+/// same collection file share one allocation.
+type FontCache = (PathBuf, Vec<(String, Arc<Vec<u8>>)>);
 static FONT_CACHE: OnceLock<FontCache> = OnceLock::new();
 
 /// Derives a CSS-friendly font name from a font's family and variant.
@@ -55,9 +56,9 @@ fn css_font_name(family: &str, variant: &typst_library::text::FontVariant) -> St
 
 /// Discovers all fonts in `fonts_dir` and returns `(css_name, font_bytes)` pairs,
 /// using a process-wide cache to avoid redundant file I/O.
-fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Vec<u8>)] {
-    let (_, fonts) = FONT_CACHE.get_or_init(|| {
-        let mut loaded: Vec<(String, Vec<u8>)> = Vec::new();
+fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Arc<Vec<u8>>)] {
+    let (cached_dir, fonts) = FONT_CACHE.get_or_init(|| {
+        let mut loaded: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
 
         let entries = match WalkDir::new(fonts_dir)
             .into_iter()
@@ -90,7 +91,9 @@ fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Vec<u8>)] {
                 }
             };
 
-            let fonts_from_file: Vec<Font> = Font::iter(Bytes::new(font_bytes.clone())).collect();
+            let font_bytes = Arc::new(font_bytes);
+            let fonts_from_file: Vec<Font> =
+                Font::iter(Bytes::new((*font_bytes).clone())).collect();
 
             if fonts_from_file.is_empty() {
                 warn!(
@@ -103,12 +106,19 @@ fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Vec<u8>)] {
             for font in &fonts_from_file {
                 let info = font.info();
                 let name = css_font_name(&info.family, &info.variant);
-                loaded.push((name, font_bytes.clone()));
+                loaded.push((name, Arc::clone(&font_bytes)));
             }
         }
 
         (fonts_dir.to_path_buf(), loaded)
     });
+    if cached_dir != fonts_dir {
+        warn!(
+            cached = %cached_dir.display(),
+            requested = %fonts_dir.display(),
+            "Font cache was initialised from a different directory; reusing cached fonts"
+        );
+    }
     fonts
 }
 
@@ -140,7 +150,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
     let mut converter = HtmlConverter::new().base_path(base_path);
 
     for (name, font_bytes) in fonts {
-        converter = converter.add_font(name, font_bytes.clone());
+        converter = converter.add_font(name, (**font_bytes).clone());
     }
 
     (converter, fonts.len())
