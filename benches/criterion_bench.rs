@@ -4,7 +4,9 @@ use std::time::Instant;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use pdfgenrs::html::typst_to_html;
-use pdfgenrs::pdf::{CompileRequest, build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf};
+use pdfgenrs::pdf::{
+    CompileRequest, build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf,
+};
 use pdfgenrs::typst_world;
 use typst::Library;
 use typst::utils::LazyHash;

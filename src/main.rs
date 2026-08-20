@@ -61,8 +61,7 @@ async fn main() -> Result<()> {
     let aliveness = AppAliveness::new();
     let aliveness_clone = aliveness.clone();
 
-    let (html_converter, html_font_count) =
-        build_html_converter(&cfg.font_dir(), &cfg.root_dir);
+    let (html_converter, html_font_count) = build_html_converter(&cfg.font_dir(), &cfg.root_dir);
     let html_converter = Arc::new(html_converter);
     info!(
         count = html_font_count,
