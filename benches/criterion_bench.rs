@@ -4,7 +4,9 @@ use std::time::Instant;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use pdfgenrs::html::typst_to_html;
-use pdfgenrs::pdf::{CompileRequest, image_to_pdf, typst_to_pdf};
+use pdfgenrs::pdf::{
+    CompileRequest, build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf,
+};
 use pdfgenrs::typst_world;
 use typst::Library;
 use typst::utils::LazyHash;
@@ -91,6 +93,21 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
                 library: Arc::clone(&library),
                 comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             });
+        });
+    });
+}
+
+fn bench_html_to_pdf(c: &mut Criterion) {
+    let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
+    let html = r#"<!DOCTYPE html>
+<html>
+<head><style>body { font-family: "Source Sans 3", sans-serif; }</style></head>
+<body><h1>Benchmark HTML to PDF</h1><p>This is a performance test document.</p></body>
+</html>"#;
+
+    c.bench_function("html_to_pdf", |b| {
+        b.iter(|| {
+            let _ = html_to_pdf(html, &converter);
         });
     });
 }
@@ -340,6 +357,7 @@ criterion_group!(
     bench_typst_to_pdf_with_data,
     bench_typst_to_pdf_large_json,
     bench_typst_to_pdf_concurrent,
+    bench_html_to_pdf,
     bench_image_to_pdf,
     bench_image_to_pdf_jpeg,
     bench_image_to_pdf_svg,

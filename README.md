@@ -113,6 +113,7 @@ Example:
 | Endpoint                                    | Method | Request Content-Type                                        | Response Content-Type      | Notes                |
 |---------------------------------------------|--------|-------------------------------------------------------------|----------------------------|----------------------|
 | `/api/v1/genpdf/{your_appname}/{template}`  | `POST` | `application/json`                                          | `application/pdf`          | Typst + JSON to PDF  |
+| `/api/v1/genpdf/html/{your_appname}`        | `POST` | `text/html`                                                 | `application/pdf`          | HTML to PDF          |
 | `/api/v1/genpdf/image/{your_appname}`       | `POST` | `image/png`, `image/jpeg`, `image/webp`, or `image/svg+xml` | `application/pdf`          | Image to PDF         |
 | `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json`                                          | `text/html; charset=utf-8` | Typst + JSON to HTML |
 | `/internal/is_alive`                        | `GET`  | -                                                           | -                          | Liveness             |
@@ -123,6 +124,7 @@ Example:
 
 All `POST` endpoints enforce a request body limit of `2097152` bytes (2 MiB), including:
 
+- `POST /api/v1/genpdf/html/{your_appname}`
 - `POST /api/v1/genpdf/image/{your_appname}`
 - `POST /api/v1/genpdf/{your_appname}/{template}`
 - `POST /api/v1/genhtml/{your_appname}/{template}`
@@ -157,7 +159,26 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/<your_appname>/<template> \
   --output output.pdf
 ```
 
-### 2) Generate PDF from image
+### 2) Generate PDF from HTML
+
+#### `POST /api/v1/genpdf/html/{your_appname}`
+
+Converts HTML in the request body to a PDF.
+
+- Request Content-Type: typically `text/html`
+- Response Content-Type: `application/pdf`
+- Success: `200 OK`
+- Common errors:
+  - `500 Internal Server Error`
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
+  -H "Content-Type: text/html" \
+  --data-binary '<html><body><h1>Hello</h1></body></html>' \
+  --output output.pdf
+```
+
+### 3) Generate PDF from image
 
 #### `POST /api/v1/genpdf/image/{your_appname}`
 
@@ -181,7 +202,7 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/image/<your_appname> \
   --output output.pdf
 ```
 
-### 3) Generate HTML from Typst + JSON
+### 4) Generate HTML from Typst + JSON
 
 #### `POST /api/v1/genhtml/{your_appname}/{template}`
 

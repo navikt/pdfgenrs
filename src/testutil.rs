@@ -5,6 +5,7 @@ use std::sync::Arc;
 use serde_json::Value;
 use tokio::sync::RwLock;
 
+use crate::pdf::build_html_converter;
 use crate::state::AppState;
 use crate::{config, state, typst_world};
 use typst::{Feature, Features};
@@ -53,6 +54,13 @@ pub fn make_state_with_body_limit(
             [Feature::Html].into_iter().collect(),
         )),
         compile_semaphore: None,
+        html_converter: Arc::new(
+            build_html_converter(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            )
+            .0,
+        ),
     })
 }
 
