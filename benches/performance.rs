@@ -2,7 +2,7 @@ use std::future::IntoFuture;
 use std::sync::Arc;
 
 use axum_test::TestServer;
-use pdfgenrs::{build_router, config, metrics, state, template, typst_world};
+use pdfgenrs::{build_html_converter, build_router, config, metrics, state, template, typst_world};
 use reqwest::header;
 use tokio::sync::RwLock;
 use tokio::task::JoinSet;
@@ -15,6 +15,12 @@ const BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD: u128 = 700;
+
+const BENCH_HTML_BODY: &str = r#"<!DOCTYPE html>
+<html>
+<head><style>body { font-family: "Source Sans 3", sans-serif; }</style></head>
+<body><h1>Benchmark HTML to PDF</h1><p>This is a performance test document.</p></body>
+</html>"#;
 
 #[derive(Clone, Debug)]
 struct BenchResult {
@@ -39,6 +45,7 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
         html_library: Arc::new(typst_world::build_library(
             [Feature::Html].into_iter().collect(),
         )),
+        html_converter: Arc::new(build_html_converter(&cfg.fonts_dir, &cfg.root_dir).0),
         root_dir: Arc::new(cfg.root_dir.clone()),
         resources_dir: Arc::new(cfg.resource_root()),
         config: cfg,
@@ -119,7 +126,7 @@ fn fail_if_total_too_long(
         .filter(|result| {
             let max = match result.app.as_str() {
                 "image" => image_max_ms,
-                "html" => html_max_ms,
+                "html" | "html-to-pdf" => html_max_ms,
                 _ => default_max_ms,
             };
             result.duration_ms > max
@@ -127,7 +134,7 @@ fn fail_if_total_too_long(
         .map(|result| {
             let max = match result.app.as_str() {
                 "image" => image_max_ms,
-                "html" => html_max_ms,
+                "html" | "html-to-pdf" => html_max_ms,
                 _ => default_max_ms,
             };
             format!(
@@ -287,6 +294,40 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         });
     }
 
+    // Benchmark HTML-to-PDF
+    {
+        let start = std::time::Instant::now();
+        let mut join_set = JoinSet::new();
+        for _ in 0..passes {
+            let client = Arc::clone(&client);
+            let url = format!("{base_url}/api/v1/genpdf/html/bench");
+            let body = BENCH_HTML_BODY.to_string();
+            join_set.spawn(async move {
+                let response = client
+                    .post(&url)
+                    .header(header::CONTENT_TYPE, "text/html")
+                    .body(body)
+                    .send()
+                    .await?;
+                assert!(response.status().is_success());
+                let bytes = response.bytes().await?;
+                assert!(!bytes.is_empty());
+                anyhow::Ok(())
+            });
+        }
+        while let Some(task_result) = join_set.join_next().await {
+            task_result??;
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(duration_ms, "Multi-thread HTML-to-PDF benchmark completed");
+        results.push(BenchResult {
+            app: "html-to-pdf".to_string(),
+            template: "bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
     // Benchmark HTML generation
     {
         let json_data = Arc::new(html_bench_json_data());
@@ -395,6 +436,28 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         );
         results.push(BenchResult {
             app: "image".to_string(),
+            template: "bench".to_string(),
+            passes,
+            duration_ms,
+        });
+    }
+
+    // Benchmark HTML-to-PDF
+    {
+        let start = std::time::Instant::now();
+        for _ in 0..passes {
+            let response = server
+                .post("/api/v1/genpdf/html/bench")
+                .content_type("text/html")
+                .bytes(axum::body::Bytes::from(BENCH_HTML_BODY))
+                .await;
+            response.assert_status_success();
+            assert!(!response.as_bytes().is_empty());
+        }
+        let duration_ms = start.elapsed().as_millis();
+        info!(duration_ms, "Single-thread HTML-to-PDF benchmark completed");
+        results.push(BenchResult {
+            app: "html-to-pdf".to_string(),
             template: "bench".to_string(),
             passes,
             duration_ms,
