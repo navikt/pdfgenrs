@@ -158,7 +158,7 @@ fn large_output_json_data() -> serde_json::Value {
     })
 }
 
-fn is_large_output_template(app_name: &str, template_name: &str) -> bool {
+fn is_large_output_bench(app_name: &str, template_name: &str) -> bool {
     app_name == LARGE_OUTPUT_APP_NAME && template_name == LARGE_OUTPUT_TEMPLATE_NAME
 }
 
@@ -169,7 +169,7 @@ fn max_total_ms(
     html_max_ms: u128,
     large_output_max_ms: u128,
 ) -> u128 {
-    if is_large_output_template(&result.app, &result.template) {
+    if is_large_output_bench(&result.app, &result.template) {
         return large_output_max_ms;
     }
 
@@ -283,7 +283,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         let app_name = app_name.clone();
         let template_name = template_name.clone();
 
-        let is_large_output = is_large_output_template(&app_name, &template_name);
+        let is_large_output = is_large_output_bench(&app_name, &template_name);
         let passes = if is_large_output {
             LARGE_OUTPUT_PASSES
         } else {
@@ -465,7 +465,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         let app_name = app_name.clone();
         let template_name = template_name.clone();
 
-        let is_large_output = is_large_output_template(&app_name, &template_name);
+        let is_large_output = is_large_output_bench(&app_name, &template_name);
         let passes = if is_large_output {
             LARGE_OUTPUT_PASSES
         } else {
