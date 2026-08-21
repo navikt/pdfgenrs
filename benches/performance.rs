@@ -317,6 +317,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark image-to-PDF
     {
+        let passes = DEFAULT_PASSES;
         let image_bytes = std::fs::read(
             app_state
                 .config
@@ -358,6 +359,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark HTML-to-PDF
     {
+        let passes = DEFAULT_PASSES;
         let start = std::time::Instant::now();
         let mut join_set = JoinSet::new();
         for _ in 0..passes {
@@ -392,6 +394,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark HTML generation
     {
+        let passes = DEFAULT_PASSES;
         let json_data = Arc::new(html_bench_json_data());
         let start = std::time::Instant::now();
         let mut join_set = JoinSet::new();
@@ -488,6 +491,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark image-to-PDF
     {
+        let passes = DEFAULT_PASSES;
         let image_bytes = std::fs::read(
             app_state
                 .config
@@ -520,6 +524,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark HTML-to-PDF
     {
+        let passes = DEFAULT_PASSES;
         let start = std::time::Instant::now();
         for _ in 0..passes {
             let response = server
@@ -542,6 +547,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark HTML generation
     {
+        let passes = DEFAULT_PASSES;
         let json_data = html_bench_json_data();
         let start = std::time::Instant::now();
         for _ in 0..passes {
