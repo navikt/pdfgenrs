@@ -40,6 +40,8 @@ pub struct AppState {
     pub root_dir: Arc<PathBuf>,
     /// Pre-computed resource root path, shared via Arc to avoid per-request cloning.
     pub resources_dir: Arc<PathBuf>,
+    /// Cached bytes for server-approved external Typst resources.
+    pub external_resources: Arc<HashMap<String, typst::foundations::Bytes>>,
 }
 
 /// Tracks the liveness and readiness state of the application.
@@ -97,6 +99,7 @@ impl std::fmt::Debug for AppState {
             .field("compile_semaphore", &self.compile_semaphore)
             .field("root_dir", &self.root_dir)
             .field("resources_dir", &self.resources_dir)
+            .field("external_resources", &self.external_resources.keys())
             .finish()
     }
 }

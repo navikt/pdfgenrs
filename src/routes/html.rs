@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::Value;
+use std::sync::Arc;
 use tracing::info;
 
 use super::error::ApiError;
@@ -26,23 +27,27 @@ pub(crate) async fn get_html(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_and_data(&state, &template_key).await?;
+    let external_resources = Arc::clone(&state.external_resources);
 
     let html_string = compile_blocking(
         &state,
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
-            gen_html::typst_to_html(crate::pdf::CompileRequest {
-                template_source: &params.source,
-                json_data: &params.data,
-                fonts: params.fonts,
-                root: &params.root,
-                resources_dir: &params.resources_dir,
-                app_name: &app_name,
-                template_name: &template_name,
-                library: params.html_library,
-                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
-            })
+            gen_html::typst_to_html_with_resources(
+                crate::pdf::CompileRequest {
+                    template_source: &params.source,
+                    json_data: &params.data,
+                    fonts: params.fonts,
+                    root: &params.root,
+                    resources_dir: &params.resources_dir,
+                    app_name: &app_name,
+                    template_name: &template_name,
+                    library: params.html_library,
+                    comemo_eviction_threshold: state.config.comemo_eviction_threshold,
+                },
+                &external_resources,
+            )
         },
     )
     .await?;
@@ -65,23 +70,27 @@ pub(crate) async fn post_html(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
+    let external_resources = Arc::clone(&state.external_resources);
 
     let html_string = compile_blocking(
         &state,
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
-            gen_html::typst_to_html(crate::pdf::CompileRequest {
-                template_source: &params.source,
-                json_data: &params.data,
-                fonts: params.fonts,
-                root: &params.root,
-                resources_dir: &params.resources_dir,
-                app_name: &app_name,
-                template_name: &template_name,
-                library: params.html_library,
-                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
-            })
+            gen_html::typst_to_html_with_resources(
+                crate::pdf::CompileRequest {
+                    template_source: &params.source,
+                    json_data: &params.data,
+                    fonts: params.fonts,
+                    root: &params.root,
+                    resources_dir: &params.resources_dir,
+                    app_name: &app_name,
+                    template_name: &template_name,
+                    library: params.html_library,
+                    comemo_eviction_threshold: state.config.comemo_eviction_threshold,
+                },
+                &external_resources,
+            )
         },
     )
     .await?;

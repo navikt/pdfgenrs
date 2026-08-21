@@ -3,7 +3,9 @@ mod tracing_setup;
 use anyhow::{Context, Result};
 use pdfgenrs::metrics;
 use pdfgenrs::state::{AppAliveness, AppState};
-use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
+use pdfgenrs::{
+    build_html_converter, build_router, config, external_resources, template, typst_world,
+};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -75,6 +77,7 @@ async fn main() -> Result<()> {
     } else {
         None
     };
+    let external_resources = Arc::new(external_resources::load(&cfg.external_resources).await?);
 
     let state = AppState {
         templates,
@@ -82,6 +85,7 @@ async fn main() -> Result<()> {
         aliveness: aliveness.clone(),
         root_dir: Arc::new(cfg.root_dir.clone()),
         resources_dir: Arc::new(cfg.resource_root()),
+        external_resources,
         config: cfg.clone(),
         fonts,
         pdf_library: Arc::new(typst_world::build_library(Features::default())),

@@ -206,9 +206,21 @@ impl std::fmt::Debug for CompileRequest<'_> {
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
 pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
+    typst_to_pdf_with_resources(req, &HashMap::new())
+}
+
+/// Compiles a Typst template with JSON data and approved external virtual files.
+///
+/// External files are supplied by the server rather than the template, so Typst
+/// compilation remains unable to initiate network requests.
+pub fn typst_to_pdf_with_resources(
+    req: CompileRequest<'_>,
+    external_resources: &HashMap<String, Bytes>,
+) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
-    let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
+    let mut vfiles = external_resources.clone();
+    vfiles.insert(data_path, Bytes::new(json_bytes));
 
     let result = typst_world::compile_to_pdf(
         req.fonts,
@@ -1136,6 +1148,35 @@ Hello, world!
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_pdf_with_external_resource_returns_pdf_bytes() -> Result<()> {
+        let data = serde_json::json!({});
+        let external_resources = HashMap::from([(
+            "/external/logo.svg".to_string(),
+            Bytes::new(
+                br#"<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>"#
+                    .to_vec(),
+            ),
+        )]);
+        let bytes = typst_to_pdf_with_resources(
+            CompileRequest {
+                template_source: r#"#image("/external/logo.svg")"#,
+                json_data: &data,
+                fonts: Arc::new(load_fonts(&fonts_dir())?),
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: "test",
+                template_name: "external-resource",
+                library: pdf_library(),
+                comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            },
+            &external_resources,
+        )?;
+
+        assert!(bytes.starts_with(b"%PDF-"));
         Ok(())
     }
 

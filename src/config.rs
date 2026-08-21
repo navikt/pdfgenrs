@@ -16,6 +16,7 @@ const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
 const SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV: &str = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS";
 const COMEMO_EVICTION_THRESHOLD_ENV: &str = "COMEMO_EVICTION_THRESHOLD";
+const EXTERNAL_RESOURCES_ENV: &str = "EXTERNAL_RESOURCES";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -29,6 +30,15 @@ const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
+
+/// A server-approved external resource exposed to templates at `virtual_path`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExternalResourceConfig {
+    /// Fixed Typst virtual file path, such as `/external/logo.png`.
+    pub virtual_path: String,
+    /// HTTPS URL fetched during startup.
+    pub url: String,
+}
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -76,6 +86,11 @@ pub struct Config {
     /// each compilation. Higher values free more memory at the cost of cache hit rate.
     /// Set to `0` to evict the entire cache. Defaults to `15` (`COMEMO_EVICTION_THRESHOLD`).
     pub comemo_eviction_threshold: usize,
+    /// Approved HTTPS resources cached at startup and made available to templates.
+    ///
+    /// Configure with `EXTERNAL_RESOURCES` as comma-separated
+    /// `/virtual/path=https://host/resource` entries.
+    pub external_resources: Vec<ExternalResourceConfig>,
 }
 
 impl Default for Config {
@@ -128,6 +143,9 @@ impl Config {
                 .map(|value| value.eq_ignore_ascii_case("true"))
                 .unwrap_or(false)
         };
+        let external_resources = env_var(EXTERNAL_RESOURCES_ENV)
+            .map(|value| parse_external_resources(&value))
+            .unwrap_or_default();
 
         Self {
             port: parse_u16(SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
@@ -149,6 +167,7 @@ impl Config {
                 .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
             comemo_eviction_threshold: parse_usize(COMEMO_EVICTION_THRESHOLD_ENV)
                 .unwrap_or(DEFAULT_COMEMO_EVICTION_THRESHOLD),
+            external_resources,
         }
     }
 
@@ -163,6 +182,7 @@ impl Config {
                 "compile_timeout_seconds is 0, all compilations will time out immediately"
             );
         }
+
         if self.semaphore_acquire_timeout_seconds == 0 {
             warn!(
                 env = SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV,
@@ -199,6 +219,33 @@ impl Config {
     pub fn font_dir(&self) -> PathBuf {
         resolve_from_root(&self.root_dir, &self.fonts_dir)
     }
+}
+
+fn parse_external_resources(value: &str) -> Vec<ExternalResourceConfig> {
+    value
+        .split(',')
+        .filter_map(|entry| {
+            let (virtual_path, url) = entry.split_once('=')?;
+            let virtual_path = virtual_path.trim();
+            let url = url.trim();
+            if virtual_path.starts_with('/')
+                && !virtual_path.contains("..")
+                && url.starts_with("https://")
+            {
+                Some(ExternalResourceConfig {
+                    virtual_path: virtual_path.to_owned(),
+                    url: url.to_owned(),
+                })
+            } else {
+                warn!(
+                    env = EXTERNAL_RESOURCES_ENV,
+                    value = entry,
+                    "Ignoring invalid external resource configuration"
+                );
+                None
+            }
+        })
+        .collect()
 }
 
 #[must_use]
@@ -259,6 +306,7 @@ mod tests {
             config.comemo_eviction_threshold,
             DEFAULT_COMEMO_EVICTION_THRESHOLD
         );
+        assert!(config.external_resources.is_empty());
     }
 
     #[test]
@@ -277,6 +325,10 @@ mod tests {
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
             (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "15"),
             (COMEMO_EVICTION_THRESHOLD_ENV, "30"),
+            (
+                EXTERNAL_RESOURCES_ENV,
+                "/external/logo.png=https://cdn.example.com/logo.png",
+            ),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -292,6 +344,13 @@ mod tests {
         assert_eq!(config.max_concurrent_compilations, 4);
         assert_eq!(config.semaphore_acquire_timeout_seconds, 15);
         assert_eq!(config.comemo_eviction_threshold, 30);
+        assert_eq!(
+            config.external_resources,
+            vec![ExternalResourceConfig {
+                virtual_path: "/external/logo.png".to_string(),
+                url: "https://cdn.example.com/logo.png".to_string(),
+            }]
+        );
     }
 
     #[test]

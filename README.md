@@ -94,6 +94,12 @@ see https://github.com/navikt/pdfgenrs-test
   - Add `.ttf`, `.otf`, or `.ttc` fonts used by templates.
 - `resources/`
   - Add other assets your templates need.
+- External image resources can be configured with `EXTERNAL_RESOURCES` and are
+  downloaded once during startup into fixed virtual paths. For example,
+  `EXTERNAL_RESOURCES="/external/logo.png=https://assets.example.com/logo.png"`
+  makes `#image("/external/logo.png")` available to a template. Only HTTPS PNG,
+  JPEG, SVG, and WebP resources with matching `Content-Type` headers are accepted;
+  redirects and resources larger than 5 MiB are rejected.
 
 For template examples, see [templates](templates).
 
@@ -293,6 +299,7 @@ All configuration is done through environment variables. If an environment varia
 | `ROOT_DIR`                    | Root directory used as the Typst filesystem root. Relative directory paths are resolved from this directory.                                             | `.`               |
 | `TEMPLATES_DIR`               | Directory containing Typst template files                                                                                                                | `templates`       |
 | `RESOURCES_DIR`               | Directory containing static resource files (e.g., logos)                                                                                                 | `resources`       |
+| `EXTERNAL_RESOURCES`          | Comma-separated `/virtual/path=https://host/resource` HTTPS image resources fetched and cached at startup                                                | *(unset)*         |
 | `DATA_DIR`                    | Directory containing test JSON data used in dev mode                                                                                                     | `data`            |
 | `FONTS_DIR`                   | Directory containing font files used by Typst                                                                                                            | `fonts`           |
 | `DEV_MODE`                    | When `true`, enables GET endpoints and loads test data from `DATA_DIR`                                                                                   | `false`           |

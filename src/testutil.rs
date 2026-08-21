@@ -38,6 +38,7 @@ pub fn make_state_with_body_limit(
         max_concurrent_compilations: 0,
         semaphore_acquire_timeout_seconds: 10,
         comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        external_resources: Vec::new(),
     };
     Ok(AppState {
         templates: Arc::new(templates),
@@ -45,6 +46,7 @@ pub fn make_state_with_body_limit(
         aliveness: state::AppAliveness::new(),
         root_dir: Arc::new(cfg.root_dir.clone()),
         resources_dir: Arc::new(cfg.resource_root()),
+        external_resources: Arc::new(HashMap::new()),
         config: cfg,
         fonts: Arc::new(typst_world::load_fonts(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),

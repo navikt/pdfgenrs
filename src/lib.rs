@@ -5,6 +5,8 @@
 
 /// Runtime server configuration sourced from environment variables.
 pub mod config;
+/// Fetching and validation for server-approved external Typst resources.
+pub mod external_resources;
 /// Prometheus metrics middleware and recorder setup.
 pub mod metrics;
 /// Shared application state and liveness/readiness primitives.

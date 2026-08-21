@@ -27,23 +27,27 @@ pub(crate) async fn get_pdf(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_and_data(&state, &template_key).await?;
+    let external_resources = Arc::clone(&state.external_resources);
 
     let pdf_bytes = compile_blocking(
         &state,
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
-            gen_pdf::typst_to_pdf(gen_pdf::CompileRequest {
-                template_source: &params.source,
-                json_data: &params.data,
-                fonts: params.fonts,
-                root: &params.root,
-                resources_dir: &params.resources_dir,
-                app_name: &app_name,
-                template_name: &template_name,
-                library: params.pdf_library,
-                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
-            })
+            gen_pdf::typst_to_pdf_with_resources(
+                gen_pdf::CompileRequest {
+                    template_source: &params.source,
+                    json_data: &params.data,
+                    fonts: params.fonts,
+                    root: &params.root,
+                    resources_dir: &params.resources_dir,
+                    app_name: &app_name,
+                    template_name: &template_name,
+                    library: params.pdf_library,
+                    comemo_eviction_threshold: state.config.comemo_eviction_threshold,
+                },
+                &external_resources,
+            )
         },
     )
     .await?;
@@ -66,23 +70,27 @@ pub(crate) async fn post_pdf(
     let template_key = (app_name.clone(), template_name.clone());
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
+    let external_resources = Arc::clone(&state.external_resources);
 
     let pdf_bytes = compile_blocking(
         &state,
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
-            gen_pdf::typst_to_pdf(gen_pdf::CompileRequest {
-                template_source: &params.source,
-                json_data: &params.data,
-                fonts: params.fonts,
-                root: &params.root,
-                resources_dir: &params.resources_dir,
-                app_name: &app_name,
-                template_name: &template_name,
-                library: params.pdf_library,
-                comemo_eviction_threshold: state.config.comemo_eviction_threshold,
-            })
+            gen_pdf::typst_to_pdf_with_resources(
+                gen_pdf::CompileRequest {
+                    template_source: &params.source,
+                    json_data: &params.data,
+                    fonts: params.fonts,
+                    root: &params.root,
+                    resources_dir: &params.resources_dir,
+                    app_name: &app_name,
+                    template_name: &template_name,
+                    library: params.pdf_library,
+                    comemo_eviction_threshold: state.config.comemo_eviction_threshold,
+                },
+                &external_resources,
+            )
         },
     )
     .await?;
