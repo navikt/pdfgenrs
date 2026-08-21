@@ -22,6 +22,8 @@ const LARGE_OUTPUT_PASSES: u32 = 3;
 const LARGE_OUTPUT_PDF_MIN_BYTES: usize = 512 * 1024;
 const LARGE_OUTPUT_ITEM_COUNT: usize = 350;
 const LARGE_OUTPUT_ITEM_BODY_BYTES: usize = 4_096;
+const LARGE_OUTPUT_APP_NAME: &str = "bench";
+const LARGE_OUTPUT_TEMPLATE_NAME: &str = "large-output";
 
 const BENCH_HTML_BODY: &str = r#"<!DOCTYPE html>
 <html>
@@ -128,12 +130,12 @@ fn large_output_json_data() -> serde_json::Value {
             let mut state = item as u64 + 1;
 
             while body.len() < LARGE_OUTPUT_ITEM_BODY_BYTES {
-                state = state
-                    .wrapping_mul(6_364_136_223_846_793_005)
-                    .wrapping_add(1);
                 let word_len = 5 + (state % 8) as usize;
-                for shift in 0..word_len {
-                    let letter = ((state >> (shift * 5)) % 26) as u8;
+                for _ in 0..word_len {
+                    state = state
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1);
+                    let letter = (state % 26) as u8;
                     body.push(char::from(b'a' + letter));
                 }
                 body.push(' ');
@@ -154,7 +156,7 @@ fn large_output_json_data() -> serde_json::Value {
 }
 
 fn is_large_output_benchmark(app_name: &str, template_name: &str) -> bool {
-    app_name == "bench" && template_name == "large-output"
+    app_name == LARGE_OUTPUT_APP_NAME && template_name == LARGE_OUTPUT_TEMPLATE_NAME
 }
 
 fn fail_if_total_too_long(
@@ -169,7 +171,9 @@ fn fail_if_total_too_long(
         .iter()
         .filter(|result| {
             let max = match result.app.as_str() {
-                "bench" if result.template == "large-output" => large_output_max_ms,
+                LARGE_OUTPUT_APP_NAME if result.template == LARGE_OUTPUT_TEMPLATE_NAME => {
+                    large_output_max_ms
+                }
                 "image" => image_max_ms,
                 "html" | "html-to-pdf" => html_max_ms,
                 _ => default_max_ms,
@@ -178,7 +182,9 @@ fn fail_if_total_too_long(
         })
         .map(|result| {
             let max = match result.app.as_str() {
-                "bench" if result.template == "large-output" => large_output_max_ms,
+                LARGE_OUTPUT_APP_NAME if result.template == LARGE_OUTPUT_TEMPLATE_NAME => {
+                    large_output_max_ms
+                }
                 "image" => image_max_ms,
                 "html" | "html-to-pdf" => html_max_ms,
                 _ => default_max_ms,
