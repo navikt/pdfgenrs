@@ -130,6 +130,9 @@ fn large_output_json_data() -> serde_json::Value {
             let mut state = item as u64 + 1;
 
             while body.len() < LARGE_OUTPUT_ITEM_BODY_BYTES {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1);
                 let word_len = 5 + (state % 8) as usize;
                 for _ in 0..word_len {
                     state = state
