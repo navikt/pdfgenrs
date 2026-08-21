@@ -155,7 +155,7 @@ fn large_output_json_data() -> serde_json::Value {
     })
 }
 
-fn is_large_output_benchmark(app_name: &str, template_name: &str) -> bool {
+fn is_large_output_template(app_name: &str, template_name: &str) -> bool {
     app_name == LARGE_OUTPUT_APP_NAME && template_name == LARGE_OUTPUT_TEMPLATE_NAME
 }
 
@@ -166,7 +166,7 @@ fn max_total_ms(
     html_max_ms: u128,
     large_output_max_ms: u128,
 ) -> u128 {
-    if is_large_output_benchmark(&result.app, &result.template) {
+    if is_large_output_template(&result.app, &result.template) {
         return large_output_max_ms;
     }
 
@@ -280,7 +280,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         let app_name = app_name.clone();
         let template_name = template_name.clone();
 
-        let is_large_output = is_large_output_benchmark(&app_name, &template_name);
+        let is_large_output = is_large_output_template(&app_name, &template_name);
         let passes = if is_large_output {
             LARGE_OUTPUT_PASSES
         } else {
@@ -339,7 +339,6 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark image-to-PDF
     {
-        let passes = DEFAULT_PASSES;
         let image_bytes = std::fs::read(
             app_state
                 .config
@@ -349,7 +348,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         )?;
         let start = std::time::Instant::now();
         let mut join_set = JoinSet::new();
-        for _ in 0..passes {
+        for _ in 0..DEFAULT_PASSES {
             let client = Arc::clone(&client);
             let url = format!("{base_url}/api/v1/genpdf/image/bench");
             let data = image_bytes.clone();
@@ -374,17 +373,16 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "image".to_string(),
             template: "bench".to_string(),
-            passes,
+            passes: DEFAULT_PASSES,
             duration_ms,
         });
     }
 
     // Benchmark HTML-to-PDF
     {
-        let passes = DEFAULT_PASSES;
         let start = std::time::Instant::now();
         let mut join_set = JoinSet::new();
-        for _ in 0..passes {
+        for _ in 0..DEFAULT_PASSES {
             let client = Arc::clone(&client);
             let url = format!("{base_url}/api/v1/genpdf/html/bench");
             let body = BENCH_HTML_BODY.to_string();
@@ -409,18 +407,17 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "html-to-pdf".to_string(),
             template: "bench".to_string(),
-            passes,
+            passes: DEFAULT_PASSES,
             duration_ms,
         });
     }
 
     // Benchmark HTML generation
     {
-        let passes = DEFAULT_PASSES;
         let json_data = Arc::new(html_bench_json_data());
         let start = std::time::Instant::now();
         let mut join_set = JoinSet::new();
-        for _ in 0..passes {
+        for _ in 0..DEFAULT_PASSES {
             let client = Arc::clone(&client);
             let url = format!("{base_url}/api/v1/genhtml/bench/html-bench");
             let data = json_data.clone();
@@ -443,7 +440,7 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "html".to_string(),
             template: "html-bench".to_string(),
-            passes,
+            passes: DEFAULT_PASSES,
             duration_ms,
         });
     }
@@ -465,7 +462,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         let app_name = app_name.clone();
         let template_name = template_name.clone();
 
-        let is_large_output = is_large_output_benchmark(&app_name, &template_name);
+        let is_large_output = is_large_output_template(&app_name, &template_name);
         let passes = if is_large_output {
             LARGE_OUTPUT_PASSES
         } else {
@@ -513,7 +510,6 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
 
     // Benchmark image-to-PDF
     {
-        let passes = DEFAULT_PASSES;
         let image_bytes = std::fs::read(
             app_state
                 .config
@@ -522,7 +518,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
                 .join("NAVLogoRed.png"),
         )?;
         let start = std::time::Instant::now();
-        for _ in 0..passes {
+        for _ in 0..DEFAULT_PASSES {
             let response = server
                 .post("/api/v1/genpdf/image/bench")
                 .content_type("image/png")
@@ -539,16 +535,15 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "image".to_string(),
             template: "bench".to_string(),
-            passes,
+            passes: DEFAULT_PASSES,
             duration_ms,
         });
     }
 
     // Benchmark HTML-to-PDF
     {
-        let passes = DEFAULT_PASSES;
         let start = std::time::Instant::now();
-        for _ in 0..passes {
+        for _ in 0..DEFAULT_PASSES {
             let response = server
                 .post("/api/v1/genpdf/html/bench")
                 .content_type("text/html")
@@ -562,17 +557,16 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "html-to-pdf".to_string(),
             template: "bench".to_string(),
-            passes,
+            passes: DEFAULT_PASSES,
             duration_ms,
         });
     }
 
     // Benchmark HTML generation
     {
-        let passes = DEFAULT_PASSES;
         let json_data = html_bench_json_data();
         let start = std::time::Instant::now();
-        for _ in 0..passes {
+        for _ in 0..DEFAULT_PASSES {
             let response = server
                 .post("/api/v1/genhtml/bench/html-bench")
                 .json(&json_data)
@@ -588,7 +582,7 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         results.push(BenchResult {
             app: "html".to_string(),
             template: "html-bench".to_string(),
-            passes,
+            passes: DEFAULT_PASSES,
             duration_ms,
         });
     }
