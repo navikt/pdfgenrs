@@ -220,6 +220,11 @@ pub fn typst_to_pdf_with_resources(
     let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let mut vfiles = external_resources.clone();
+    if vfiles.contains_key(&data_path) {
+        anyhow::bail!(
+            "External resource path '{data_path}' conflicts with the generated JSON data path"
+        );
+    }
     vfiles.insert(data_path, Bytes::new(json_bytes));
 
     let result = typst_world::compile_to_pdf(

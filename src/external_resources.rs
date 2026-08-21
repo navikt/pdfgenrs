@@ -60,7 +60,7 @@ pub async fn load(resources: &[ExternalResourceConfig]) -> Result<HashMap<String
             .await
             .with_context(|| format!("Failed to read external resource '{}'", resource.url))?
         {
-            if chunk.len() > MAX_RESOURCE_BYTES - bytes.len() {
+            if chunk.len() > MAX_RESOURCE_BYTES.saturating_sub(bytes.len()) {
                 bail!(
                     "External resource '{}' exceeds the {} byte limit",
                     resource.url,
@@ -69,15 +69,13 @@ pub async fn load(resources: &[ExternalResourceConfig]) -> Result<HashMap<String
             }
             bytes.extend_from_slice(&chunk);
         }
-        if cached
-            .insert(resource.virtual_path.clone(), Bytes::new(bytes))
-            .is_some()
-        {
+        if cached.contains_key(&resource.virtual_path) {
             bail!(
                 "External resource virtual path '{}' is configured more than once",
                 resource.virtual_path
             );
         }
+        cached.insert(resource.virtual_path.clone(), Bytes::new(bytes));
     }
     Ok(cached)
 }
