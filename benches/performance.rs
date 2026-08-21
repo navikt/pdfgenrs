@@ -159,6 +159,24 @@ fn is_large_output_benchmark(app_name: &str, template_name: &str) -> bool {
     app_name == LARGE_OUTPUT_APP_NAME && template_name == LARGE_OUTPUT_TEMPLATE_NAME
 }
 
+fn max_total_ms(
+    result: &BenchResult,
+    default_max_ms: u128,
+    image_max_ms: u128,
+    html_max_ms: u128,
+    large_output_max_ms: u128,
+) -> u128 {
+    if is_large_output_benchmark(&result.app, &result.template) {
+        return large_output_max_ms;
+    }
+
+    match result.app.as_str() {
+        "image" => image_max_ms,
+        "html" | "html-to-pdf" => html_max_ms,
+        _ => default_max_ms,
+    }
+}
+
 fn fail_if_total_too_long(
     results: &[BenchResult],
     mode: &str,
@@ -170,25 +188,23 @@ fn fail_if_total_too_long(
     let slow_results: Vec<String> = results
         .iter()
         .filter(|result| {
-            let max = match result.app.as_str() {
-                LARGE_OUTPUT_APP_NAME if result.template == LARGE_OUTPUT_TEMPLATE_NAME => {
-                    large_output_max_ms
-                }
-                "image" => image_max_ms,
-                "html" | "html-to-pdf" => html_max_ms,
-                _ => default_max_ms,
-            };
-            result.duration_ms > max
+            result.duration_ms
+                > max_total_ms(
+                    result,
+                    default_max_ms,
+                    image_max_ms,
+                    html_max_ms,
+                    large_output_max_ms,
+                )
         })
         .map(|result| {
-            let max = match result.app.as_str() {
-                LARGE_OUTPUT_APP_NAME if result.template == LARGE_OUTPUT_TEMPLATE_NAME => {
-                    large_output_max_ms
-                }
-                "image" => image_max_ms,
-                "html" | "html-to-pdf" => html_max_ms,
-                _ => default_max_ms,
-            };
+            let max = max_total_ms(
+                result,
+                default_max_ms,
+                image_max_ms,
+                html_max_ms,
+                large_output_max_ms,
+            );
             format!(
                 "{}/{}: {}ms (limit: {}ms)",
                 result.app, result.template, result.duration_ms, max
