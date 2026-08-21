@@ -28,7 +28,7 @@ pub async fn load(resources: &[ExternalResourceConfig]) -> Result<HashMap<String
     let mut cached = HashMap::with_capacity(resources.len());
 
     for resource in resources {
-        let response = client
+        let mut response = client
             .get(&resource.url)
             .send()
             .await
@@ -44,19 +44,33 @@ pub async fn load(resources: &[ExternalResourceConfig]) -> Result<HashMap<String
             &resource.virtual_path,
             response.headers().get(header::CONTENT_TYPE),
         )?;
-        let bytes = response
-            .bytes()
-            .await
-            .with_context(|| format!("Failed to read external resource '{}'", resource.url))?;
-        if bytes.len() > MAX_RESOURCE_BYTES {
+        if response
+            .content_length()
+            .is_some_and(|size| size > MAX_RESOURCE_BYTES as u64)
+        {
             bail!(
                 "External resource '{}' exceeds the {} byte limit",
                 resource.url,
                 MAX_RESOURCE_BYTES
             );
         }
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .with_context(|| format!("Failed to read external resource '{}'", resource.url))?
+        {
+            if chunk.len() > MAX_RESOURCE_BYTES - bytes.len() {
+                bail!(
+                    "External resource '{}' exceeds the {} byte limit",
+                    resource.url,
+                    MAX_RESOURCE_BYTES
+                );
+            }
+            bytes.extend_from_slice(&chunk);
+        }
         if cached
-            .insert(resource.virtual_path.clone(), Bytes::new(bytes.to_vec()))
+            .insert(resource.virtual_path.clone(), Bytes::new(bytes))
             .is_some()
         {
             bail!(

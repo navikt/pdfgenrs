@@ -1163,7 +1163,8 @@ Hello, world!
         )]);
         let bytes = typst_to_pdf_with_resources(
             CompileRequest {
-                template_source: r#"#image("/external/logo.svg")"#,
+                template_source: r#"#set document(title: "External resource")
+#image("/external/logo.svg", alt: "Logo")"#,
                 json_data: &data,
                 fonts: Arc::new(load_fonts(&fonts_dir())?),
                 root: &root_dir(),

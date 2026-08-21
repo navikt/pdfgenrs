@@ -466,6 +466,7 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            external_resources: Vec::new(),
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -487,6 +488,7 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            external_resources: Vec::new(),
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -508,6 +510,7 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            external_resources: Vec::new(),
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -529,6 +532,7 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            external_resources: Vec::new(),
         };
 
         assert_eq!(
