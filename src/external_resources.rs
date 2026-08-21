@@ -28,6 +28,12 @@ pub async fn load(resources: &[ExternalResourceConfig]) -> Result<HashMap<String
     let mut cached = HashMap::with_capacity(resources.len());
 
     for resource in resources {
+        if cached.contains_key(&resource.virtual_path) {
+            bail!(
+                "External resource virtual path '{}' is configured more than once",
+                resource.virtual_path
+            );
+        }
         let mut response = client
             .get(&resource.url)
             .send()
@@ -68,12 +74,6 @@ pub async fn load(resources: &[ExternalResourceConfig]) -> Result<HashMap<String
                 );
             }
             bytes.extend_from_slice(&chunk);
-        }
-        if cached.contains_key(&resource.virtual_path) {
-            bail!(
-                "External resource virtual path '{}' is configured more than once",
-                resource.virtual_path
-            );
         }
         cached.insert(resource.virtual_path.clone(), Bytes::new(bytes));
     }
