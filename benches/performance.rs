@@ -15,6 +15,13 @@ const BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD: u128 = 700;
+const BENCH_MAX_TOTAL_MS_LARGE_OUTPUT_MULTI_THREAD: u128 = 30_000;
+const BENCH_MAX_TOTAL_MS_LARGE_OUTPUT_SINGLE_THREAD: u128 = 30_000;
+const DEFAULT_PASSES: u32 = 30;
+const LARGE_OUTPUT_PASSES: u32 = 3;
+const LARGE_OUTPUT_PDF_MIN_BYTES: usize = 512 * 1024;
+const LARGE_OUTPUT_ITEM_COUNT: usize = 350;
+const LARGE_OUTPUT_ITEM_BODY_BYTES: usize = 4_096;
 
 const BENCH_HTML_BODY: &str = r#"<!DOCTYPE html>
 <html>
@@ -114,17 +121,55 @@ fn html_bench_json_data() -> serde_json::Value {
     })
 }
 
+fn large_output_json_data() -> serde_json::Value {
+    let items = (0..LARGE_OUTPUT_ITEM_COUNT)
+        .map(|item| {
+            let mut body = String::with_capacity(LARGE_OUTPUT_ITEM_BODY_BYTES);
+            let mut state = item as u64 + 1;
+
+            while body.len() < LARGE_OUTPUT_ITEM_BODY_BYTES {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1);
+                let word_len = 5 + (state % 8) as usize;
+                for shift in 0..word_len {
+                    let letter = ((state >> (shift * 5)) % 26) as u8;
+                    body.push(char::from(b'a' + letter));
+                }
+                body.push(' ');
+            }
+            body.truncate(LARGE_OUTPUT_ITEM_BODY_BYTES);
+
+            serde_json::json!({
+                "title": format!("Section {item}"),
+                "body": body,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::json!({
+        "title": "Large PDF output load benchmark",
+        "items": items,
+    })
+}
+
+fn is_large_output_benchmark(app_name: &str, template_name: &str) -> bool {
+    app_name == "bench" && template_name == "large-output"
+}
+
 fn fail_if_total_too_long(
     results: &[BenchResult],
     mode: &str,
     default_max_ms: u128,
     image_max_ms: u128,
     html_max_ms: u128,
+    large_output_max_ms: u128,
 ) -> anyhow::Result<()> {
     let slow_results: Vec<String> = results
         .iter()
         .filter(|result| {
             let max = match result.app.as_str() {
+                "bench" if result.template == "large-output" => large_output_max_ms,
                 "image" => image_max_ms,
                 "html" | "html-to-pdf" => html_max_ms,
                 _ => default_max_ms,
@@ -133,6 +178,7 @@ fn fail_if_total_too_long(
         })
         .map(|result| {
             let max = match result.app.as_str() {
+                "bench" if result.template == "large-output" => large_output_max_ms,
                 "image" => image_max_ms,
                 "html" | "html-to-pdf" => html_max_ms,
                 _ => default_max_ms,
@@ -176,6 +222,7 @@ fn main() -> anyhow::Result<()> {
         BENCH_MAX_TOTAL_MS_MULTI_THREAD,
         BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD,
         BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD,
+        BENCH_MAX_TOTAL_MS_LARGE_OUTPUT_MULTI_THREAD,
     )?;
     fail_if_total_too_long(
         &st_results,
@@ -183,6 +230,7 @@ fn main() -> anyhow::Result<()> {
         BENCH_MAX_TOTAL_MS_SINGLE_THREAD,
         BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD,
         BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD,
+        BENCH_MAX_TOTAL_MS_LARGE_OUTPUT_SINGLE_THREAD,
     )?;
 
     Ok(())
@@ -204,14 +252,21 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
     );
 
     let client = Arc::new(reqwest::Client::new());
-    let passes = 30;
     let mut results = Vec::new();
 
     for (app_name, template_name) in app_state.templates.keys() {
         let app_name = app_name.clone();
         let template_name = template_name.clone();
 
-        let json_data = {
+        let is_large_output = is_large_output_benchmark(&app_name, &template_name);
+        let passes = if is_large_output {
+            LARGE_OUTPUT_PASSES
+        } else {
+            DEFAULT_PASSES
+        };
+        let json_data = if is_large_output {
+            Arc::new(large_output_json_data())
+        } else {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
                 .cloned()
@@ -230,6 +285,13 @@ async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
                 assert!(response.status().is_success());
                 let bytes = response.bytes().await?;
                 assert!(!bytes.is_empty());
+                if is_large_output {
+                    assert!(
+                        bytes.len() >= LARGE_OUTPUT_PDF_MIN_BYTES,
+                        "large output PDF was {} bytes, expected at least {LARGE_OUTPUT_PDF_MIN_BYTES}",
+                        bytes.len()
+                    );
+                }
                 anyhow::Ok(())
             });
         }
@@ -372,14 +434,21 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
         metrics::test_metrics_handle(),
     ));
 
-    let passes = 30;
     let mut results = Vec::new();
 
     for (app_name, template_name) in app_state.templates.keys() {
         let app_name = app_name.clone();
         let template_name = template_name.clone();
 
-        let json_data = {
+        let is_large_output = is_large_output_benchmark(&app_name, &template_name);
+        let passes = if is_large_output {
+            LARGE_OUTPUT_PASSES
+        } else {
+            DEFAULT_PASSES
+        };
+        let json_data = if is_large_output {
+            Arc::new(large_output_json_data())
+        } else {
             let data = app_state.data.read().await;
             data.get(&(app_name.clone(), template_name.clone()))
                 .cloned()
@@ -393,6 +462,13 @@ async fn performance_single_thread() -> anyhow::Result<Vec<BenchResult>> {
             let response = server.post(&url).json(json_data.as_ref()).await;
             response.assert_status_success();
             assert!(!response.as_bytes().is_empty());
+            if is_large_output {
+                assert!(
+                    response.as_bytes().len() >= LARGE_OUTPUT_PDF_MIN_BYTES,
+                    "large output PDF was {} bytes, expected at least {LARGE_OUTPUT_PDF_MIN_BYTES}",
+                    response.as_bytes().len()
+                );
+            }
         }
 
         let duration_ms = start.elapsed().as_millis();
