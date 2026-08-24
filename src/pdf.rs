@@ -531,8 +531,10 @@ fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
 mod tests {
     use super::*;
     use crate::typst_world::{build_library, load_fonts};
+    use std::fs;
     use std::path::PathBuf;
     use std::sync::Arc;
+    use tempfile::TempDir;
     use typst::Features;
 
     fn root_dir() -> PathBuf {
@@ -688,8 +690,55 @@ Hello, world!
     }
 
     #[test]
+    fn typst_to_pdf_returns_error_when_resources_dir_is_missing() -> Result<()> {
+        let source = r#"#set document(title: "Assets", date: auto)
+#image("/resources/NAVLogoRed.png")
+"#;
+        let data = serde_json::json!({});
+        let temp = TempDir::new()?;
+        let missing_resources = temp.path().join("missing-resources");
+        let result = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &missing_resources,
+            app_name: "test",
+            template_name: "assets-missing",
+            library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        });
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_pdf_returns_error_when_resources_dir_is_not_a_directory() -> Result<()> {
+        let source = r#"#set document(title: "Assets", date: auto)
+#image("/resources/NAVLogoRed.png")
+"#;
+        let data = serde_json::json!({});
+        let temp = TempDir::new()?;
+        let malformed_resources = temp.path().join("not-a-directory");
+        fs::write(&malformed_resources, b"file")?;
+        let result = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &malformed_resources,
+            app_name: "test",
+            template_name: "assets-malformed",
+            library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        });
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
     fn image_to_pdf_png_returns_pdf_bytes() -> Result<()> {
-        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
         let bytes = image_to_pdf(
             image_bytes,
             "/image.png",
@@ -705,7 +754,7 @@ Hello, world!
 
     #[test]
     fn image_to_pdf_landscape_png_returns_pdf_bytes() -> Result<()> {
-        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
         assert!(
             image_dimensions(&image_bytes).is_some_and(|(w, h)| w > h),
             "Test image should be landscape"
@@ -751,7 +800,7 @@ Hello, world!
 
     #[test]
     fn image_dimensions_png_parses_correctly() -> Result<()> {
-        let data = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let data = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
         let dims = image_dimensions(&data);
         assert_eq!(dims, Some((2201, 1386)));
         Ok(())
@@ -1143,7 +1192,7 @@ Hello, world!
 
     #[test]
     fn image_to_pdf_svg_returns_pdf_bytes() -> Result<()> {
-        let image_bytes = std::fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))?;
+        let image_bytes = fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))?;
         let bytes = image_to_pdf(
             image_bytes,
             "/image.svg",
@@ -1302,7 +1351,7 @@ Hello, world!
 
     #[test]
     fn image_to_pdf_returns_error_when_png_bytes_sent_with_jpeg_path() -> Result<()> {
-        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
         let result = image_to_pdf(
             image_bytes,
             "/image.jpg",
@@ -1327,7 +1376,7 @@ Hello, world!
 
     #[test]
     fn image_to_pdf_returns_error_when_jpeg_bytes_sent_with_png_path() -> Result<()> {
-        let image_bytes = std::fs::read(root_dir().join("resources").join("NAVLogoRed.jpg"))?;
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.jpg"))?;
         let result = image_to_pdf(
             image_bytes,
             "/image.png",
@@ -1352,16 +1401,16 @@ Hello, world!
 
     #[test]
     fn detect_image_format_returns_correct_format_for_each_type() -> Result<()> {
-        let png = std::fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let png = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
         assert_eq!(detect_image_format(&png), Some("png"));
 
-        let jpg = std::fs::read(root_dir().join("resources").join("NAVLogoRed.jpg"))?;
+        let jpg = fs::read(root_dir().join("resources").join("NAVLogoRed.jpg"))?;
         assert_eq!(detect_image_format(&jpg), Some("jpg"));
 
-        let webp = std::fs::read(root_dir().join("resources").join("test.webp"))?;
+        let webp = fs::read(root_dir().join("resources").join("test.webp"))?;
         assert_eq!(detect_image_format(&webp), Some("webp"));
 
-        let svg = std::fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))?;
+        let svg = fs::read(root_dir().join("resources").join("pdfgenrs-logo.svg"))?;
         assert_eq!(detect_image_format(&svg), Some("svg"));
 
         assert_eq!(detect_image_format(b"not an image"), None);

@@ -186,8 +186,11 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::Arc;
+    use std::time::Duration;
 
+    use axum::Router;
     use axum::http::StatusCode;
+    use axum::routing::post;
     use axum_test::TestServer;
 
     use pdfgenrs::testutil::make_state;
@@ -994,6 +997,48 @@ Dev mode: #data.at("mode", default: "unknown")
         let response = server.get("/api/v1/genhtml/myapp/broken").await;
 
         assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn graceful_shutdown_waits_for_inflight_compilation_like_request() -> anyhow::Result<()> {
+        let app = Router::new().route(
+            "/compile",
+            post(|| async {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                StatusCode::OK
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let addr = listener.local_addr()?;
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app)
+                .with_graceful_shutdown(async {
+                    let _ = shutdown_rx.await;
+                })
+                .await
+        });
+
+        let client = reqwest::Client::new();
+        let url = format!("http://{addr}/compile");
+        let in_flight = tokio::spawn({
+            let client = client.clone();
+            let url = url.clone();
+            async move { client.post(url).send().await }
+        });
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        let _ = shutdown_tx.send(());
+
+        let response = in_flight.await??;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        server.await??;
+
+        let after_shutdown = client.post(url).send().await;
+        assert!(after_shutdown.is_err());
         Ok(())
     }
 }

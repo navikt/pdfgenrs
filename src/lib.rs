@@ -106,6 +106,7 @@ mod tests {
 
     use axum::http::StatusCode;
     use axum_test::TestServer;
+    use metrics_exporter_prometheus::PrometheusBuilder;
 
     use super::*;
     use crate::testutil::make_state;
@@ -219,6 +220,78 @@ mod tests {
             StatusCode::PAYLOAD_TOO_LARGE,
             "Request exactly at body limit should not be rejected as 413"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn body_limit_rejection_emits_http_metrics() -> anyhow::Result<()> {
+        use crate::testutil::make_state_with_body_limit;
+
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        ::metrics::with_local_recorder(&recorder, || -> anyhow::Result<()> {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            rt.block_on(async {
+                let limit: usize = 1024;
+                let state =
+                    make_state_with_body_limit(HashMap::new(), HashMap::new(), false, limit)?;
+                let metrics_handle = metrics::test_metrics_handle();
+                let router = build_router(state, metrics_handle);
+                let server = TestServer::new(router);
+                let oversized = vec![b'a'; limit + 1];
+                let response = server
+                    .post("/api/v1/genpdf/myapp/mytemplate")
+                    .content_type("application/json")
+                    .bytes(axum::body::Bytes::from(oversized))
+                    .await;
+
+                assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+                Ok::<(), anyhow::Error>(())
+            })?;
+            Ok(())
+        })?;
+
+        let output = handle.render();
+        assert!(output.contains("http_requests_total"));
+        assert!(output.contains(r#"status="413""#));
+        Ok(())
+    }
+
+    #[test]
+    fn non_rejected_requests_still_emit_http_metrics() -> anyhow::Result<()> {
+        use crate::testutil::make_state_with_body_limit;
+
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        ::metrics::with_local_recorder(&recorder, || -> anyhow::Result<()> {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            rt.block_on(async {
+                let limit: usize = 1024;
+                let state =
+                    make_state_with_body_limit(HashMap::new(), HashMap::new(), false, limit)?;
+                let metrics_handle = metrics::test_metrics_handle();
+                let router = build_router(state, metrics_handle);
+                let server = TestServer::new(router);
+                let within_limit = vec![b'a'; limit - 1];
+                let response = server
+                    .post("/api/v1/genpdf/myapp/mytemplate")
+                    .content_type("application/json")
+                    .bytes(axum::body::Bytes::from(within_limit))
+                    .await;
+
+                assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+                Ok::<(), anyhow::Error>(())
+            })?;
+            Ok(())
+        })?;
+
+        let output = handle.render();
+        assert!(output.contains("http_requests_total"));
+        assert!(output.contains(r#"status="400""#));
         Ok(())
     }
 }
