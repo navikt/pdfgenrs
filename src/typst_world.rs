@@ -584,6 +584,65 @@ Hello, world!
         Ok(())
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn file_access_can_escape_resources_dir_via_parent_segments() -> Result<()> {
+        let root = TempDir::new()?;
+        let resources = TempDir::new()?;
+        fs::write(root.path().join("secret.txt"), b"escaped")?;
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            root.path(),
+            resources.path(),
+            "/main.typ",
+            "Main",
+            HashMap::new(),
+            pdf_library(),
+        )?;
+
+        let file_id = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new("/resources/../secret.txt")?,
+        ));
+        let bytes = world.file(file_id)?;
+
+        assert_eq!(bytes.as_slice(), b"escaped");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn file_access_follows_symlink_from_resources_dir_to_outside_target() -> Result<()> {
+        let root = TempDir::new()?;
+        let resources = TempDir::new()?;
+        let outside = TempDir::new()?;
+        fs::write(outside.path().join("outside.txt"), b"outside")?;
+        std::os::unix::fs::symlink(
+            outside.path().join("outside.txt"),
+            resources.path().join("linked.txt"),
+        )?;
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            root.path(),
+            resources.path(),
+            "/main.typ",
+            "Main",
+            HashMap::new(),
+            pdf_library(),
+        )?;
+
+        let file_id = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new("/resources/linked.txt")?,
+        ));
+        let bytes = world.file(file_id)?;
+
+        assert_eq!(bytes.as_slice(), b"outside");
+        Ok(())
+    }
+
     #[test]
     fn today_supports_offset_argument() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);

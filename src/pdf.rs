@@ -531,8 +531,10 @@ fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
 mod tests {
     use super::*;
     use crate::typst_world::{build_library, load_fonts};
+    use std::fs;
     use std::path::PathBuf;
     use std::sync::Arc;
+    use tempfile::TempDir;
     use typst::Features;
 
     fn root_dir() -> PathBuf {
@@ -684,6 +686,53 @@ Hello, world!
         let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
         let bytes = html_to_pdf(source, &converter)?;
         assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_pdf_returns_error_when_resources_dir_is_missing() -> Result<()> {
+        let source = r#"#set document(title: "Assets", date: auto)
+#image("/resources/NAVLogoRed.png")
+"#;
+        let data = serde_json::json!({});
+        let temp = TempDir::new()?;
+        let missing_resources = temp.path().join("missing-resources");
+        let result = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &missing_resources,
+            app_name: "test",
+            template_name: "assets-missing",
+            library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        });
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn typst_to_pdf_returns_error_when_resources_dir_is_not_a_directory() -> Result<()> {
+        let source = r#"#set document(title: "Assets", date: auto)
+#image("/resources/NAVLogoRed.png")
+"#;
+        let data = serde_json::json!({});
+        let temp = TempDir::new()?;
+        let malformed_resources = temp.path().join("not-a-directory");
+        fs::write(&malformed_resources, b"file")?;
+        let result = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &malformed_resources,
+            app_name: "test",
+            template_name: "assets-malformed",
+            library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        });
+        assert!(result.is_err());
         Ok(())
     }
 
