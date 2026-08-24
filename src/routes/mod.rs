@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use metrics::histogram;
+use metrics::{Gauge, counter, gauge, histogram};
 use serde_json::Value;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info_span, warn};
@@ -18,6 +18,82 @@ pub(crate) mod error;
 pub(crate) mod html;
 pub(crate) mod nais;
 pub(crate) mod pdf;
+
+const ACTIVE_COMPILATIONS_METRIC: &str = "template_compilations_active";
+const SEMAPHORE_WAITING_METRIC: &str = "template_compilation_semaphore_waiting";
+const SEMAPHORE_REJECTIONS_METRIC: &str = "template_compilation_semaphore_rejections_total";
+const IN_FLIGHT_AFTER_TIMEOUT_METRIC: &str = "template_compilations_in_flight_after_timeout";
+
+struct GaugeGuard(Gauge);
+
+impl GaugeGuard {
+    fn new(metric_name: &'static str, labels: &[(&'static str, String)]) -> Self {
+        let gauge = gauge!(metric_name, labels);
+        gauge.increment(1.0);
+        Self(gauge)
+    }
+}
+
+impl Drop for GaugeGuard {
+    fn drop(&mut self) {
+        self.0.decrement(1.0);
+    }
+}
+
+struct InFlightAfterTimeoutGuard {
+    gauge: Gauge,
+    continuing_after_timeout: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl Drop for InFlightAfterTimeoutGuard {
+    fn drop(&mut self) {
+        if self
+            .continuing_after_timeout
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            self.gauge.decrement(1.0);
+        }
+    }
+}
+
+struct TaskCompletionGuard(Arc<std::sync::atomic::AtomicBool>);
+
+impl Drop for TaskCompletionGuard {
+    fn drop(&mut self) {
+        self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+struct TaskContinuationGuard {
+    abort_handle: tokio::task::AbortHandle,
+    started: Arc<std::sync::atomic::AtomicBool>,
+    completed: Arc<std::sync::atomic::AtomicBool>,
+    continuing_after_timeout: Arc<std::sync::atomic::AtomicBool>,
+    gauge: Gauge,
+}
+
+impl Drop for TaskContinuationGuard {
+    fn drop(&mut self) {
+        if !self.completed.load(std::sync::atomic::Ordering::Relaxed) {
+            self.abort_handle.abort();
+            if self.started.load(std::sync::atomic::Ordering::Relaxed) {
+                self.continuing_after_timeout
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                self.gauge.increment(1.0);
+            }
+        }
+    }
+}
+
+fn compilation_labels(app_name: &str, template_name: Option<&str>) -> [(&'static str, String); 2] {
+    [
+        ("app_name", app_name.to_owned()),
+        (
+            "template_name",
+            template_name.unwrap_or("unknown").to_owned(),
+        ),
+    ]
+}
 
 /// Common parameters extracted from state for template compilation.
 pub(crate) struct CompileParams {
@@ -93,6 +169,8 @@ pub(crate) async fn acquire_compile_permit(
     template_name: Option<&str>,
 ) -> Result<Option<OwnedSemaphorePermit>, ApiError> {
     if let Some(ref semaphore) = state.compile_semaphore {
+        let labels = compilation_labels(app_name, template_name);
+        let _waiting = GaugeGuard::new(SEMAPHORE_WAITING_METRIC, &labels);
         let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
         match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
             Ok(Ok(permit)) => Ok(Some(permit)),
@@ -108,9 +186,12 @@ pub(crate) async fn acquire_compile_permit(
                     dev_mode: state.config.dev_mode,
                 })
             }
-            Err(_elapsed) => Err(ApiError::ServiceOverloaded {
-                retry_after_seconds: state.config.semaphore_acquire_timeout_seconds,
-            }),
+            Err(_elapsed) => {
+                counter!(SEMAPHORE_REJECTIONS_METRIC, &labels).increment(1);
+                Err(ApiError::ServiceOverloaded {
+                    retry_after_seconds: state.config.semaphore_acquire_timeout_seconds,
+                })
+            }
         }
     } else {
         Ok(None)
@@ -137,10 +218,32 @@ where
     let start = Instant::now();
     let request_id = current_request_id().unwrap_or_default();
     let span = info_span!("typst_compilation", request_id = %request_id);
+    let labels = compilation_labels(&app_name, template_name.as_deref());
+    let started = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let completed = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let continuing_after_timeout = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let task_started = Arc::clone(&started);
+    let task_completed = Arc::clone(&completed);
+    let task_continuing_after_timeout = Arc::clone(&continuing_after_timeout);
+    let task_labels = labels.clone();
     let mut handle = tokio::task::spawn_blocking(move || {
+        task_started.store(true, std::sync::atomic::Ordering::Relaxed);
         let _permit = permit;
+        let _active = GaugeGuard::new(ACTIVE_COMPILATIONS_METRIC, &task_labels);
+        let _in_flight_after_timeout = InFlightAfterTimeoutGuard {
+            gauge: gauge!(IN_FLIGHT_AFTER_TIMEOUT_METRIC, &task_labels),
+            continuing_after_timeout: task_continuing_after_timeout,
+        };
+        let _completion = TaskCompletionGuard(task_completed);
         span.in_scope(task)
     });
+    let _continuation = TaskContinuationGuard {
+        abort_handle: handle.abort_handle(),
+        started,
+        completed,
+        continuing_after_timeout,
+        gauge: gauge!(IN_FLIGHT_AFTER_TIMEOUT_METRIC, &labels),
+    };
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
@@ -169,7 +272,6 @@ where
             })
         }
         Err(_elapsed) => {
-            handle.abort();
             warn!(
                 app_name = %app_name,
                 template_name = ?template_name,
@@ -195,7 +297,10 @@ mod tests {
 
     use metrics_exporter_prometheus::PrometheusBuilder;
 
-    use super::{acquire_compile_permit, compile_blocking};
+    use super::{
+        SEMAPHORE_REJECTIONS_METRIC, SEMAPHORE_WAITING_METRIC, acquire_compile_permit,
+        compile_blocking,
+    };
     use crate::testutil::make_state;
 
     #[tokio::test]
@@ -700,6 +805,38 @@ mod tests {
                     "expected template_name=unknown label when None: {output}"
                 );
                 Ok::<(), anyhow::Error>(())
+            })?;
+            Ok::<(), anyhow::Error>(())
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn semaphore_timeout_records_wait_and_rejection_metrics() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(async {
+                let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+                state.config.semaphore_acquire_timeout_seconds = 0;
+                state.compile_semaphore = Some(Arc::new(Semaphore::new(0)));
+
+                let _ = acquire_compile_permit(&state, "myapp", Some("report")).await;
+
+                let output = handle.render();
+                assert!(
+                    output.contains(SEMAPHORE_WAITING_METRIC),
+                    "expected semaphore wait metric in output: {output}"
+                );
+                assert!(
+                    output.contains(SEMAPHORE_REJECTIONS_METRIC),
+                    "expected semaphore rejection metric in output: {output}"
+                );
+                Ok::<_, anyhow::Error>(())
             })?;
             Ok::<(), anyhow::Error>(())
         })?;
