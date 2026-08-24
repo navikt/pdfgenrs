@@ -1033,7 +1033,7 @@ Dev mode: #data.at("mode", default: "unknown")
         let _ = shutdown_tx.send(());
 
         let response = in_flight.await??;
-        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        assert_eq!(response.status(), StatusCode::OK);
 
         server.await??;
 
