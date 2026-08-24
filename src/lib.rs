@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn body_limit_rejection_bypasses_http_metrics_middleware() -> anyhow::Result<()> {
+    fn body_limit_rejection_emits_http_metrics() -> anyhow::Result<()> {
         use crate::testutil::make_state_with_body_limit;
 
         let recorder = PrometheusBuilder::new().build_recorder();
@@ -254,8 +254,8 @@ mod tests {
         })?;
 
         let output = handle.render();
-        assert!(!output.contains("http_requests_total{"));
-        assert!(!output.contains(r#"status="413""#));
+        assert!(output.contains("http_requests_total"));
+        assert!(output.contains(r#"status="413""#));
         Ok(())
     }
 
