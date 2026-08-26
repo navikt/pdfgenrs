@@ -79,55 +79,55 @@ fn discover_fonts(fonts_dir: &Path) -> Vec<(String, Arc<Vec<u8>>)> {
         .entry(cache_key)
         .or_insert_with(|| {
             let mut loaded: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
-        let entries = match WalkDir::new(fonts_dir)
-            .into_iter()
-            .collect::<std::result::Result<Vec<_>, _>>()
-        {
-            Ok(entries) => entries,
-            Err(error) => {
-                warn!(
-                    fonts_dir = %fonts_dir.display(),
-                    "Failed to read fonts directory: {error}"
-                );
-                return loaded;
-            }
-        };
-
-        for entry in entries {
-            let path = entry.path();
-            if !entry.file_type().is_file() || !is_supported_font_file(path) {
-                continue;
-            }
-
-            let font_bytes = match std::fs::read(path) {
-                Ok(bytes) => bytes,
+            let entries = match WalkDir::new(fonts_dir)
+                .into_iter()
+                .collect::<std::result::Result<Vec<_>, _>>()
+            {
+                Ok(entries) => entries,
                 Err(error) => {
                     warn!(
-                        font_path = %path.display(),
-                        "Failed to read font file: {error}"
+                        fonts_dir = %fonts_dir.display(),
+                        "Failed to read fonts directory: {error}"
                     );
-                    continue;
+                    return loaded;
                 }
             };
 
-            let font_bytes = Arc::new(font_bytes);
-            let fonts_from_file: Vec<Font> =
-                Font::iter(Bytes::new((*font_bytes).clone())).collect();
+            for entry in entries {
+                let path = entry.path();
+                if !entry.file_type().is_file() || !is_supported_font_file(path) {
+                    continue;
+                }
 
-            if fonts_from_file.is_empty() {
-                warn!(
-                    font_path = %path.display(),
-                    "Font file did not contain any readable font faces"
-                );
-                continue;
-            }
+                let font_bytes = match std::fs::read(path) {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        warn!(
+                            font_path = %path.display(),
+                            "Failed to read font file: {error}"
+                        );
+                        continue;
+                    }
+                };
 
-            for font in &fonts_from_file {
-                let info = font.info();
-                let name = css_font_name(&info.family, &info.variant);
-                loaded.push((name, Arc::clone(&font_bytes)));
+                let font_bytes = Arc::new(font_bytes);
+                let fonts_from_file: Vec<Font> =
+                    Font::iter(Bytes::new((*font_bytes).clone())).collect();
+
+                if fonts_from_file.is_empty() {
+                    warn!(
+                        font_path = %path.display(),
+                        "Font file did not contain any readable font faces"
+                    );
+                    continue;
+                }
+
+                for font in &fonts_from_file {
+                    let info = font.info();
+                    let name = css_font_name(&info.family, &info.variant);
+                    loaded.push((name, Arc::clone(&font_bytes)));
+                }
             }
-        }
 
             loaded
         })
