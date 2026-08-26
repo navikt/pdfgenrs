@@ -3,7 +3,7 @@ use ironpress::HtmlConverter;
 use metrics::counter;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use tracing::warn;
 use typst::foundations::Bytes;
 use typst_library::text::Font;
@@ -13,12 +13,11 @@ use crate::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
-/// Cached font data discovered from the fonts directory. Once loaded, subsequent
-/// calls to [`build_html_converter`] reuse the cached data instead of re-reading
-/// files from disk. The `Arc<Vec<u8>>` wrapping lets multiple font faces from the
-/// same collection file share one allocation.
-type FontCache = (PathBuf, Vec<(String, Arc<Vec<u8>>)>);
-static FONT_CACHE: OnceLock<FontCache> = OnceLock::new();
+/// Cached font data discovered from each fonts directory. The `Arc<Vec<u8>>`
+/// wrapping lets multiple font faces from the same collection file share one
+/// allocation.
+type FontCache = HashMap<PathBuf, Vec<(String, Arc<Vec<u8>>)>>;
+static FONT_CACHE: OnceLock<Mutex<FontCache>> = OnceLock::new();
 
 /// Derives a CSS-friendly font name from a font's family and variant.
 ///
@@ -55,11 +54,31 @@ fn css_font_name(family: &str, variant: &typst_library::text::FontVariant) -> St
 }
 
 /// Discovers all fonts in `fonts_dir` and returns `(css_name, font_bytes)` pairs,
-/// using a process-wide cache to avoid redundant file I/O.
-fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Arc<Vec<u8>>)] {
-    let (cached_dir, fonts) = FONT_CACHE.get_or_init(|| {
-        let mut loaded: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
+/// caching fonts by their canonicalized directory.
+fn discover_fonts(fonts_dir: &Path) -> Vec<(String, Arc<Vec<u8>>)> {
+    let cache_key = match fonts_dir.canonicalize() {
+        Ok(path) => path,
+        Err(error) => {
+            warn!(
+                fonts_dir = %fonts_dir.display(),
+                "Failed to canonicalize fonts directory: {error}"
+            );
+            fonts_dir.to_path_buf()
+        }
+    };
+    let cache = FONT_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut cache = match cache.lock() {
+        Ok(cache) => cache,
+        Err(error) => {
+            warn!("Font cache lock was poisoned; continuing with recovered cache");
+            error.into_inner()
+        }
+    };
 
+    cache
+        .entry(cache_key)
+        .or_insert_with(|| {
+            let mut loaded: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
         let entries = match WalkDir::new(fonts_dir)
             .into_iter()
             .collect::<std::result::Result<Vec<_>, _>>()
@@ -70,7 +89,7 @@ fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Arc<Vec<u8>>)] {
                     fonts_dir = %fonts_dir.display(),
                     "Failed to read fonts directory: {error}"
                 );
-                return (fonts_dir.to_path_buf(), loaded);
+                return loaded;
             }
         };
 
@@ -110,16 +129,9 @@ fn discover_fonts(fonts_dir: &Path) -> &'static [(String, Arc<Vec<u8>>)] {
             }
         }
 
-        (fonts_dir.to_path_buf(), loaded)
-    });
-    if cached_dir != fonts_dir {
-        warn!(
-            cached = %cached_dir.display(),
-            requested = %fonts_dir.display(),
-            "Font cache was initialised from a different directory; reusing cached fonts"
-        );
-    }
-    fonts
+            loaded
+        })
+        .clone()
 }
 
 /// Returns whether `path` has a supported font extension (`ttf`, `otf`, or `ttc`).
@@ -136,9 +148,9 @@ fn is_supported_font_file(path: &Path) -> bool {
 
 /// Builds a pre-configured [`HtmlConverter`] with fonts discovered from `fonts_dir`.
 ///
-/// Font data is cached in a process-wide [`OnceLock`] so that repeated calls
-/// (e.g. in tests) avoid redundant file I/O. The converter itself is constructed fresh
-/// each call with the given `base_path`, but the expensive disk reads happen at most once.
+/// Font data is cached by canonicalized directory so that repeated calls with
+/// the same directory avoid redundant file I/O. The converter itself is constructed
+/// fresh each call with the given `base_path`.
 ///
 /// Font files that cannot be read are skipped and logged as warnings (on first load only).
 ///
@@ -149,7 +161,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
     let fonts = discover_fonts(fonts_dir);
     let mut converter = HtmlConverter::new().base_path(base_path);
 
-    for (name, font_bytes) in fonts {
+    for (name, font_bytes) in &fonts {
         converter = converter.add_font(name, (**font_bytes).clone());
     }
 
@@ -691,6 +703,26 @@ Hello, world!
         let (converter, _) = build_html_converter(&fonts_dir(), &root_dir());
         let bytes = html_to_pdf(source, &converter)?;
         assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn build_html_converter_uses_fonts_from_each_directory() -> Result<()> {
+        let populated_fonts_dir = TempDir::new()?;
+        let empty_fonts_dir = TempDir::new()?;
+        fs::copy(
+            fonts_dir().join("SourceSans3-SemiBold.ttf"),
+            populated_fonts_dir.path().join("SourceSans3-SemiBold.ttf"),
+        )?;
+
+        let (_, populated_count) = build_html_converter(populated_fonts_dir.path(), &root_dir());
+        let (_, empty_count) = build_html_converter(empty_fonts_dir.path(), &root_dir());
+        let (_, repeated_populated_count) =
+            build_html_converter(populated_fonts_dir.path(), &root_dir());
+
+        assert!(populated_count > 0);
+        assert_eq!(empty_count, 0);
+        assert_eq!(repeated_populated_count, populated_count);
         Ok(())
     }
 
