@@ -583,6 +583,33 @@ Hello, world!
         Ok(())
     }
 
+    /// Regression test for a PDF/A-2a and PDF/UA-1 export failure caused by
+    /// Arabic-Indic digits (e.g. U+0660..U+0669) not being covered by any
+    /// bundled font. Source Sans 3 and Noto Color Emoji don't include Arabic
+    /// script glyphs, so Typst's font fallback had nowhere to look. Noto Sans
+    /// Arabic was added to `fonts/` to cover this range.
+    #[test]
+    fn typst_to_pdf_arabic_indic_digits_are_rendered() -> Result<()> {
+        let source = r#"#set document(title: "Test", date: auto)
+#set page(margin: 1cm)
+Numbers: ٠١٢٣٤٥٦٧٨٩
+"#;
+        let data = serde_json::json!({});
+        let bytes = typst_to_pdf(CompileRequest {
+            template_source: source,
+            json_data: &data,
+            fonts: test_fonts()?,
+            root: &root_dir(),
+            resources_dir: &resources_dir(),
+            app_name: "test",
+            template_name: "simple",
+            library: pdf_library(),
+            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        })?;
+        assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
     #[test]
     fn typst_to_pdf_records_comemo_evictions_total_metric() -> Result<()> {
         let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
