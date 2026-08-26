@@ -1,86 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787555401699,
+  "lastUpdate": 1787727147464,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "c3eafac76833e0791fd91ace05d976dc0bde4e4d",
-          "message": "Merge pull request #419 from navikt/copilot/fix-fonts-dir-issue\n\nResolve relative font paths from ROOT_DIR at startup",
-          "timestamp": "2026-08-10T17:29:41+02:00",
-          "tree_id": "77236e717c4bda1f4cb51131cd0a3073c973db0c",
-          "url": "https://github.com/navikt/pdfgenrs/commit/c3eafac76833e0791fd91ace05d976dc0bde4e4d"
-        },
-        "date": 1786375951401,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 192890,
-            "range": "± 8136",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 396492,
-            "range": "± 3341",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5157741,
-            "range": "± 59341",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 92012,
-            "range": "± 4138",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 134496,
-            "range": "± 4414",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 201389,
-            "range": "± 7546",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 338611,
-            "range": "± 1843",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 14207,
-            "range": "± 62",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 21414,
-            "range": "± 74",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -803,6 +725,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 18439,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b3f0f33cf44b398a9a20e54fd92d9742cd69a3cb",
+          "message": "Merge pull request #430 from navikt/copilot/add-gauges-counters\n\nAdd compilation capacity metrics",
+          "timestamp": "2026-08-26T08:49:21+02:00",
+          "tree_id": "70b16d3690ba887b57423b455bcae909f3837540",
+          "url": "https://github.com/navikt/pdfgenrs/commit/b3f0f33cf44b398a9a20e54fd92d9742cd69a3cb"
+        },
+        "date": 1787727142740,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 216250,
+            "range": "± 13064",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 398712,
+            "range": "± 12016",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5198796,
+            "range": "± 28432",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 87672,
+            "range": "± 8223",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 6205376,
+            "range": "± 310846",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 152861,
+            "range": "± 2244",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 209200,
+            "range": "± 2673",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 356851,
+            "range": "± 7671",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 10911,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18239,
+            "range": "± 56",
             "unit": "ns/iter"
           }
         ]
