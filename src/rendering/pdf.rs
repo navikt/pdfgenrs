@@ -67,13 +67,10 @@ fn discover_fonts(fonts_dir: &Path) -> Arc<Vec<(String, Arc<Vec<u8>>)>> {
         }
     };
     let cache = FONT_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let mut cache = match cache.lock() {
-        Ok(cache) => cache,
-        Err(error) => {
-            warn!("Font cache lock was poisoned: {error}; continuing with recovered cache");
-            error.into_inner()
-        }
-    };
+    let mut cache = cache.lock().unwrap_or_else(|error| {
+        warn!("Font cache lock was poisoned: {error}; continuing with recovered cache");
+        error.into_inner()
+    });
 
     cache
         .entry(cache_key)
