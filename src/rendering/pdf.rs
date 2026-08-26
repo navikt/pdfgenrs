@@ -16,7 +16,7 @@ use typst::utils::LazyHash;
 /// Cached font data discovered from each fonts directory. The `Arc<Vec<u8>>`
 /// wrapping lets multiple font faces from the same collection file share one
 /// allocation.
-type FontCache = HashMap<PathBuf, Vec<(String, Arc<Vec<u8>>)>>;
+type FontCache = HashMap<PathBuf, Arc<Vec<(String, Arc<Vec<u8>>)>>>;
 static FONT_CACHE: OnceLock<Mutex<FontCache>> = OnceLock::new();
 
 /// Derives a CSS-friendly font name from a font's family and variant.
@@ -55,7 +55,7 @@ fn css_font_name(family: &str, variant: &typst_library::text::FontVariant) -> St
 
 /// Discovers all fonts in `fonts_dir` and returns `(css_name, font_bytes)` pairs,
 /// caching fonts by their canonicalized directory.
-fn discover_fonts(fonts_dir: &Path) -> Vec<(String, Arc<Vec<u8>>)> {
+fn discover_fonts(fonts_dir: &Path) -> Arc<Vec<(String, Arc<Vec<u8>>)>> {
     let cache_key = match fonts_dir.canonicalize() {
         Ok(path) => path,
         Err(error) => {
@@ -89,7 +89,7 @@ fn discover_fonts(fonts_dir: &Path) -> Vec<(String, Arc<Vec<u8>>)> {
                         fonts_dir = %fonts_dir.display(),
                         "Failed to read fonts directory: {error}"
                     );
-                    return loaded;
+                    return Arc::new(loaded);
                 }
             };
 
@@ -129,7 +129,7 @@ fn discover_fonts(fonts_dir: &Path) -> Vec<(String, Arc<Vec<u8>>)> {
                 }
             }
 
-            loaded
+            Arc::new(loaded)
         })
         .clone()
 }
@@ -161,7 +161,7 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
     let fonts = discover_fonts(fonts_dir);
     let mut converter = HtmlConverter::new().base_path(base_path);
 
-    for (name, font_bytes) in &fonts {
+    for (name, font_bytes) in fonts.iter() {
         converter = converter.add_font(name, (**font_bytes).clone());
     }
 
