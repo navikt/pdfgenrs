@@ -5,23 +5,24 @@
 
 /// Runtime server configuration sourced from environment variables.
 pub mod config;
+mod http;
 /// Prometheus metrics middleware and recorder setup.
 pub mod metrics;
+mod rendering;
 /// Shared application state and liveness/readiness primitives.
 pub mod state;
-/// Template and development data loading helpers.
-pub mod template;
-/// Typst world, font loading, and compilation utilities.
-pub mod typst_world;
-
-pub mod html;
-pub(crate) mod http_tracing;
-/// PDF generation functions: Typst-to-PDF, HTML-to-PDF, and image-to-PDF.
-pub mod pdf;
-pub(crate) mod request_id;
-pub(crate) mod routes;
 #[doc(hidden)]
 pub mod testutil;
+
+pub(crate) use http::{http_tracing, request_id, routes};
+/// Typst-to-HTML rendering functions.
+pub use rendering::html;
+/// PDF generation functions: Typst-to-PDF, HTML-to-PDF, and image-to-PDF.
+pub use rendering::pdf;
+/// Template and development data loading helpers.
+pub use rendering::template;
+/// Typst world, font loading, and compilation utilities.
+pub use rendering::typst_world;
 
 use axum::extract::DefaultBodyLimit;
 use axum::{
