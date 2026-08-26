@@ -2,6 +2,7 @@ use axum::{
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
+use metrics::counter;
 use opentelemetry::trace::TraceContextExt;
 use tracing::error;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -146,6 +147,16 @@ impl IntoResponse for ApiError {
                 ref app_name,
                 ref template_name,
             } => {
+                let labels = [
+                    ("app_name", app_name.clone()),
+                    (
+                        "template_name",
+                        template_name
+                            .clone()
+                            .unwrap_or_else(|| "unknown".to_owned()),
+                    ),
+                ];
+                counter!("template_compilation_timeout_responses_total", &labels).increment(1);
                 if let Some(tmpl) = template_name {
                     error!(app_name = %app_name, template_name = %tmpl, "Compilation timed out");
                 } else {
@@ -301,6 +312,28 @@ mod tests {
         assert_eq!(body["title"], "Request Timeout");
         assert_eq!(body["status"], 408);
         assert_eq!(body["detail"], "Request timed out");
+        Ok(())
+    }
+
+    #[test]
+    fn request_timeout_records_timeout_response_counter() -> anyhow::Result<()> {
+        let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let response = ApiError::RequestTimeout {
+                app_name: "myapp".to_string(),
+                template_name: Some("template1".to_string()),
+            }
+            .into_response();
+            assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+
+            let output = handle.render();
+            assert!(
+                output.contains("template_compilation_timeout_responses_total"),
+                "expected timeout response counter in output: {output}"
+            );
+            Ok::<(), anyhow::Error>(())
+        })?;
         Ok(())
     }
 
