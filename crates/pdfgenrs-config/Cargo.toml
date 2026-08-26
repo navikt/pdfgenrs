@@ -1,0 +1,31 @@
+[package]
+name = "pdfgenrs-config"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96.0"
+description = "Runtime configuration for pdfgenrs, sourced from environment variables"
+license = "MIT"
+repository = "https://github.com/navikt/pdfgenrs"
+
+[dependencies]
+tracing = "0.1.44"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+elided_lifetimes_in_paths = "warn"
+missing_debug_implementations = "warn"
+single_use_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+unreachable_pub = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+inefficient_to_string = "warn"

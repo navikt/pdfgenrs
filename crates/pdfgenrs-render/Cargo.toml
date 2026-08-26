@@ -1,0 +1,45 @@
+[package]
+name = "pdfgenrs-render"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96.0"
+description = "PDF and HTML rendering backends for pdfgenrs"
+license = "MIT"
+repository = "https://github.com/navikt/pdfgenrs"
+
+[dependencies]
+pdfgenrs-typst = { path = "../pdfgenrs-typst" }
+anyhow = "1.0.102"
+comemo = "0.5.1"
+ironpress = "1.5.2"
+metrics = "0.24.6"
+serde_json = { version = "1.0.150", features = ["preserve_order"] }
+tracing = "0.1.44"
+typst = "0.15.0"
+typst-library = "0.15.0"
+walkdir = "2.5.0"
+
+[dev-dependencies]
+pdfgenrs-config = { path = "../pdfgenrs-config" }
+tempfile = "3.27.0"
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync"] }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+elided_lifetimes_in_paths = "warn"
+missing_debug_implementations = "warn"
+single_use_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+unreachable_pub = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+inefficient_to_string = "warn"

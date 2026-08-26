@@ -679,7 +679,7 @@ Hello, world!
                 HashMap::new(),
                 Arc::clone(&library),
             )?;
-            comemo::evict(crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
+            comemo::evict(pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
         }
 
         let Some(rss_before) = rss_kb() else {
@@ -699,7 +699,7 @@ Hello, world!
                 HashMap::new(),
                 Arc::clone(&library),
             );
-            comemo::evict(crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
+            comemo::evict(pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD);
             assert!(result.is_ok(), "Compilation {i} failed: {:?}", result.err());
         }
 

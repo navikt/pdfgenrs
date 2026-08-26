@@ -1,3 +1,12 @@
+[workspace]
+members = [
+    ".",
+    "crates/pdfgenrs-config",
+    "crates/pdfgenrs-typst",
+    "crates/pdfgenrs-render",
+]
+resolver = "2"
+
 [package]
 name = "pdfgenrs"
 version = "0.1.0"
@@ -25,19 +34,15 @@ path = "benches/criterion_bench.rs"
 harness = false
 
 [dependencies]
+pdfgenrs-config = { path = "crates/pdfgenrs-config" }
+pdfgenrs-typst = { path = "crates/pdfgenrs-typst" }
+pdfgenrs-render = { path = "crates/pdfgenrs-render" }
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
 axum = "0.8.9"
 serde_json = { version = "1.0.150", features = ["preserve_order"] }
 time = { version = "0.3.51", features = ["local-offset", "formatting"] }
-walkdir = "2.5.0"
 anyhow = "1.0.102"
-comemo = "0.5.1"
 typst = "0.15.0"
-typst-html = "0.15.0"
-typst-pdf = "0.15.0"
-typst-layout = "0.15.0"
-typst-library = "0.15.0"
-typst-syntax = "0.15.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "tracing-log"] }
 tracing-opentelemetry = "0.33.0"

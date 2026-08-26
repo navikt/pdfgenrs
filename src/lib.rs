@@ -4,22 +4,22 @@
 //! ready-to-use Axum router for the HTTP API.
 
 /// Runtime server configuration sourced from environment variables.
-pub mod config;
+pub use pdfgenrs_config as config;
+pub use pdfgenrs_render::html;
+/// PDF generation functions: Typst-to-PDF, HTML-to-PDF, and image-to-PDF.
+pub use pdfgenrs_render::pdf;
+/// Template and development data loading helpers.
+pub use pdfgenrs_typst::template;
+/// Typst world, font loading, and compilation utilities.
+pub use pdfgenrs_typst::typst_world;
+
+pub(crate) mod http_tracing;
 /// Prometheus metrics middleware and recorder setup.
 pub mod metrics;
-/// Shared application state and liveness/readiness primitives.
-pub mod state;
-/// Template and development data loading helpers.
-pub mod template;
-/// Typst world, font loading, and compilation utilities.
-pub mod typst_world;
-
-pub mod html;
-pub(crate) mod http_tracing;
-/// PDF generation functions: Typst-to-PDF, HTML-to-PDF, and image-to-PDF.
-pub mod pdf;
 pub(crate) mod request_id;
 pub(crate) mod routes;
+/// Shared application state and liveness/readiness primitives.
+pub mod state;
 #[doc(hidden)]
 pub mod testutil;
 
@@ -39,7 +39,7 @@ use tower_http::limit::RequestBodyLimitLayer;
 /// Builds a pre-configured HTML-to-PDF converter with font aliases.
 ///
 /// The converter is built once at startup and shared across requests.
-pub use pdf::build_html_converter;
+pub use pdfgenrs_render::pdf::build_html_converter;
 
 #[cfg(test)]
 pub(crate) fn memory_sensitive_test_lock() -> &'static tokio::sync::Mutex<()> {

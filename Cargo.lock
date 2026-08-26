@@ -2708,7 +2708,6 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-test",
- "comemo",
  "criterion",
  "http-body-util",
  "ironpress",
@@ -2717,6 +2716,9 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "pdfgenrs-config",
+ "pdfgenrs-render",
+ "pdfgenrs-typst",
  "reqwest",
  "serde_json",
  "tempfile",
@@ -2728,12 +2730,54 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typst",
+ "uuid",
+]
+
+[[package]]
+name = "pdfgenrs-config"
+version = "0.1.0"
+dependencies = [
+ "tracing",
+]
+
+[[package]]
+name = "pdfgenrs-render"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "comemo",
+ "ironpress",
+ "metrics",
+ "pdfgenrs-config",
+ "pdfgenrs-typst",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "typst",
+ "typst-library",
+ "walkdir",
+]
+
+[[package]]
+name = "pdfgenrs-typst"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "comemo",
+ "metrics",
+ "pdfgenrs-config",
+ "serde_json",
+ "tempfile",
+ "time",
+ "tokio",
+ "tracing",
+ "typst",
  "typst-html",
  "typst-layout",
  "typst-library",
  "typst-pdf",
  "typst-syntax",
- "uuid",
  "walkdir",
 ]
 

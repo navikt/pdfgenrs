@@ -9,7 +9,7 @@ use typst::foundations::Bytes;
 use typst_library::text::Font;
 use walkdir::WalkDir;
 
-use crate::typst_world::{self, Fonts};
+use pdfgenrs_typst::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
@@ -530,7 +530,7 @@ fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::typst_world::{build_library, load_fonts};
+    use pdfgenrs_typst::typst_world::{build_library, load_fonts};
     use std::fs;
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -577,7 +577,7 @@ Hello, world!
             app_name: "test",
             template_name: "simple",
             library: pdf_library(),
-            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -602,7 +602,7 @@ Hello, world!
                 app_name: "test",
                 template_name: "simple",
                 library: pdf_library(),
-                comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
             })?;
             Ok(())
         })?;
@@ -631,7 +631,7 @@ Hello, world!
             app_name: "test",
             template_name: "app",
             library: pdf_library(),
-            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -650,7 +650,7 @@ Hello, world!
             app_name: "test",
             template_name: "invalid",
             library: pdf_library(),
-            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         });
         assert!(
             result.is_err(),
@@ -706,7 +706,7 @@ Hello, world!
             app_name: "test",
             template_name: "assets-missing",
             library: pdf_library(),
-            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         });
         assert!(result.is_err());
         Ok(())
@@ -730,7 +730,7 @@ Hello, world!
             app_name: "test",
             template_name: "assets-malformed",
             library: pdf_library(),
-            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         });
         assert!(result.is_err());
         Ok(())
@@ -746,7 +746,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -766,7 +766,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -781,7 +781,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.as_ref().err().is_some(),
@@ -1182,7 +1182,7 @@ Hello, world!
             app_name: "test",
             template_name: "resource",
             library: pdf_library(),
-            comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            comemo_eviction_threshold: pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -1200,7 +1200,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -1248,7 +1248,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_err(),
@@ -1277,7 +1277,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(result.is_err(), "Truncated JPEG with valid SOI should fail");
         let err_msg = result
@@ -1307,7 +1307,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_err(),
@@ -1340,7 +1340,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         assert!(
             result.is_err(),
@@ -1359,7 +1359,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         match result {
             Ok(_) => anyhow::bail!("PNG bytes with JPEG path should have failed"),
@@ -1384,7 +1384,7 @@ Hello, world!
             &root_dir(),
             &resources_dir(),
             pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            pdfgenrs_config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
         );
         match result {
             Ok(_) => anyhow::bail!("JPEG bytes with PNG path should have failed"),
