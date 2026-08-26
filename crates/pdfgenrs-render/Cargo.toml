@@ -8,6 +8,7 @@ license = "MIT"
 repository = "https://github.com/navikt/pdfgenrs"
 
 [dependencies]
+pdfgenrs-config = { path = "../pdfgenrs-config" }
 pdfgenrs-typst = { path = "../pdfgenrs-typst" }
 anyhow = "1.0.102"
 comemo = "0.5.1"
@@ -20,7 +21,6 @@ typst-library = "0.15.0"
 walkdir = "2.5.0"
 
 [dev-dependencies]
-pdfgenrs-config = { path = "../pdfgenrs-config" }
 tempfile = "3.27.0"
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync"] }
 
