@@ -130,6 +130,10 @@ pub(crate) async fn post_pdf_from_image(
     let resources_dir = Arc::clone(&state.resources_dir);
     let library = Arc::clone(&state.pdf_library);
     let eviction_threshold = state.config.comemo_eviction_threshold;
+    let limits = gen_pdf::ImageLimits {
+        max_dimension_pixels: state.config.max_image_dimension_pixels,
+        max_pixels: state.config.max_image_pixels,
+    };
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
         gen_pdf::image_to_pdf(
@@ -140,6 +144,7 @@ pub(crate) async fn post_pdf_from_image(
             &resources_dir,
             library,
             eviction_threshold,
+            limits,
         )
     })
     .await?;
@@ -585,6 +590,74 @@ mod tests {
             StatusCode::OK,
             "PNG bytes with Content-Type: image/jpeg should not produce a PDF"
         );
+        Ok(())
+    }
+
+    /// Verifies that `max_image_pixels` is threaded from config all the way into
+    /// `validate_image_dimensions`. Lowering the limit below the test image is the
+    /// only practical way to assert this without a multi-megapixel fixture.
+    #[tokio::test]
+    async fn post_pdf_from_image_rejects_image_above_configured_pixel_limit() -> anyhow::Result<()>
+    {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.max_image_pixels = 1;
+        let server = TestServer::new(make_router(state, false));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("NAVLogoRed.png"),
+            )?))
+            .await;
+
+        assert_ne!(
+            response.status_code(),
+            StatusCode::OK,
+            "image above max_image_pixels should be rejected"
+        );
+        Ok(())
+    }
+
+    /// Verifies the opposite direction: an image that the default limits would reject
+    /// is accepted once `max_image_dimension_pixels` is raised.
+    #[tokio::test]
+    async fn post_pdf_from_image_accepts_image_within_raised_dimension_limit() -> anyhow::Result<()>
+    {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.max_image_dimension_pixels = 1;
+        let server = TestServer::new(make_router(state, false));
+
+        let rejected = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("NAVLogoRed.png"),
+            )?))
+            .await;
+        assert_ne!(rejected.status_code(), StatusCode::OK);
+
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.config.max_image_dimension_pixels = 16_384;
+        state.config.max_image_pixels = 100_000_000;
+        let server = TestServer::new(make_router(state, false));
+
+        let accepted = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from(std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("resources")
+                    .join("NAVLogoRed.png"),
+            )?))
+            .await;
+
+        assert_eq!(accepted.status_code(), StatusCode::OK);
+        assert!(is_pdf(accepted.as_bytes()));
         Ok(())
     }
 

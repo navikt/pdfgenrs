@@ -2711,6 +2711,7 @@ dependencies = [
  "comemo",
  "criterion",
  "http-body-util",
+ "image",
  "ironpress",
  "metrics",
  "metrics-exporter-prometheus",

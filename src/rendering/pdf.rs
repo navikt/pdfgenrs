@@ -165,8 +165,35 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
     (converter, fonts.len())
 }
 
-const MAX_IMAGE_DIMENSION_PIXELS: u32 = 8_192;
-const MAX_IMAGE_PIXELS: u64 = 25_000_000;
+const MAX_IMAGE_DIMENSION_PIXELS: u32 = crate::config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS;
+const MAX_IMAGE_PIXELS: u64 = crate::config::DEFAULT_MAX_IMAGE_PIXELS;
+
+/// Upper bounds applied to an uploaded image before it is handed to Typst.
+///
+/// Both bounds guard against memory exhaustion. `max_pixels` is the important one:
+/// PNG and WebP are decoded to RGBA (4 bytes per pixel) before embedding, so peak
+/// memory scales with the pixel count, not with the compressed file size. A body
+/// size limit alone is therefore not a memory guard — a well-compressed synthetic
+/// PNG can reach a very high pixel count in a small file.
+///
+/// JPEG is the exception: it is passed through to the PDF as `DCTDecode` without
+/// ever being decoded to RGBA, so its cost is proportional to the file size.
+#[derive(Clone, Copy, Debug)]
+pub struct ImageLimits {
+    /// Maximum allowed width or height, in pixels.
+    pub max_dimension_pixels: u32,
+    /// Maximum allowed total pixel count (width × height).
+    pub max_pixels: u64,
+}
+
+impl Default for ImageLimits {
+    fn default() -> Self {
+        Self {
+            max_dimension_pixels: MAX_IMAGE_DIMENSION_PIXELS,
+            max_pixels: MAX_IMAGE_PIXELS,
+        }
+    }
+}
 
 /// Bundles the arguments required to compile a Typst template with JSON data.
 ///
@@ -244,6 +271,8 @@ pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
 ///
 /// Landscape images (width > height) are automatically placed on a
 /// landscape-oriented page so they fill the page without distortion.
+///
+/// `limits` bounds the accepted image size; see [`ImageLimits`].
 pub fn image_to_pdf<B>(
     image_bytes: B,
     image_path: &str,
@@ -252,6 +281,7 @@ pub fn image_to_pdf<B>(
     resources_dir: &Path,
     library: Arc<LazyHash<Library>>,
     comemo_eviction_threshold: usize,
+    limits: ImageLimits,
 ) -> Result<Vec<u8>>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
@@ -271,7 +301,7 @@ where
     let (w, h) = image_dimensions_by_format(data, detected_ext).with_context(|| {
         format!("Unsupported or corrupted image '{image_path}': unable to determine dimensions")
     })?;
-    validate_image_dimensions(w, h, image_path)?;
+    validate_image_dimensions(w, h, image_path, limits)?;
     let is_landscape = w > h;
 
     let mut vfiles = HashMap::new();
@@ -299,20 +329,27 @@ where
     result
 }
 
-fn validate_image_dimensions(width: u32, height: u32, image_path: &str) -> Result<()> {
+fn validate_image_dimensions(
+    width: u32,
+    height: u32,
+    image_path: &str,
+    limits: ImageLimits,
+) -> Result<()> {
     if width == 0 || height == 0 {
         anyhow::bail!("Image '{image_path}' has invalid dimensions: {width}x{height}");
     }
-    if width > MAX_IMAGE_DIMENSION_PIXELS || height > MAX_IMAGE_DIMENSION_PIXELS {
+    if width > limits.max_dimension_pixels || height > limits.max_dimension_pixels {
+        let max = limits.max_dimension_pixels;
         anyhow::bail!(
-            "Image '{image_path}' dimensions exceed the maximum of {MAX_IMAGE_DIMENSION_PIXELS} pixels: {width}x{height}"
+            "Image '{image_path}' is {width}x{height}, but width and height must each be at most {max} pixels"
         );
     }
 
     let pixels = u64::from(width) * u64::from(height);
-    if pixels > MAX_IMAGE_PIXELS {
+    if pixels > limits.max_pixels {
+        let max = limits.max_pixels;
         anyhow::bail!(
-            "Image '{image_path}' has {pixels} pixels, exceeding the maximum of {MAX_IMAGE_PIXELS}"
+            "Image '{image_path}' is {width}x{height} = {pixels} pixels in total, but the maximum total is {max} pixels"
         );
     }
     Ok(())
@@ -802,6 +839,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -822,6 +860,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -837,6 +876,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         assert!(
             result.as_ref().err().is_some(),
@@ -911,12 +951,12 @@ Hello, world!
 
     #[test]
     fn validate_image_dimensions_accepts_limits() -> Result<()> {
-        validate_image_dimensions(8_192, 3_051, "/image.png")
+        validate_image_dimensions(8_192, 3_051, "/image.png", ImageLimits::default())
     }
 
     #[test]
     fn validate_image_dimensions_rejects_zero_dimensions() -> Result<()> {
-        let error = validate_image_dimensions(0, 1, "/image.png").err();
+        let error = validate_image_dimensions(0, 1, "/image.png", ImageLimits::default()).err();
         let error = error.context("zero dimensions should be rejected")?;
         assert!(error.to_string().contains("invalid dimensions"));
         Ok(())
@@ -924,17 +964,63 @@ Hello, world!
 
     #[test]
     fn validate_image_dimensions_rejects_excessive_dimension() -> Result<()> {
-        let error = validate_image_dimensions(8_193, 1, "/image.png").err();
+        let error = validate_image_dimensions(8_193, 1, "/image.png", ImageLimits::default()).err();
         let error = error.context("excessive dimensions should be rejected")?;
-        assert!(error.to_string().contains("dimensions exceed"));
+        let message = error.to_string();
+        assert!(
+            message.contains("width and height must each be at most 8192"),
+            "error should name the per-side limit: {message}"
+        );
         Ok(())
     }
 
     #[test]
     fn validate_image_dimensions_rejects_excessive_pixel_count() -> Result<()> {
-        let error = validate_image_dimensions(8_192, 3_052, "/image.png").err();
+        let error =
+            validate_image_dimensions(8_192, 3_052, "/image.png", ImageLimits::default()).err();
         let error = error.context("excessive pixel count should be rejected")?;
-        assert!(error.to_string().contains("pixels, exceeding"));
+        let message = error.to_string();
+        assert!(
+            message.contains("pixels in total"),
+            "error should name the total pixel limit: {message}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn validate_image_dimensions_accepts_raised_limits() -> Result<()> {
+        let limits = ImageLimits {
+            max_dimension_pixels: 16_384,
+            max_pixels: 100_000_000,
+        };
+        validate_image_dimensions(13_583, 5_417, "/image.jpg", limits)
+    }
+
+    #[test]
+    fn validate_image_dimensions_still_rejects_beyond_raised_limits() -> Result<()> {
+        let limits = ImageLimits {
+            max_dimension_pixels: 16_384,
+            max_pixels: 100_000_000,
+        };
+        let error = validate_image_dimensions(16_384, 16_384, "/image.png", limits).err();
+        let error = error.context("total pixel count should still be enforced")?;
+        assert!(error.to_string().contains("pixels in total"));
+        Ok(())
+    }
+
+    #[test]
+    fn validate_image_dimensions_rejects_dimension_below_default() -> Result<()> {
+        let limits = ImageLimits {
+            max_dimension_pixels: 1_000,
+            max_pixels: 100_000_000,
+        };
+        let error = validate_image_dimensions(1_001, 1, "/image.png", limits).err();
+        let error = error.context("lowered dimension limit should be enforced")?;
+        assert!(
+            error
+                .to_string()
+                .contains("width and height must each be at most 1000")
+        );
         Ok(())
     }
 
@@ -1256,6 +1342,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -1304,6 +1391,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         assert!(
             result.is_err(),
@@ -1333,6 +1421,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         assert!(result.is_err(), "Truncated JPEG with valid SOI should fail");
         let err_msg = result
@@ -1363,6 +1452,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         assert!(
             result.is_err(),
@@ -1396,6 +1486,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         assert!(
             result.is_err(),
@@ -1415,6 +1506,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         match result {
             Ok(_) => anyhow::bail!("PNG bytes with JPEG path should have failed"),
@@ -1440,6 +1532,7 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits::default(),
         );
         match result {
             Ok(_) => anyhow::bail!("JPEG bytes with PNG path should have failed"),

@@ -38,6 +38,8 @@ pub fn make_state_with_body_limit(
         max_concurrent_compilations: 0,
         semaphore_acquire_timeout_seconds: 10,
         comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        max_image_dimension_pixels: config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+        max_image_pixels: config::DEFAULT_MAX_IMAGE_PIXELS,
     };
     Ok(AppState {
         templates: Arc::new(templates),

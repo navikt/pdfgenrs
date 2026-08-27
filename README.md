@@ -303,6 +303,55 @@ All configuration is done through environment variables. If an environment varia
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` disables the limit.                                                                          | `4`               |
 | `SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS` | Maximum time in seconds to wait for a compilation semaphore permit. Exceeded timeout returns `503 Service Unavailable`.                              | `10`              |
 | `COMEMO_EVICTION_THRESHOLD`         | Maximum number of cache entries to evict from the comemo memoization cache after each compilation. Higher values free more memory at the cost of cache hit rate. Set to `0` to evict the entire cache. | `15`              |
+| `MAX_IMAGE_DIMENSION_PIXELS`        | Maximum accepted width or height of an uploaded image, in pixels.                                                                                    | `8192`            |
+| `MAX_IMAGE_PIXELS`                  | Maximum accepted total pixel count (width × height) of an uploaded image. This is the primary memory guard for the image endpoint.                    | `25000000` (25 MP) |
+
+#### Sizing the image limits
+
+`MAX_IMAGE_PIXELS` — not `REQUEST_BODY_LIMIT_BYTES` — is what protects the service
+from running out of memory, because peak memory depends on the format:
+
+| Format | How it is embedded | Peak memory |
+| ------ | ------------------ | ----------- |
+| JPEG   | Passed through to the PDF as `DCTDecode` without ever being decoded to pixels | Proportional to the **file size** |
+| PNG, WebP | Decoded to RGBA (4 bytes per pixel), then deflated | Proportional to the **pixel count** |
+
+A body size limit is therefore not a memory guard on its own. A well-compressed
+synthetic PNG (screenshot, map, line drawing) can reach a very high pixel count in
+a small file — for example, a 15 MB PNG of flat colours can exceed 100 megapixels,
+which allocates a ~400 MB RGBA buffer.
+
+Raising these limits requires matching changes elsewhere:
+
+- **Pod memory.** Budget roughly `MAX_IMAGE_PIXELS × 4 bytes` per in-flight
+  compilation, plus the deflate output.
+- **`MAX_CONCURRENT_COMPILATIONS`.** Peak memory is approximately
+  `MAX_CONCURRENT_COMPILATIONS × peak memory per request`. Lower it when raising
+  the image limits, or scale out with more replicas instead.
+- **`COMPILE_TIMEOUT_SECONDS`.** Note that this does **not** free resources: a
+  compilation running on a blocking thread cannot be cancelled once it has
+  started. The client receives `408`, but the work — and its memory — continues
+  until it finishes. The `template_compilations_in_flight_after_timeout` gauge
+  tracks this. Set the timeout high enough that large images actually complete.
+
+Example for images up to 50 MB, matched to a pod with `memory` limits of `3Gi`:
+
+```yaml
+env:
+  - name: REQUEST_BODY_LIMIT_BYTES
+    value: "52428800"
+  - name: MAX_IMAGE_DIMENSION_PIXELS
+    value: "16384"
+  - name: MAX_IMAGE_PIXELS
+    value: "100000000"
+  - name: MAX_CONCURRENT_COMPILATIONS
+    value: "2"
+  - name: COMPILE_TIMEOUT_SECONDS
+    value: "60"
+```
+
+Note that `REQUEST_BODY_LIMIT_BYTES` applies to **all** endpoints, so raising it
+also allows larger JSON and HTML payloads.
 
 ### Logging and tracing
 

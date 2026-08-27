@@ -16,6 +16,8 @@ const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
 const SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV: &str = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS";
 const COMEMO_EVICTION_THRESHOLD_ENV: &str = "COMEMO_EVICTION_THRESHOLD";
+const MAX_IMAGE_DIMENSION_PIXELS_ENV: &str = "MAX_IMAGE_DIMENSION_PIXELS";
+const MAX_IMAGE_PIXELS_ENV: &str = "MAX_IMAGE_PIXELS";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -29,6 +31,14 @@ const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
+/// Maximum allowed width or height of an uploaded image, in pixels.
+pub const DEFAULT_MAX_IMAGE_DIMENSION_PIXELS: u32 = 8_192;
+/// Maximum allowed total pixel count (width × height) of an uploaded image.
+///
+/// This is the primary memory guard for the image endpoint: PNG and WebP are
+/// decoded to RGBA (4 bytes per pixel) before being embedded, so peak memory
+/// scales with the pixel count rather than with the compressed file size.
+pub const DEFAULT_MAX_IMAGE_PIXELS: u64 = 25_000_000;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -76,6 +86,13 @@ pub struct Config {
     /// each compilation. Higher values free more memory at the cost of cache hit rate.
     /// Set to `0` to evict the entire cache. Defaults to `15` (`COMEMO_EVICTION_THRESHOLD`).
     pub comemo_eviction_threshold: usize,
+    /// Maximum accepted width or height of an uploaded image, in pixels. Defaults to
+    /// `8192` (`MAX_IMAGE_DIMENSION_PIXELS`).
+    pub max_image_dimension_pixels: u32,
+    /// Maximum accepted total pixel count (width × height) of an uploaded image.
+    /// This is the primary memory guard for the image endpoint, since PNG and WebP
+    /// are decoded to RGBA before embedding. Defaults to `25000000` (`MAX_IMAGE_PIXELS`).
+    pub max_image_pixels: u64,
 }
 
 impl Default for Config {
@@ -120,6 +137,16 @@ impl Config {
                 }
             }
         };
+        let parse_u32 = |key: &str| {
+            let raw = env_var(key)?;
+            match raw.parse::<u32>() {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
+                    None
+                }
+            }
+        };
         let path_or = |key: &str, default: &str| {
             PathBuf::from(env_var(key).unwrap_or_else(|| default.to_owned()))
         };
@@ -129,6 +156,9 @@ impl Config {
                 .unwrap_or(false)
         };
 
+        let request_body_limit_bytes =
+            parse_usize(REQUEST_BODY_LIMIT_BYTES_ENV).unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES);
+
         Self {
             port: parse_u16(SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
             root_dir: path_or(ROOT_DIR_ENV, DEFAULT_ROOT_DIR),
@@ -137,8 +167,7 @@ impl Config {
             data_dir: path_or(DATA_DIR_ENV, DEFAULT_DATA_DIR),
             fonts_dir: path_or(FONTS_DIR_ENV, DEFAULT_FONTS_DIR),
             dev_mode: bool_var(DEV_MODE_ENV),
-            request_body_limit_bytes: parse_usize(REQUEST_BODY_LIMIT_BYTES_ENV)
-                .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
+            request_body_limit_bytes,
             compile_timeout_seconds: parse_u64(COMPILE_TIMEOUT_SECONDS_ENV)
                 .unwrap_or(DEFAULT_COMPILE_TIMEOUT_SECONDS),
             shutdown_drain_seconds: parse_u64(SHUTDOWN_DRAIN_SECONDS_ENV)
@@ -149,6 +178,9 @@ impl Config {
                 .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
             comemo_eviction_threshold: parse_usize(COMEMO_EVICTION_THRESHOLD_ENV)
                 .unwrap_or(DEFAULT_COMEMO_EVICTION_THRESHOLD),
+            max_image_dimension_pixels: parse_u32(MAX_IMAGE_DIMENSION_PIXELS_ENV)
+                .unwrap_or(DEFAULT_MAX_IMAGE_DIMENSION_PIXELS),
+            max_image_pixels: parse_u64(MAX_IMAGE_PIXELS_ENV).unwrap_or(DEFAULT_MAX_IMAGE_PIXELS),
         }
     }
 
@@ -182,6 +214,32 @@ impl Config {
                 env = REQUEST_BODY_LIMIT_BYTES_ENV,
                 value = self.request_body_limit_bytes,
                 "request_body_limit_bytes is 0, all requests with a body will be rejected"
+            );
+        }
+        if self.max_image_dimension_pixels == 0 {
+            warn!(
+                env = MAX_IMAGE_DIMENSION_PIXELS_ENV,
+                value = self.max_image_dimension_pixels,
+                "max_image_dimension_pixels is 0, all images will be rejected"
+            );
+        }
+        if self.max_image_pixels == 0 {
+            warn!(
+                env = MAX_IMAGE_PIXELS_ENV,
+                value = self.max_image_pixels,
+                "max_image_pixels is 0, all images will be rejected"
+            );
+        }
+        // PNG and WebP are decoded to RGBA (4 bytes per pixel) before embedding, so this
+        // is the dominant term in peak memory per in-flight compilation.
+        let estimated_peak_bytes = self.max_image_pixels.saturating_mul(4);
+        if estimated_peak_bytes > 400_000_000 {
+            warn!(
+                env = MAX_IMAGE_PIXELS_ENV,
+                value = self.max_image_pixels,
+                estimated_rgba_bytes = estimated_peak_bytes,
+                max_concurrent_compilations = self.max_concurrent_compilations,
+                "max_image_pixels allows large RGBA decode buffers; verify pod memory limits and MAX_CONCURRENT_COMPILATIONS"
             );
         }
     }
@@ -259,6 +317,11 @@ mod tests {
             config.comemo_eviction_threshold,
             DEFAULT_COMEMO_EVICTION_THRESHOLD
         );
+        assert_eq!(
+            config.max_image_dimension_pixels,
+            DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
+        );
+        assert_eq!(config.max_image_pixels, DEFAULT_MAX_IMAGE_PIXELS);
     }
 
     #[test]
@@ -277,6 +340,8 @@ mod tests {
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
             (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "15"),
             (COMEMO_EVICTION_THRESHOLD_ENV, "30"),
+            (MAX_IMAGE_DIMENSION_PIXELS_ENV, "16384"),
+            (MAX_IMAGE_PIXELS_ENV, "100000000"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -292,6 +357,22 @@ mod tests {
         assert_eq!(config.max_concurrent_compilations, 4);
         assert_eq!(config.semaphore_acquire_timeout_seconds, 15);
         assert_eq!(config.comemo_eviction_threshold, 30);
+        assert_eq!(config.max_image_dimension_pixels, 16_384);
+        assert_eq!(config.max_image_pixels, 100_000_000);
+    }
+
+    #[test]
+    fn image_limits_fall_back_to_defaults_for_invalid_env_values() {
+        let config = Config::from_env_fn(env_from(&[
+            (MAX_IMAGE_DIMENSION_PIXELS_ENV, "not-a-number"),
+            (MAX_IMAGE_PIXELS_ENV, "-1"),
+        ]));
+
+        assert_eq!(
+            config.max_image_dimension_pixels,
+            DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
+        );
+        assert_eq!(config.max_image_pixels, DEFAULT_MAX_IMAGE_PIXELS);
     }
 
     #[test]
@@ -407,6 +488,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -428,6 +511,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -449,6 +534,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -470,6 +557,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(
