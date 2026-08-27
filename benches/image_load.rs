@@ -40,9 +40,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use image::ExtendedColorType;
+use image::ImageEncoder;
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
-use image::ImageEncoder;
 use pdfgenrs::{build_html_converter, build_router, config, metrics, state, typst_world};
 use reqwest::header;
 use tokio::sync::{RwLock, Semaphore};
@@ -161,7 +161,13 @@ fn ensure_fixtures() -> anyhow::Result<Vec<Fixture>> {
 
     // Photo-like PNG at 32 MP. Compresses poorly, so this is the case where the
     // body limit binds before the pixel limit does.
-    fixtures.push(write_png(&dir, "png-32mp-photo", 8_000, 4_000, Content::Photo)?);
+    fixtures.push(write_png(
+        &dir,
+        "png-32mp-photo",
+        8_000,
+        4_000,
+        Content::Photo,
+    )?);
 
     Ok(fixtures)
 }
@@ -407,7 +413,10 @@ fn percentile(sorted: &[u128], p: usize) -> u128 {
     sorted[idx]
 }
 
-fn spawn_rss_sampler(peak: Arc<AtomicU64>, sampling: Arc<AtomicBool>) -> tokio::task::JoinHandle<()> {
+fn spawn_rss_sampler(
+    peak: Arc<AtomicU64>,
+    sampling: Arc<AtomicBool>,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         while sampling.load(Ordering::Relaxed) {
             if let Some(current) = rss_kb() {
@@ -451,7 +460,9 @@ fn print_report(fixtures: &[Fixture], measurements: &[Measurement]) {
     }
 
     println!("\n## Load results ({REQUESTS_PER_COMBINATION} requests per row)\n");
-    println!("| fixture | concurrency | ok | rejected | total ms | p50 ms | p95 ms | max ms | peak RSS growth |");
+    println!(
+        "| fixture | concurrency | ok | rejected | total ms | p50 ms | p95 ms | max ms | peak RSS growth |"
+    );
     println!("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
     for m in measurements {
         let rss = match m.peak_rss_growth_kb {
