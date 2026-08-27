@@ -303,6 +303,8 @@ All configuration is done through environment variables. If an environment varia
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` disables the limit.                                                                          | `4`               |
 | `SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS` | Maximum time in seconds to wait for a compilation semaphore permit. Exceeded timeout returns `503 Service Unavailable`.                              | `10`              |
 | `COMEMO_EVICTION_THRESHOLD`         | Maximum number of cache entries to evict from the comemo memoization cache after each compilation. Higher values free more memory at the cost of cache hit rate. Set to `0` to evict the entire cache. | `15`              |
+| `MAX_IMAGE_DIMENSION_PIXELS` | Maximum width or height of an uploaded image in pixels. | `8192` |
+| `MAX_IMAGE_PIXELS` | Maximum total pixels of an uploaded image. | `25000000` |
 
 ### Logging and tracing
 

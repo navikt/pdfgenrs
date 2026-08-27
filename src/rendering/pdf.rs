@@ -165,9 +165,6 @@ pub fn build_html_converter(fonts_dir: &Path, base_path: &Path) -> (HtmlConverte
     (converter, fonts.len())
 }
 
-const MAX_IMAGE_DIMENSION_PIXELS: u32 = 8_192;
-const MAX_IMAGE_PIXELS: u64 = 25_000_000;
-
 /// Bundles the arguments required to compile a Typst template with JSON data.
 ///
 /// Used as the single parameter for [`typst_to_pdf`] and [`crate::html::typst_to_html`].
@@ -256,6 +253,35 @@ pub fn image_to_pdf<B>(
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
+    image_to_pdf_with_limits(
+        image_bytes,
+        image_path,
+        fonts,
+        root,
+        resources_dir,
+        library,
+        comemo_eviction_threshold,
+        crate::config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+        crate::config::DEFAULT_MAX_IMAGE_PIXELS,
+    )
+}
+
+/// Converts an image into PDF bytes using configured image dimension limits.
+#[allow(clippy::too_many_arguments)]
+pub fn image_to_pdf_with_limits<B>(
+    image_bytes: B,
+    image_path: &str,
+    fonts: Arc<Fonts>,
+    root: &Path,
+    resources_dir: &Path,
+    library: Arc<LazyHash<Library>>,
+    comemo_eviction_threshold: usize,
+    max_image_dimension_pixels: u32,
+    max_image_pixels: u64,
+) -> Result<Vec<u8>>
+where
+    B: AsRef<[u8]> + Send + Sync + 'static,
+{
     let data = image_bytes.as_ref();
     let declared_ext = image_path.rsplit('.').next().unwrap_or("");
     let detected_ext = detect_image_format(data).ok_or_else(|| {
@@ -271,7 +297,13 @@ where
     let (w, h) = image_dimensions_by_format(data, detected_ext).with_context(|| {
         format!("Unsupported or corrupted image '{image_path}': unable to determine dimensions")
     })?;
-    validate_image_dimensions(w, h, image_path)?;
+    validate_image_dimensions(
+        w,
+        h,
+        image_path,
+        max_image_dimension_pixels,
+        max_image_pixels,
+    )?;
     let is_landscape = w > h;
 
     let mut vfiles = HashMap::new();
@@ -299,20 +331,26 @@ where
     result
 }
 
-fn validate_image_dimensions(width: u32, height: u32, image_path: &str) -> Result<()> {
+fn validate_image_dimensions(
+    width: u32,
+    height: u32,
+    image_path: &str,
+    max_image_dimension_pixels: u32,
+    max_image_pixels: u64,
+) -> Result<()> {
     if width == 0 || height == 0 {
         anyhow::bail!("Image '{image_path}' has invalid dimensions: {width}x{height}");
     }
-    if width > MAX_IMAGE_DIMENSION_PIXELS || height > MAX_IMAGE_DIMENSION_PIXELS {
+    if width > max_image_dimension_pixels || height > max_image_dimension_pixels {
         anyhow::bail!(
-            "Image '{image_path}' dimensions exceed the maximum of {MAX_IMAGE_DIMENSION_PIXELS} pixels: {width}x{height}"
+            "Image '{image_path}' dimensions exceed the maximum of {max_image_dimension_pixels} pixels: {width}x{height}"
         );
     }
 
     let pixels = u64::from(width) * u64::from(height);
-    if pixels > MAX_IMAGE_PIXELS {
+    if pixels > max_image_pixels {
         anyhow::bail!(
-            "Image '{image_path}' has {pixels} pixels, exceeding the maximum of {MAX_IMAGE_PIXELS}"
+            "Image '{image_path}' has {pixels} pixels, exceeding the maximum of {max_image_pixels}"
         );
     }
     Ok(())
@@ -911,12 +949,12 @@ Hello, world!
 
     #[test]
     fn validate_image_dimensions_accepts_limits() -> Result<()> {
-        validate_image_dimensions(8_192, 3_051, "/image.png")
+        validate_image_dimensions(8_192, 3_051, "/image.png", 8_192, 25_000_000)
     }
 
     #[test]
     fn validate_image_dimensions_rejects_zero_dimensions() -> Result<()> {
-        let error = validate_image_dimensions(0, 1, "/image.png").err();
+        let error = validate_image_dimensions(0, 1, "/image.png", 8_192, 25_000_000).err();
         let error = error.context("zero dimensions should be rejected")?;
         assert!(error.to_string().contains("invalid dimensions"));
         Ok(())
@@ -924,7 +962,7 @@ Hello, world!
 
     #[test]
     fn validate_image_dimensions_rejects_excessive_dimension() -> Result<()> {
-        let error = validate_image_dimensions(8_193, 1, "/image.png").err();
+        let error = validate_image_dimensions(8_193, 1, "/image.png", 8_192, 25_000_000).err();
         let error = error.context("excessive dimensions should be rejected")?;
         assert!(error.to_string().contains("dimensions exceed"));
         Ok(())
@@ -932,7 +970,7 @@ Hello, world!
 
     #[test]
     fn validate_image_dimensions_rejects_excessive_pixel_count() -> Result<()> {
-        let error = validate_image_dimensions(8_192, 3_052, "/image.png").err();
+        let error = validate_image_dimensions(8_192, 3_052, "/image.png", 8_192, 25_000_000).err();
         let error = error.context("excessive pixel count should be rejected")?;
         assert!(error.to_string().contains("pixels, exceeding"));
         Ok(())

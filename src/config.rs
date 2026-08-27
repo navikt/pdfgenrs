@@ -16,6 +16,8 @@ const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
 const SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV: &str = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS";
 const COMEMO_EVICTION_THRESHOLD_ENV: &str = "COMEMO_EVICTION_THRESHOLD";
+const MAX_IMAGE_DIMENSION_PIXELS_ENV: &str = "MAX_IMAGE_DIMENSION_PIXELS";
+const MAX_IMAGE_PIXELS_ENV: &str = "MAX_IMAGE_PIXELS";
 
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_ROOT_DIR: &str = ".";
@@ -29,6 +31,8 @@ const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
+pub const DEFAULT_MAX_IMAGE_DIMENSION_PIXELS: u32 = 8_192;
+pub const DEFAULT_MAX_IMAGE_PIXELS: u64 = 25_000_000;
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -76,6 +80,12 @@ pub struct Config {
     /// each compilation. Higher values free more memory at the cost of cache hit rate.
     /// Set to `0` to evict the entire cache. Defaults to `15` (`COMEMO_EVICTION_THRESHOLD`).
     pub comemo_eviction_threshold: usize,
+    /// Maximum width or height for an uploaded image. Defaults to `8192`
+    /// (`MAX_IMAGE_DIMENSION_PIXELS`).
+    pub max_image_dimension_pixels: u32,
+    /// Maximum total number of pixels for an uploaded image. Defaults to `25000000`
+    /// (`MAX_IMAGE_PIXELS`).
+    pub max_image_pixels: u64,
 }
 
 impl Default for Config {
@@ -93,6 +103,16 @@ impl Config {
         let parse_u16 = |key: &str| {
             let raw = env_var(key)?;
             match raw.parse::<u16>() {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
+                    None
+                }
+            }
+        };
+        let parse_u32 = |key: &str| {
+            let raw = env_var(key)?;
+            match raw.parse::<u32>() {
                 Ok(v) => Some(v),
                 Err(e) => {
                     warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
@@ -149,6 +169,9 @@ impl Config {
                 .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
             comemo_eviction_threshold: parse_usize(COMEMO_EVICTION_THRESHOLD_ENV)
                 .unwrap_or(DEFAULT_COMEMO_EVICTION_THRESHOLD),
+            max_image_dimension_pixels: parse_u32(MAX_IMAGE_DIMENSION_PIXELS_ENV)
+                .unwrap_or(DEFAULT_MAX_IMAGE_DIMENSION_PIXELS),
+            max_image_pixels: parse_u64(MAX_IMAGE_PIXELS_ENV).unwrap_or(DEFAULT_MAX_IMAGE_PIXELS),
         }
     }
 
@@ -259,6 +282,11 @@ mod tests {
             config.comemo_eviction_threshold,
             DEFAULT_COMEMO_EVICTION_THRESHOLD
         );
+        assert_eq!(
+            config.max_image_dimension_pixels,
+            DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
+        );
+        assert_eq!(config.max_image_pixels, DEFAULT_MAX_IMAGE_PIXELS);
     }
 
     #[test]
@@ -277,6 +305,8 @@ mod tests {
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
             (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "15"),
             (COMEMO_EVICTION_THRESHOLD_ENV, "30"),
+            (MAX_IMAGE_DIMENSION_PIXELS_ENV, "4096"),
+            (MAX_IMAGE_PIXELS_ENV, "10000000"),
         ]));
 
         assert_eq!(config.port, 9090);
@@ -292,6 +322,8 @@ mod tests {
         assert_eq!(config.max_concurrent_compilations, 4);
         assert_eq!(config.semaphore_acquire_timeout_seconds, 15);
         assert_eq!(config.comemo_eviction_threshold, 30);
+        assert_eq!(config.max_image_dimension_pixels, 4_096);
+        assert_eq!(config.max_image_pixels, 10_000_000);
     }
 
     #[test]
@@ -385,6 +417,20 @@ mod tests {
     }
 
     #[test]
+    fn image_limits_fall_back_to_defaults_for_invalid_env_values() {
+        let config = Config::from_env_fn(env_from(&[
+            (MAX_IMAGE_DIMENSION_PIXELS_ENV, "not-a-number"),
+            (MAX_IMAGE_PIXELS_ENV, "not-a-number"),
+        ]));
+
+        assert_eq!(
+            config.max_image_dimension_pixels,
+            DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
+        );
+        assert_eq!(config.max_image_pixels, DEFAULT_MAX_IMAGE_PIXELS);
+    }
+
+    #[test]
     fn zero_comemo_eviction_threshold_is_accepted() {
         let config = Config::from_env_fn(env_from(&[(COMEMO_EVICTION_THRESHOLD_ENV, "0")]));
 
@@ -407,6 +453,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
@@ -428,6 +476,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
@@ -449,6 +499,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
@@ -470,6 +522,8 @@ mod tests {
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
 
         assert_eq!(

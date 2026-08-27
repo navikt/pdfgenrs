@@ -130,9 +130,11 @@ pub(crate) async fn post_pdf_from_image(
     let resources_dir = Arc::clone(&state.resources_dir);
     let library = Arc::clone(&state.pdf_library);
     let eviction_threshold = state.config.comemo_eviction_threshold;
+    let max_image_dimension_pixels = state.config.max_image_dimension_pixels;
+    let max_image_pixels = state.config.max_image_pixels;
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::image_to_pdf(
+        gen_pdf::image_to_pdf_with_limits(
             image_bytes,
             image_path,
             fonts,
@@ -140,6 +142,8 @@ pub(crate) async fn post_pdf_from_image(
             &resources_dir,
             library,
             eviction_threshold,
+            max_image_dimension_pixels,
+            max_image_pixels,
         )
     })
     .await?;
