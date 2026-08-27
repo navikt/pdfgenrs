@@ -249,6 +249,33 @@ pub fn image_to_pdf<B>(
     resources_dir: &Path,
     library: Arc<LazyHash<Library>>,
     comemo_eviction_threshold: usize,
+) -> Result<Vec<u8>>
+where
+    B: AsRef<[u8]> + Send + Sync + 'static,
+{
+    image_to_pdf_with_limits(
+        image_bytes,
+        image_path,
+        fonts,
+        root,
+        resources_dir,
+        library,
+        comemo_eviction_threshold,
+        crate::config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+        crate::config::DEFAULT_MAX_IMAGE_PIXELS,
+    )
+}
+
+/// Converts an image into PDF bytes using configured image dimension limits.
+#[allow(clippy::too_many_arguments)]
+pub fn image_to_pdf_with_limits<B>(
+    image_bytes: B,
+    image_path: &str,
+    fonts: Arc<Fonts>,
+    root: &Path,
+    resources_dir: &Path,
+    library: Arc<LazyHash<Library>>,
+    comemo_eviction_threshold: usize,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
 ) -> Result<Vec<u8>>
@@ -270,7 +297,13 @@ where
     let (w, h) = image_dimensions_by_format(data, detected_ext).with_context(|| {
         format!("Unsupported or corrupted image '{image_path}': unable to determine dimensions")
     })?;
-    validate_image_dimensions(w, h, image_path, max_image_dimension_pixels, max_image_pixels)?;
+    validate_image_dimensions(
+        w,
+        h,
+        image_path,
+        max_image_dimension_pixels,
+        max_image_pixels,
+    )?;
     let is_landscape = w > h;
 
     let mut vfiles = HashMap::new();
