@@ -184,6 +184,12 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/html/<your_appname> \
 
 Converts an image to PDF.
 
+The image is centred on the page. Landscape images (width > height) are placed on
+a landscape-oriented page. Images larger than the page are scaled down to fit,
+preserving their aspect ratio; images smaller than the page keep their natural
+size and are never scaled up. Pixels are treated as PostScript points (72 dpi),
+so a 595 × 842 px image fills an A4 page exactly.
+
 - Supported Request Content-Type:
   - `image/png`
   - `image/jpeg`
