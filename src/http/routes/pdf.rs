@@ -136,7 +136,7 @@ pub(crate) async fn post_pdf_from_image(
     };
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::image_to_pdf(
+        gen_pdf::image_to_pdf_with_limits(
             image_bytes,
             image_path,
             fonts,

@@ -47,6 +47,7 @@ use pdfgenrs::{build_html_converter, build_router, config, metrics, state, typst
 use reqwest::header;
 use tokio::sync::{RwLock, Semaphore};
 use tokio::task::JoinSet;
+use tracing::{info, warn};
 use typst::{Feature, Features};
 
 /// Env var that must be set for the benchmark to do any work.
@@ -93,8 +94,8 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     if std::env::var(ENABLE_ENV).is_err() {
-        println!(
-            "image_load benchmark skipped. Set {ENABLE_ENV}=1 to run it.\n\
+        info!(
+            "image_load benchmark skipped. Set {ENABLE_ENV}=1 to run it. \
              It generates ~500 MB of fixtures and drives large concurrent compilations."
         );
         return Ok(());
@@ -109,11 +110,11 @@ fn main() -> anyhow::Result<()> {
     let mut measurements = Vec::new();
     for fixture in &fixtures {
         if fixture.file_len > BODY_LIMIT_BYTES as u64 {
-            println!(
-                "SKIP {}: {:.1} MiB exceeds the {} MiB body limit",
-                fixture.name,
-                fixture.file_len as f64 / (1024.0 * 1024.0),
-                BODY_LIMIT_BYTES / (1024 * 1024)
+            warn!(
+                fixture = fixture.name,
+                file_len_mib = fixture.file_len as f64 / (1024.0 * 1024.0),
+                body_limit_mib = BODY_LIMIT_BYTES / (1024 * 1024),
+                "Skipping fixture: exceeds the configured body limit"
             );
             continue;
         }
@@ -122,7 +123,9 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    print_report(&fixtures, &measurements);
+    let report = build_report(&fixtures, &measurements);
+    info!("\n{report}");
+    write_github_summary(&report);
     Ok(())
 }
 
@@ -136,40 +139,17 @@ fn ensure_fixtures() -> anyhow::Result<Vec<Fixture>> {
         .join("image-load-fixtures");
     std::fs::create_dir_all(&dir)?;
 
-    let mut fixtures = Vec::new();
-
-    // The reported failing image: 13583x5417 = 73.6 MP as JPEG. Exercises the
-    // DCTDecode passthrough path, where memory tracks file size, not pixel count.
-    fixtures.push(write_jpeg(
-        &dir,
-        "jpeg-73mp-q85",
-        13_583,
-        5_417,
-        85,
-        Content::Photo,
-    )?);
-
-    // Same dimensions as flat-colour PNG: a small file that still forces a ~294 MB
-    // RGBA decode buffer. This is the worst case a body size limit cannot catch.
-    fixtures.push(write_png(
-        &dir,
-        "png-73mp-flat",
-        13_583,
-        5_417,
-        Content::Flat,
-    )?);
-
-    // Photo-like PNG at 32 MP. Compresses poorly, so this is the case where the
-    // body limit binds before the pixel limit does.
-    fixtures.push(write_png(
-        &dir,
-        "png-32mp-photo",
-        8_000,
-        4_000,
-        Content::Photo,
-    )?);
-
-    Ok(fixtures)
+    Ok(vec![
+        // The reported failing image: 13583x5417 = 73.6 MP as JPEG. Exercises the
+        // DCTDecode passthrough path, where memory tracks file size, not pixel count.
+        write_jpeg(&dir, "jpeg-73mp-q85", 13_583, 5_417, 85, Content::Photo)?,
+        // Same dimensions as flat-colour PNG: a small file that still forces a ~294 MB
+        // RGBA decode buffer. This is the worst case a body size limit cannot catch.
+        write_png(&dir, "png-73mp-flat", 13_583, 5_417, Content::Flat)?,
+        // Photo-like PNG at 32 MP. Compresses poorly, so this is the case where the
+        // body limit binds before the pixel limit does.
+        write_png(&dir, "png-32mp-photo", 8_000, 4_000, Content::Photo)?,
+    ])
 }
 
 #[derive(Clone, Copy)]
@@ -230,7 +210,7 @@ fn write_jpeg(
 ) -> anyhow::Result<Fixture> {
     let path = dir.join(format!("{name}.jpg"));
     if !path.exists() {
-        println!("generating fixture {name} ({width}x{height})...");
+        info!(fixture = name, width, height, "Generating fixture");
         let buf = rgb_buffer(width, height, content);
         let mut file = std::io::BufWriter::new(std::fs::File::create(&path)?);
         JpegEncoder::new_with_quality(&mut file, quality).write_image(
@@ -260,7 +240,7 @@ fn write_png(
 ) -> anyhow::Result<Fixture> {
     let path = dir.join(format!("{name}.png"));
     if !path.exists() {
-        println!("generating fixture {name} ({width}x{height})...");
+        info!(fixture = name, width, height, "Generating fixture");
         let buf = rgb_buffer(width, height, content);
         let mut file = std::io::BufWriter::new(std::fs::File::create(&path)?);
         // Fast compression keeps fixture generation from dominating the run time.
@@ -378,7 +358,7 @@ async fn measure(fixture: &Fixture, concurrency: usize) -> anyhow::Result<Measur
             ok += 1;
         } else {
             rejected += 1;
-            println!("  request returned {status}");
+            warn!(%status, "Request did not return a PDF");
         }
         durations.push(elapsed_ms);
     }
@@ -442,13 +422,19 @@ fn rss_kb() -> Option<u64> {
     None
 }
 
-fn print_report(fixtures: &[Fixture], measurements: &[Measurement]) {
-    println!("\n## Fixtures\n");
-    println!("| fixture | dimensions | megapixels | file size | RGBA buffer if decoded |");
-    println!("| --- | --- | --- | --- | --- |");
+/// Renders the results as Markdown so the same text works in a terminal and in a
+/// GitHub step summary.
+fn build_report(fixtures: &[Fixture], measurements: &[Measurement]) -> String {
+    use std::fmt::Write;
+
+    let mut md = String::new();
+    md.push_str("## Fixtures\n\n");
+    md.push_str("| fixture | dimensions | megapixels | file size | RGBA buffer if decoded |\n");
+    md.push_str("| --- | --- | --- | --- | --- |\n");
     for f in fixtures {
         let px = u64::from(f.width) * u64::from(f.height);
-        println!(
+        let _ = writeln!(
+            md,
             "| {} | {}x{} | {:.1} MP | {:.1} MiB | {:.0} MiB |",
             f.name,
             f.width,
@@ -459,17 +445,21 @@ fn print_report(fixtures: &[Fixture], measurements: &[Measurement]) {
         );
     }
 
-    println!("\n## Load results ({REQUESTS_PER_COMBINATION} requests per row)\n");
-    println!(
-        "| fixture | concurrency | ok | rejected | total ms | p50 ms | p95 ms | max ms | peak RSS growth |"
+    let _ = write!(
+        md,
+        "\n## Load results ({REQUESTS_PER_COMBINATION} requests per row)\n\n"
     );
-    println!("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+    md.push_str(
+        "| fixture | concurrency | ok | rejected | total ms | p50 ms | p95 ms | max ms | peak RSS growth |\n",
+    );
+    md.push_str("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n");
     for m in measurements {
         let rss = match m.peak_rss_growth_kb {
             Some(kb) => format!("{:.0} MiB", kb as f64 / 1024.0),
             None => "n/a (not Linux)".to_string(),
         };
-        println!(
+        let _ = writeln!(
+            md,
             "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             m.fixture,
             m.concurrency,
@@ -484,22 +474,41 @@ fn print_report(fixtures: &[Fixture], measurements: &[Measurement]) {
     }
 
     if rss_kb().is_none() {
-        println!(
-            "\nNote: peak RSS is only sampled on Linux. Run under \
-             `docker run -m 3g` to measure memory and find the OOM threshold."
+        md.push_str(
+            "\n> Peak RSS is only sampled on Linux. Run under `docker run -m 3g` to measure \
+             memory and find the OOM threshold.\n",
         );
     }
 
-    println!(
-        "\nNote: the semaphore gates compilation, not body buffering. Axum buffers each \
-         request body in full before the handler runs, so {REQUESTS_PER_COMBINATION} concurrent \
-         uploads hold {REQUESTS_PER_COMBINATION} bodies in memory regardless of \
-         MAX_CONCURRENT_COMPILATIONS. Budget for that separately from the RGBA decode buffers."
+    let _ = write!(
+        md,
+        "\n> The semaphore gates compilation, not body buffering. Axum buffers each request \
+         body in full before the handler runs, so {REQUESTS_PER_COMBINATION} concurrent uploads \
+         hold {REQUESTS_PER_COMBINATION} bodies in memory regardless of \
+         MAX_CONCURRENT_COMPILATIONS. Budget for that separately from the RGBA decode buffers.\n"
     );
 
-    println!(
-        "\nNote: fixture generation itself allocates a full RGB buffer (~220 MiB for the \
-         73 MP fixtures) and is included in the process RSS if it ran in this invocation. \
-         Re-run to measure against cached fixtures."
+    md.push_str(
+        "\n> Fixture generation itself allocates a full RGB buffer (~220 MiB for the 73 MP \
+         fixtures) and is included in the process RSS if it ran in this invocation. Re-run to \
+         measure against cached fixtures.\n",
     );
+
+    md
+}
+
+/// Writes the report to the GitHub step summary when running in Actions.
+///
+/// Mirrors `write_github_summary` in `benches/performance.rs`.
+fn write_github_summary(report: &str) {
+    let Ok(summary_file) = std::env::var("GITHUB_STEP_SUMMARY") else {
+        return;
+    };
+    if let Err(e) = std::fs::write(&summary_file, report) {
+        warn!(
+            path = %summary_file,
+            error = %e,
+            "Failed to write GitHub step summary"
+        );
+    }
 }

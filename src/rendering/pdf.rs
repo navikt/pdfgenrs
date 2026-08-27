@@ -267,13 +267,45 @@ pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
         .context("Failed to convert HTML to PDF")
 }
 
-/// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes.
+/// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes using the default
+/// [`ImageLimits`].
 ///
 /// Landscape images (width > height) are automatically placed on a
 /// landscape-oriented page so they fill the page without distortion.
 ///
-/// `limits` bounds the accepted image size; see [`ImageLimits`].
+/// Use [`image_to_pdf_with_limits`] to supply limits from configuration.
 pub fn image_to_pdf<B>(
+    image_bytes: B,
+    image_path: &str,
+    fonts: Arc<Fonts>,
+    root: &Path,
+    resources_dir: &Path,
+    library: Arc<LazyHash<Library>>,
+    comemo_eviction_threshold: usize,
+) -> Result<Vec<u8>>
+where
+    B: AsRef<[u8]> + Send + Sync + 'static,
+{
+    image_to_pdf_with_limits(
+        image_bytes,
+        image_path,
+        fonts,
+        root,
+        resources_dir,
+        library,
+        comemo_eviction_threshold,
+        ImageLimits::default(),
+    )
+}
+
+/// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes, bounded by `limits`.
+///
+/// See [`image_to_pdf`] for the variant that uses the default limits.
+// One argument over the clippy threshold. Grouping them into a request struct, as
+// `typst_to_pdf` does with `CompileRequest`, would mean changing the signature of
+// the existing public `image_to_pdf`, so the argument list stays positional here.
+#[allow(clippy::too_many_arguments)]
+pub fn image_to_pdf_with_limits<B>(
     image_bytes: B,
     image_path: &str,
     fonts: Arc<Fonts>,
@@ -839,9 +871,51 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         )?;
         assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    /// `image_to_pdf` must keep behaving exactly as before this function gained a
+    /// limits-aware sibling, so the same image is accepted by both entry points.
+    #[test]
+    fn image_to_pdf_with_limits_accepts_image_within_raised_limits() -> Result<()> {
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let bytes = image_to_pdf_with_limits(
+            image_bytes,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits {
+                max_dimension_pixels: 16_384,
+                max_pixels: 100_000_000,
+            },
+        )?;
+        assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_with_limits_rejects_image_above_limits() -> Result<()> {
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let result = image_to_pdf_with_limits(
+            image_bytes,
+            "/image.png",
+            test_fonts()?,
+            &root_dir(),
+            &resources_dir(),
+            pdf_library(),
+            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ImageLimits {
+                max_dimension_pixels: 8_192,
+                max_pixels: 1,
+            },
+        );
+        let error = result.err().context("image should exceed max_pixels")?;
+        assert!(error.to_string().contains("pixels in total"));
         Ok(())
     }
 
@@ -860,7 +934,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -876,7 +949,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         assert!(
             result.as_ref().err().is_some(),
@@ -1342,7 +1414,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -1391,7 +1462,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         assert!(
             result.is_err(),
@@ -1421,7 +1491,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         assert!(result.is_err(), "Truncated JPEG with valid SOI should fail");
         let err_msg = result
@@ -1452,7 +1521,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         assert!(
             result.is_err(),
@@ -1486,7 +1554,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         assert!(
             result.is_err(),
@@ -1506,7 +1573,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         match result {
             Ok(_) => anyhow::bail!("PNG bytes with JPEG path should have failed"),
@@ -1532,7 +1598,6 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-            ImageLimits::default(),
         );
         match result {
             Ok(_) => anyhow::bail!("JPEG bytes with PNG path should have failed"),

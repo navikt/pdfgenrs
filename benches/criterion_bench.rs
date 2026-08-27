@@ -5,7 +5,7 @@ use std::time::Instant;
 use criterion::{Criterion, criterion_group, criterion_main};
 use pdfgenrs::html::typst_to_html;
 use pdfgenrs::pdf::{
-    CompileRequest, ImageLimits, build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf,
+    CompileRequest, build_html_converter, html_to_pdf, image_to_pdf, typst_to_pdf,
 };
 use pdfgenrs::typst_world;
 use typst::Library;
@@ -132,7 +132,6 @@ fn bench_image_to_pdf(c: &mut Criterion) {
                 &resources_dir(),
                 Arc::clone(&library),
                 pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-                ImageLimits::default(),
             );
         });
     });
@@ -260,7 +259,6 @@ fn bench_image_to_pdf_jpeg(c: &mut Criterion) {
                 &resources_dir(),
                 Arc::clone(&library),
                 pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-                ImageLimits::default(),
             );
         });
     });
@@ -287,7 +285,6 @@ fn bench_image_to_pdf_svg(c: &mut Criterion) {
                 &resources_dir(),
                 Arc::clone(&library),
                 pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
-                ImageLimits::default(),
             );
         });
     });
