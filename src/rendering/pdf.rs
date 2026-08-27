@@ -1057,7 +1057,10 @@ Hello, world!
     fn image_smaller_than_page_keeps_natural_size() {
         // 300x200 px at 72 dpi is 105.8 x 70.6 mm, well inside a landscape A4.
         let (w_mm, h_mm) = image_render_size_mm(300, 200, true);
-        assert!((w_mm - 300.0 * MM_PER_PIXEL).abs() < 1e-9, "width was scaled");
+        assert!(
+            (w_mm - 300.0 * MM_PER_PIXEL).abs() < 1e-9,
+            "width was scaled"
+        );
         assert!(
             (h_mm - 200.0 * MM_PER_PIXEL).abs() < 1e-9,
             "height was scaled"
@@ -1101,7 +1104,10 @@ Hello, world!
             !source.contains("width: 100%"),
             "explicit millimetre sizes must replace the relative width that caused cropping"
         );
-        assert!(source.contains("mm,"), "expected millimetre sizes: {source}");
+        assert!(
+            source.contains("mm,"),
+            "expected millimetre sizes: {source}"
+        );
     }
 
     #[test]
