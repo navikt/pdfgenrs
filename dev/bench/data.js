@@ -1,92 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787819057464,
+  "lastUpdate": 1787829263419,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "c5ffb0ac565ef87d9e159bbcc527a9204b86ad2b",
-          "message": "Merge pull request #424 from navikt/copilot/restore-and-update-pr-365\n\nHTML-to-PDF endpoint and bump ironpress to 1.5.2",
-          "timestamp": "2026-08-20T13:03:52+02:00",
-          "tree_id": "0ec1114e08990e0789a6102fe3b62e5fbabff808",
-          "url": "https://github.com/navikt/pdfgenrs/commit/c5ffb0ac565ef87d9e159bbcc527a9204b86ad2b"
-        },
-        "date": 1787224185773,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 234932,
-            "range": "± 2641",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 424938,
-            "range": "± 2569",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5292471,
-            "range": "± 61594",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 92808,
-            "range": "± 6541",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 6163160,
-            "range": "± 45931",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 158482,
-            "range": "± 4730",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 223381,
-            "range": "± 9157",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 364048,
-            "range": "± 2245",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 11224,
-            "range": "± 77",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18973,
-            "range": "± 132",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -839,6 +755,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 18072,
             "range": "± 65",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a55ee2e0acfdf5d4d5ec8b49fac0f671fb44b8fd",
+          "message": "Merge pull request #438 from tidnav/fix/image-cropping\n\nAvoid cropping images when converting to pdf",
+          "timestamp": "2026-08-27T13:11:02+02:00",
+          "tree_id": "c3bdb40148223633192c18ee595698a4ba059871",
+          "url": "https://github.com/navikt/pdfgenrs/commit/a55ee2e0acfdf5d4d5ec8b49fac0f671fb44b8fd"
+        },
+        "date": 1787829254220,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 229412,
+            "range": "± 15577",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 428749,
+            "range": "± 3709",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5622490,
+            "range": "± 121751",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 91495,
+            "range": "± 8803",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 7073381,
+            "range": "± 246813",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 174031,
+            "range": "± 5297",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 221574,
+            "range": "± 9507",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 448777,
+            "range": "± 3492",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 10885,
+            "range": "± 178",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18978,
+            "range": "± 223",
             "unit": "ns/iter"
           }
         ]
