@@ -31,7 +31,7 @@ jobs:
       - name: Set up minimum supported Rust version
         uses: dtolnay/rust-toolchain@1.96.0
       - name: Run tests
-        run: cargo test --release -- --nocapture
+        run: cargo test --locked --release -- --nocapture
   build:
     name: Test and build application
     runs-on: ubuntu-latest
