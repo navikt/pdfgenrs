@@ -1,92 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787924978063,
+  "lastUpdate": 1787925054766,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ae178e87893989c7f3a6896da9d69d8eb33178a3",
-          "message": "Merge pull request #434 from navikt/arabic\n\nchore: Add Noto Sans Arabic font",
-          "timestamp": "2026-08-26T11:50:07+02:00",
-          "tree_id": "e811096735e50605b93ee64522d52cde95d37239",
-          "url": "https://github.com/navikt/pdfgenrs/commit/ae178e87893989c7f3a6896da9d69d8eb33178a3"
-        },
-        "date": 1787737999936,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 230467,
-            "range": "± 11495",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 427612,
-            "range": "± 16183",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5255410,
-            "range": "± 40297",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 92603,
-            "range": "± 8277",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 6337680,
-            "range": "± 76640",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 157928,
-            "range": "± 4039",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 217303,
-            "range": "± 10444",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 448687,
-            "range": "± 3478",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 11067,
-            "range": "± 78",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18794,
-            "range": "± 110",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -839,6 +755,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 18717,
             "range": "± 74",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cbb9991810878dbc6c120ab66017a7c18ad2691",
+          "message": "Merge pull request #443 from navikt/dependabot/cargo/ironpress-1.5.3\n\nchore(deps): bump ironpress from 1.5.2 to 1.5.3",
+          "timestamp": "2026-08-28T15:41:34+02:00",
+          "tree_id": "ead13c60b68967bba74cea7ad72e9771935a7939",
+          "url": "https://github.com/navikt/pdfgenrs/commit/0cbb9991810878dbc6c120ab66017a7c18ad2691"
+        },
+        "date": 1787925045394,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 234591,
+            "range": "± 16487",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 433148,
+            "range": "± 21188",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5780214,
+            "range": "± 243821",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 92770,
+            "range": "± 10744",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 9472790,
+            "range": "± 1362201",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 177529,
+            "range": "± 8184",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 240640,
+            "range": "± 10661",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 455522,
+            "range": "± 13083",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 11133,
+            "range": "± 173",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18981,
+            "range": "± 133",
             "unit": "ns/iter"
           }
         ]
