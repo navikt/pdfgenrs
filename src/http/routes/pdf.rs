@@ -125,6 +125,17 @@ pub(crate) async fn post_pdf_from_image(
         return Err(ApiError::UnsupportedMediaType);
     };
 
+    // Validate before acquiring a compilation permit. Only the image header is read,
+    // so an invalid upload is rejected in microseconds without occupying a permit or
+    // a blocking thread. Returning 4xx here also stops well-behaved clients from
+    // retrying, which would otherwise re-buffer the body on every attempt.
+    let (_width, _height) = gen_pdf::validate_image(
+        &image_bytes,
+        image_path,
+        state.config.max_image_dimension_pixels,
+        state.config.max_image_pixels,
+    )?;
+
     let fonts = Arc::clone(&state.fonts);
     let root = Arc::clone(&state.root_dir);
     let resources_dir = Arc::clone(&state.resources_dir);
@@ -362,6 +373,91 @@ mod tests {
         Ok(())
     }
 
+    // --- Image rejection: client errors must not surface as 5xx (R8) ---
+
+    /// Builds a minimal but structurally valid PNG header with the given dimensions.
+    /// Only the bytes the validator reads are needed, since it never decodes pixels.
+    fn png_header(width: u32, height: u32) -> Vec<u8> {
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0u8; 8]);
+        data.extend_from_slice(&width.to_be_bytes());
+        data.extend_from_slice(&height.to_be_bytes());
+        data
+    }
+
+    async fn post_image(state: AppState, content_type: &str, body: Vec<u8>) -> StatusCode {
+        let server = TestServer::new(make_router(state, false));
+        server
+            .post("/image/myapp")
+            .content_type(content_type)
+            .bytes(Bytes::from(body))
+            .await
+            .status_code()
+    }
+
+    #[tokio::test]
+    async fn post_image_returns_413_when_pixel_count_exceeds_limit() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let max = state.config.max_image_pixels;
+        // One pixel past the limit, while staying inside the per-side dimension guard.
+        let height = u32::try_from(max / 8_000).unwrap_or(u32::MAX) + 1;
+
+        let status = post_image(state, "image/png", png_header(8_000, height)).await;
+
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_image_returns_413_when_dimension_exceeds_limit() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let too_wide = state.config.max_image_dimension_pixels + 1;
+
+        let status = post_image(state, "image/png", png_header(too_wide, 1)).await;
+
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_image_returns_400_for_zero_dimensions() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+
+        let status = post_image(state, "image/png", png_header(0, 100)).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        Ok(())
+    }
+
+    /// An oversized image must be rejected before a compilation permit is taken.
+    /// With the only permit held by another task, a request that still reached
+    /// `compile_blocking` would block and eventually return 503; returning 413
+    /// promptly proves validation now happens ahead of the semaphore.
+    #[tokio::test]
+    async fn post_image_rejects_oversized_without_consuming_a_permit() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.compile_semaphore = Some(Arc::new(tokio::sync::Semaphore::new(1)));
+        state.config.semaphore_acquire_timeout_seconds = 30;
+
+        let semaphore = state
+            .compile_semaphore
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("semaphore should be configured"))?;
+        let held = semaphore.acquire_owned().await?;
+
+        let too_wide = state.config.max_image_dimension_pixels + 1;
+        let status = timeout(
+            Duration::from_secs(5),
+            post_image(state, "image/png", png_header(too_wide, 1)),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("request blocked on the semaphore instead of failing fast"))?;
+
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        drop(held);
+        Ok(())
+    }
+
     #[tokio::test]
     async fn post_pdf_client_timeout_cancels_request_and_followup_still_succeeds()
     -> anyhow::Result<()> {
@@ -584,10 +680,10 @@ mod tests {
             .bytes(Bytes::from(png_bytes))
             .await;
 
-        assert_ne!(
+        assert_eq!(
             response.status_code(),
-            StatusCode::OK,
-            "PNG bytes with Content-Type: image/jpeg should not produce a PDF"
+            StatusCode::BAD_REQUEST,
+            "PNG bytes with Content-Type: image/jpeg is a client error, not a server fault"
         );
         Ok(())
     }
@@ -886,7 +982,7 @@ mod tests {
     // --- Image-to-PDF error path tests ---
 
     #[tokio::test]
-    async fn post_pdf_from_image_returns_500_for_corrupted_png() -> anyhow::Result<()> {
+    async fn post_pdf_from_image_returns_400_for_corrupted_png() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
             false,
@@ -898,12 +994,12 @@ mod tests {
             .bytes(Bytes::from_static(b"not a valid png file"))
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
         Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_from_image_returns_500_for_corrupted_jpeg() -> anyhow::Result<()> {
+    async fn post_pdf_from_image_returns_400_for_corrupted_jpeg() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
             false,
@@ -915,12 +1011,12 @@ mod tests {
             .bytes(Bytes::from_static(b"not a valid jpeg file"))
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
         Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_from_image_returns_500_for_empty_image_bytes() -> anyhow::Result<()> {
+    async fn post_pdf_from_image_returns_400_for_empty_image_bytes() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
             false,
@@ -932,7 +1028,7 @@ mod tests {
             .bytes(Bytes::from_static(b""))
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
         Ok(())
     }
 
@@ -1126,7 +1222,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_from_image_returns_500_for_corrupted_webp() -> anyhow::Result<()> {
+    async fn post_pdf_from_image_returns_400_for_corrupted_webp() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
             false,
@@ -1138,7 +1234,7 @@ mod tests {
             .bytes(Bytes::from_static(b"not a valid webp file"))
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
         Ok(())
     }
 }
