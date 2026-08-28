@@ -1,92 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787939464514,
+  "lastUpdate": 1787941451962,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "07c67b18e14c835a7af8160f145a5bf0957004ef",
-          "message": "Merge pull request #436 from navikt/copilot/move-const-to-environment-variables\n\nConfigure image upload limits",
-          "timestamp": "2026-08-27T10:21:17+02:00",
-          "tree_id": "f60052a1a399ec34cae4b968fe264168b49e613a",
-          "url": "https://github.com/navikt/pdfgenrs/commit/07c67b18e14c835a7af8160f145a5bf0957004ef"
-        },
-        "date": 1787819051887,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 213376,
-            "range": "± 2037",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 399164,
-            "range": "± 15262",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5327489,
-            "range": "± 85099",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 86704,
-            "range": "± 4100",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 6299703,
-            "range": "± 108150",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 151983,
-            "range": "± 3465",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 212429,
-            "range": "± 5019",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 429631,
-            "range": "± 1935",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 10788,
-            "range": "± 39",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18072,
-            "range": "± 65",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -839,6 +755,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 18736,
             "range": "± 114",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b0e6752a5722e3e2e2a925e182321c90efe7e70",
+          "message": "Merge pull request #448 from navikt/copilot/fix-github-actions-job-formatting\n\nCI: install rustfmt for Rust 1.96.0 formatting check",
+          "timestamp": "2026-08-28T20:20:55+02:00",
+          "tree_id": "4dc47ef2cf136fb81a7042018ddac137857099fc",
+          "url": "https://github.com/navikt/pdfgenrs/commit/2b0e6752a5722e3e2e2a925e182321c90efe7e70"
+        },
+        "date": 1787941444140,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 212162,
+            "range": "± 16233",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 397884,
+            "range": "± 2567",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5419184,
+            "range": "± 82526",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 86948,
+            "range": "± 7444",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 8235726,
+            "range": "± 186875",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 160119,
+            "range": "± 4337",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 215504,
+            "range": "± 8343",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 438859,
+            "range": "± 8533",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 10928,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18328,
+            "range": "± 299",
             "unit": "ns/iter"
           }
         ]
