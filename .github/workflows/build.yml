@@ -32,16 +32,10 @@ jobs:
         uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: rustfmt, clippy
-      - name: Cache Rust dependencies
-        uses: actions/cache@v6.1.0
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2.8.1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-rust-1.96.0-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-rust-1.96.0-cargo-
+          shared-key: rust-1.96.0
       - name: Check formatting
         run: cargo fmt -- --check
       - name: Run Clippy
