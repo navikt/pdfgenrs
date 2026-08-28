@@ -789,7 +789,7 @@ Dev mode: #data.at("mode", default: "unknown")
     }
 
     #[tokio::test]
-    async fn build_router_image_corrupted_data_returns_500() -> anyhow::Result<()> {
+    async fn build_router_image_corrupted_data_returns_400() -> anyhow::Result<()> {
         let state = make_empty_state(false)?;
         let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
 
@@ -799,7 +799,7 @@ Dev mode: #data.at("mode", default: "unknown")
             .bytes(axum::body::Bytes::from_static(b"not a valid png"))
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
         Ok(())
     }
 

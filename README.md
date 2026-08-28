@@ -139,6 +139,41 @@ ENV REQUEST_BODY_LIMIT_BYTES=3145728
 
 ```
 
+A request body larger than the limit is rejected with `413 Payload Too Large` before
+the handler runs.
+
+### Error responses
+
+All endpoints return errors as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
+Problem Details with Content-Type `application/problem+json`:
+
+```json
+{
+  "type": "urn:pdfgenrs:error:image-too-large",
+  "title": "Payload Too Large",
+  "status": 413,
+  "detail": "Image '/image.png' has 25001984 pixels, exceeding the maximum of 25000000",
+  "trace_id": "…",
+  "request_id": "…"
+}
+```
+
+The `type` member is a stable, machine-readable identifier. Clients should branch on
+`type` (or the HTTP status), not on `detail` text. Known values:
+
+| `type`                                   | Status | Meaning                                              |
+|------------------------------------------|--------|------------------------------------------------------|
+| `urn:pdfgenrs:error:not-found`           | `404`  | Template or application not found                    |
+| `urn:pdfgenrs:error:unsupported-media-type` | `415` | Request Content-Type not supported                 |
+| `urn:pdfgenrs:error:invalid-image`       | `400`  | Image is malformed or contradicts its Content-Type   |
+| `urn:pdfgenrs:error:image-too-large`     | `413`  | Image exceeds a configured dimension or pixel limit  |
+| `urn:pdfgenrs:error:timeout`             | `408`  | Compilation exceeded `COMPILE_TIMEOUT_SECONDS`       |
+| `urn:pdfgenrs:error:overloaded`          | `503`  | Too many concurrent compilations (includes `Retry-After`) |
+| `urn:pdfgenrs:error:generation-failed`   | `500`  | Internal rendering error                             |
+
+`400` and `413` are permanent client errors: retrying the same request will not
+succeed. `503` and `408` are transient and may be retried.
+
 ### 1) Generate PDF from Typst + JSON
 
 #### `POST /api/v1/genpdf/{your_appname}/{template}`
@@ -198,8 +233,19 @@ so a 595 × 842 px image fills an A4 page exactly.
 - Response Content-Type: `application/pdf`
 - Success: `200 OK`
 - Common errors:
-  - `415 Unsupported Media Type` (if the image format is not supported)
-  - `500 Internal Server Error`
+  - `400 Bad Request` — the bytes are not a valid image, or contradict the declared
+    Content-Type (`type: urn:pdfgenrs:error:invalid-image`)
+  - `413 Payload Too Large` — the image exceeds `MAX_IMAGE_DIMENSION_PIXELS` (per side)
+    or `MAX_IMAGE_PIXELS` (total), or the body exceeds `REQUEST_BODY_LIMIT_BYTES`
+    (`type: urn:pdfgenrs:error:image-too-large`)
+  - `415 Unsupported Media Type` — the Content-Type is not a supported image format
+  - `500 Internal Server Error` — rendering failed
+
+Image dimensions are validated from the header before any pixels are decoded, so an
+oversized image is rejected cheaply without consuming compilation capacity. Note that a
+small file can still be rejected with `413` if its declared dimensions exceed the limits.
+See [Environment variables](#environment-variables) for `MAX_IMAGE_DIMENSION_PIXELS` and
+`MAX_IMAGE_PIXELS`.
 
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/image/<your_appname> \
@@ -273,6 +319,11 @@ Exposes Prometheus metrics for operational monitoring.
 | `typst_compilation_duration_seconds` | Histogram | output           | Typst compilation latency distribution |
 | `comemo_evictions_total`        | Counter   | output               | Number of comemo cache eviction runs |
 | `comemo_eviction_threshold`     | Gauge     | -                    | Configured `COMEMO_EVICTION_THRESHOLD` value |
+| `image_rejections_total`        | Counter   | reason               | Images rejected during validation, before compilation |
+
+The `reason` label on `image_rejections_total` is one of a fixed set:
+`undetectable_format`, `format_mismatch`, `unreadable_dimensions`, `zero_dimension`,
+`dimension_too_large`, `too_many_pixels`.
 
 By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
 

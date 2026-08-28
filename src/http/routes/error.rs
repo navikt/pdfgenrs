@@ -4,10 +4,23 @@ use axum::{
 };
 use metrics::counter;
 use opentelemetry::trace::TraceContextExt;
-use tracing::error;
+use tracing::{error, warn};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+use crate::pdf::ImageRejection;
 use crate::request_id::current_request_id;
+
+impl From<ImageRejection> for ApiError {
+    fn from(rejection: ImageRejection) -> Self {
+        let reason = rejection.reason();
+        let detail = rejection.to_string();
+        if rejection.is_too_large() {
+            Self::ImageTooLarge { detail, reason }
+        } else {
+            Self::InvalidImage { detail, reason }
+        }
+    }
+}
 
 /// Centralized error type for API route handlers.
 ///
@@ -29,6 +42,19 @@ pub(crate) enum ApiError {
     },
     /// The request body content type is not supported.
     UnsupportedMediaType,
+    /// The uploaded image is malformed or contradicts its declared content type.
+    ///
+    /// The detail is safe to return to the client: it is built from a closed set of
+    /// format names and numeric dimensions, never from raw request content.
+    InvalidImage {
+        detail: String,
+        reason: &'static str,
+    },
+    /// The uploaded image is well-formed but exceeds a configured size limit.
+    ImageTooLarge {
+        detail: String,
+        reason: &'static str,
+    },
     /// The compilation task exceeded the configured timeout.
     RequestTimeout {
         app_name: String,
@@ -54,6 +80,8 @@ impl std::fmt::Debug for ApiError {
                 write!(f, "GenerationFailed({app_name}, {template_name:?})")
             }
             Self::UnsupportedMediaType => write!(f, "UnsupportedMediaType"),
+            Self::InvalidImage { reason, .. } => write!(f, "InvalidImage({reason})"),
+            Self::ImageTooLarge { reason, .. } => write!(f, "ImageTooLarge({reason})"),
             Self::RequestTimeout {
                 app_name,
                 template_name,
@@ -143,6 +171,25 @@ impl IntoResponse for ApiError {
                 "urn:pdfgenrs:error:unsupported-media-type",
                 "Unsupported media type",
             ),
+            Self::InvalidImage { ref detail, reason } => {
+                // Client error: logged at warn so it does not burn the 5xx error budget.
+                warn!(reason, detail = %detail, "Rejected malformed image upload");
+                counter!("image_rejections_total", &[("reason", reason)]).increment(1);
+                problem_response(
+                    StatusCode::BAD_REQUEST,
+                    "urn:pdfgenrs:error:invalid-image",
+                    detail,
+                )
+            }
+            Self::ImageTooLarge { ref detail, reason } => {
+                warn!(reason, detail = %detail, "Rejected oversized image upload");
+                counter!("image_rejections_total", &[("reason", reason)]).increment(1);
+                problem_response(
+                    StatusCode::PAYLOAD_TOO_LARGE,
+                    "urn:pdfgenrs:error:image-too-large",
+                    detail,
+                )
+            }
             Self::RequestTimeout {
                 ref app_name,
                 ref template_name,
