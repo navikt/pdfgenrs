@@ -45,7 +45,7 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --locked --release --all-targets -- -D warnings
       - name: Run tests
-        run: cargo test --locked --release -- --nocapture
+        run: cargo test --locked -- --nocapture
       - name: Run Benchmark performance test
         run: cargo bench --locked --bench performance
       - name: Build
