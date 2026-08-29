@@ -317,7 +317,7 @@ Exposes Prometheus metrics for operational monitoring.
 | `http_request_body_size_bytes`                  | Histogram | method, path, status    | Request body size distribution                            |
 | `http_response_body_size_bytes`                 | Histogram | method, path, status    | Response body size distribution                           |
 | `typst_compilation_duration_seconds`            | Histogram | output                  | Typst compilation latency distribution                    |
-| `template_compilation_duration_seconds`         | Histogram | app_name, template_name | Total template compilation request duration                |
+| `template_compilation_duration_seconds`         | Histogram | app_name, template_name | Template compilation request duration distribution         |
 | `template_compilations_active`                  | Gauge     | app_name, template_name | Compilation tasks currently executing                     |
 | `template_compilation_semaphore_waiting`        | Gauge     | app_name, template_name | Requests waiting to acquire a compilation permit           |
 | `template_compilation_semaphore_rejections_total` | Counter | app_name, template_name | Requests rejected after the semaphore acquisition timeout  |
