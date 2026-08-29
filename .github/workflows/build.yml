@@ -46,6 +46,8 @@ jobs:
         run: cargo fmt -- --check
       - name: Run Clippy
         run: cargo clippy --locked --release --all-targets -- -D warnings
+      - name: Build documentation
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
       - name: Run tests
         run: cargo test --locked -- --nocapture
       - name: Run Benchmark performance test
