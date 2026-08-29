@@ -144,8 +144,9 @@ the handler runs.
 
 ### Error responses
 
-All endpoints return errors as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
-Problem Details with Content-Type `application/problem+json`:
+Application errors returned by generation handlers use
+[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem Details with Content-Type
+`application/problem+json`:
 
 ```json
 {
@@ -170,6 +171,10 @@ The `type` member is a stable, machine-readable identifier. Clients should branc
 | `urn:pdfgenrs:error:timeout`             | `408`  | Compilation exceeded `COMPILE_TIMEOUT_SECONDS`       |
 | `urn:pdfgenrs:error:overloaded`          | `503`  | Too many concurrent compilations (includes `Retry-After`) |
 | `urn:pdfgenrs:error:generation-failed`   | `500`  | Internal rendering error                             |
+
+Request body-limit rejections, Axum JSON extractor rejections, and unknown-path
+fallbacks do not pass through the application error handler and are not guaranteed to
+use Problem Details. Clients must handle these responses by HTTP status.
 
 `400` and `413` are permanent client errors: retrying the same request will not
 succeed. `503` and `408` are transient and may be retried.
