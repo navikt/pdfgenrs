@@ -296,8 +296,8 @@ When `DEV_MODE=false`, these GET endpoints are not available (`405 Method Not Al
 
 #### `GET /internal/is_ready`
 
-- `200 OK` when ready
-- `503 Service Unavailable` otherwise
+- `200 OK` when ready and at least one template is loaded
+- `503 Service Unavailable` otherwise, including when no templates are loaded
 
 ### Metrics endpoint
 
