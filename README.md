@@ -310,16 +310,22 @@ Exposes Prometheus metrics for operational monitoring.
 
 **Metrics exposed:**
 
-| Metric                          | Type      | Labels               | Description                    |
-|---------------------------------|-----------|----------------------|--------------------------------|
-| `http_requests_total`           | Counter   | method, path, status | Total number of HTTP requests  |
-| `http_request_duration_seconds` | Histogram | method, path, status | Request latency distribution   |
-| `http_request_body_size_bytes`  | Histogram | method, path, status | Request body size distribution |
-| `http_response_body_size_bytes` | Histogram | method, path, status | Response body size distribution|
-| `typst_compilation_duration_seconds` | Histogram | output           | Typst compilation latency distribution |
-| `comemo_evictions_total`        | Counter   | output               | Number of comemo cache eviction runs |
-| `comemo_eviction_threshold`     | Gauge     | -                    | Configured `COMEMO_EVICTION_THRESHOLD` value |
-| `image_rejections_total`        | Counter   | reason               | Images rejected during validation, before compilation |
+| Metric                                          | Type      | Labels                  | Description                                               |
+|-------------------------------------------------|-----------|-------------------------|-----------------------------------------------------------|
+| `http_requests_total`                           | Counter   | method, path, status    | Total number of HTTP requests                             |
+| `http_request_duration_seconds`                 | Histogram | method, path, status    | Request latency distribution                              |
+| `http_request_body_size_bytes`                  | Histogram | method, path, status    | Request body size distribution                            |
+| `http_response_body_size_bytes`                 | Histogram | method, path, status    | Response body size distribution                           |
+| `typst_compilation_duration_seconds`            | Histogram | output                  | Typst compilation latency distribution                    |
+| `template_compilation_duration_seconds`         | Histogram | app_name, template_name | Template compilation request duration distribution         |
+| `template_compilations_active`                  | Gauge     | app_name, template_name | Compilation tasks currently executing                     |
+| `template_compilation_semaphore_waiting`        | Gauge     | app_name, template_name | Requests waiting to acquire a compilation permit           |
+| `template_compilation_semaphore_rejections_total` | Counter | app_name, template_name | Requests rejected after the semaphore acquisition timeout  |
+| `template_compilation_timeout_responses_total`  | Counter   | app_name, template_name | Timeout responses returned for compilation requests        |
+| `template_compilations_in_flight_after_timeout` | Gauge     | app_name, template_name | Compilation tasks continuing after their request timed out |
+| `comemo_evictions_total`                        | Counter   | output                  | Number of comemo cache eviction runs                       |
+| `comemo_eviction_threshold`                     | Gauge     | -                       | Configured `COMEMO_EVICTION_THRESHOLD` value               |
+| `image_rejections_total`                        | Counter   | reason                  | Images rejected during validation, before compilation      |
 
 The `reason` label on `image_rejections_total` is one of a fixed set:
 `undetectable_format`, `format_mismatch`, `unreadable_dimensions`, `zero_dimension`,
