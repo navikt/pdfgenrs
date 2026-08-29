@@ -27,8 +27,8 @@ impl From<ImageRejection> for ApiError {
 /// Each variant maps to a specific HTTP status code and carries enough context
 /// for structured logging while returning a safe message to the client.
 ///
-/// Responses use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem
-/// Details format (`application/problem+json`).
+/// `ApiError` responses use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
+/// Problem Details format (`application/problem+json`).
 pub(crate) enum ApiError {
     /// The requested template or application was not found.
     NotFound,
