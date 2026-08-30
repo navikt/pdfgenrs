@@ -113,7 +113,7 @@ Example:
 | Endpoint                                    | Method | Request Content-Type                                        | Response Content-Type      | Notes                |
 |---------------------------------------------|--------|-------------------------------------------------------------|----------------------------|----------------------|
 | `/api/v1/genpdf/{your_appname}/{template}`  | `POST` | `application/json`                                          | `application/pdf`          | Typst + JSON to PDF  |
-| `/api/v1/genpdf/html/{your_appname}`        | `POST` | `text/html`                                                 | `application/pdf`          | HTML to PDF          |
+| `/api/v1/genpdf/html/{your_appname}`        | `POST` | Any (typically `text/html`)                                 | `application/pdf`          | HTML to PDF          |
 | `/api/v1/genpdf/image/{your_appname}`       | `POST` | `image/png`, `image/jpeg`, `image/webp`, or `image/svg+xml` | `application/pdf`          | Image to PDF         |
 | `/api/v1/genhtml/{your_appname}/{template}` | `POST` | `application/json`                                          | `text/html; charset=utf-8` | Typst + JSON to HTML |
 | `/internal/is_alive`                        | `GET`  | -                                                           | -                          | Liveness             |
@@ -205,7 +205,7 @@ curl -s -X POST http://localhost:8080/api/v1/genpdf/<your_appname>/<template> \
 
 Converts HTML in the request body to a PDF.
 
-- Request Content-Type: typically `text/html`
+- Request Content-Type: any (typically `text/html`)
 - Response Content-Type: `application/pdf`
 - Success: `200 OK`
 - Common errors:
@@ -280,7 +280,7 @@ curl -s -X POST http://localhost:8080/api/v1/genhtml/<your_appname>/<template> \
 
 ### Dev mode only endpoints (`DEV_MODE=true`)
 
-When `DEV_MODE=true`, test data from `data/{your_appname}/{template}.json` is loaded and GET endpoints are enabled:
+When `DEV_MODE=true`, valid test data from `data/{your_appname}/{template}.json` is loaded and GET endpoints are enabled:
 
 - `GET /api/v1/genpdf/{your_appname}/{template}` → returns `application/pdf`
 - `GET /api/v1/genhtml/{your_appname}/{template}` → returns `text/html; charset=utf-8`
@@ -336,7 +336,7 @@ The `reason` label on `image_rejections_total` is one of a fixed set:
 `undetectable_format`, `format_mismatch`, `unreadable_dimensions`, `zero_dimension`,
 `dimension_too_large`, `too_many_pixels`.
 
-By default, pdfgenrs loads all assets (`templates`, `data`) into memory on startup. Changes to files in these folders require an application restart.
+Pdfgenrs loads templates into memory on startup and, when `DEV_MODE=true`, loads valid test-data files. Changes to files in these folders require an application restart.
 
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 
@@ -359,7 +359,7 @@ All configuration is done through environment variables. If an environment varia
 | Variable                      | Description                                                                                                                                              | Default           |
 |-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
 | `SERVER_PORT`                 | TCP port the server listens on                                                                                                                           | `8080`            |
-| `ROOT_DIR`                    | Root directory used as the Typst filesystem root. Relative directory paths are resolved from this directory.                                             | `.`               |
+| `ROOT_DIR`                    | Root directory used as the Typst filesystem root. Relative `RESOURCES_DIR` and `FONTS_DIR` paths are resolved from this directory.                       | `.`               |
 | `TEMPLATES_DIR`               | Directory containing Typst template files                                                                                                                | `templates`       |
 | `RESOURCES_DIR`               | Directory containing static resource files (e.g., logos)                                                                                                 | `resources`       |
 | `DATA_DIR`                    | Directory containing test JSON data used in dev mode                                                                                                     | `data`            |
