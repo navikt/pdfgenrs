@@ -3,8 +3,20 @@ name: Analyze
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - '**.MD'
+      - '**.Md'
+      - '**.mD'
+      - '.gitignore'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - '**.MD'
+      - '**.Md'
+      - '**.mD'
+      - '.gitignore'
 
 jobs:
   analyze:
