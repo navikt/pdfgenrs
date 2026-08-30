@@ -13,6 +13,7 @@ const DEV_MODE_ENV: &str = "DEV_MODE";
 const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
 const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
 const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
+const SHUTDOWN_TIMEOUT_SECONDS_ENV: &str = "SHUTDOWN_TIMEOUT_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
 const SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV: &str = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS";
 const COMEMO_EVICTION_THRESHOLD_ENV: &str = "COMEMO_EVICTION_THRESHOLD";
@@ -28,6 +29,7 @@ const DEFAULT_FONTS_DIR: &str = "fonts";
 pub(crate) const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
+const DEFAULT_SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
@@ -69,6 +71,10 @@ pub struct Config {
     /// new traffic before existing connections are drained. Defaults to `5`
     /// (`SHUTDOWN_DRAIN_SECONDS`).
     pub shutdown_drain_seconds: u64,
+    /// Maximum total time in seconds allowed for shutdown after a signal is received.
+    /// The process exits if active requests have not completed by this deadline.
+    /// Defaults to `30` (`SHUTDOWN_TIMEOUT_SECONDS`).
+    pub shutdown_timeout_seconds: u64,
     /// Maximum number of concurrent compilation tasks allowed. Defaults to `4`; set to `0`
     /// to disable the limit. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
     pub max_concurrent_compilations: usize,
@@ -163,6 +169,8 @@ impl Config {
                 .unwrap_or(DEFAULT_COMPILE_TIMEOUT_SECONDS),
             shutdown_drain_seconds: parse_u64(SHUTDOWN_DRAIN_SECONDS_ENV)
                 .unwrap_or(DEFAULT_SHUTDOWN_DRAIN_SECONDS),
+            shutdown_timeout_seconds: parse_u64(SHUTDOWN_TIMEOUT_SECONDS_ENV)
+                .unwrap_or(DEFAULT_SHUTDOWN_TIMEOUT_SECONDS),
             max_concurrent_compilations: parse_usize(MAX_CONCURRENT_COMPILATIONS_ENV)
                 .unwrap_or(DEFAULT_MAX_CONCURRENT_COMPILATIONS),
             semaphore_acquire_timeout_seconds: parse_u64(SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV)
@@ -198,6 +206,13 @@ impl Config {
                 env = SHUTDOWN_DRAIN_SECONDS_ENV,
                 value = self.shutdown_drain_seconds,
                 "shutdown_drain_seconds is 0, no graceful drain period before shutdown"
+            );
+        }
+        if self.shutdown_timeout_seconds == 0 {
+            warn!(
+                env = SHUTDOWN_TIMEOUT_SECONDS_ENV,
+                value = self.shutdown_timeout_seconds,
+                "shutdown_timeout_seconds is 0, shutdown will terminate immediately after receiving a signal"
             );
         }
         if self.request_body_limit_bytes == 0 {
@@ -270,6 +285,10 @@ mod tests {
             DEFAULT_SHUTDOWN_DRAIN_SECONDS
         );
         assert_eq!(
+            config.shutdown_timeout_seconds,
+            DEFAULT_SHUTDOWN_TIMEOUT_SECONDS
+        );
+        assert_eq!(
             config.max_concurrent_compilations,
             DEFAULT_MAX_CONCURRENT_COMPILATIONS
         );
@@ -302,6 +321,7 @@ mod tests {
             (REQUEST_BODY_LIMIT_BYTES_ENV, "4194304"),
             (COMPILE_TIMEOUT_SECONDS_ENV, "60"),
             (SHUTDOWN_DRAIN_SECONDS_ENV, "10"),
+            (SHUTDOWN_TIMEOUT_SECONDS_ENV, "20"),
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
             (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "15"),
             (COMEMO_EVICTION_THRESHOLD_ENV, "30"),
@@ -319,6 +339,7 @@ mod tests {
         assert_eq!(config.request_body_limit_bytes, 4 * 1024 * 1024);
         assert_eq!(config.compile_timeout_seconds, 60);
         assert_eq!(config.shutdown_drain_seconds, 10);
+        assert_eq!(config.shutdown_timeout_seconds, 20);
         assert_eq!(config.max_concurrent_compilations, 4);
         assert_eq!(config.semaphore_acquire_timeout_seconds, 15);
         assert_eq!(config.comemo_eviction_threshold, 30);
@@ -369,6 +390,17 @@ mod tests {
         assert_eq!(
             config.shutdown_drain_seconds,
             DEFAULT_SHUTDOWN_DRAIN_SECONDS
+        );
+    }
+
+    #[test]
+    fn default_falls_back_to_default_shutdown_timeout_for_invalid_env_value() {
+        let config =
+            Config::from_env_fn(env_from(&[(SHUTDOWN_TIMEOUT_SECONDS_ENV, "not-a-number")]));
+
+        assert_eq!(
+            config.shutdown_timeout_seconds,
+            DEFAULT_SHUTDOWN_TIMEOUT_SECONDS
         );
     }
 
@@ -450,6 +482,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            shutdown_timeout_seconds: DEFAULT_SHUTDOWN_TIMEOUT_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
@@ -473,6 +506,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            shutdown_timeout_seconds: DEFAULT_SHUTDOWN_TIMEOUT_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
@@ -496,6 +530,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            shutdown_timeout_seconds: DEFAULT_SHUTDOWN_TIMEOUT_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
@@ -519,6 +554,7 @@ mod tests {
             request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
+            shutdown_timeout_seconds: DEFAULT_SHUTDOWN_TIMEOUT_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
@@ -547,6 +583,13 @@ mod tests {
     }
 
     #[test]
+    fn zero_shutdown_timeout_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(SHUTDOWN_TIMEOUT_SECONDS_ENV, "0")]));
+
+        assert_eq!(config.shutdown_timeout_seconds, 0);
+    }
+
+    #[test]
     fn zero_semaphore_acquire_timeout_is_accepted() {
         let config = Config::from_env_fn(env_from(&[(SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "0")]));
 
@@ -572,6 +615,7 @@ mod tests {
         let config = Config::from_env_fn(env_from(&[
             (COMPILE_TIMEOUT_SECONDS_ENV, "-1"),
             (SHUTDOWN_DRAIN_SECONDS_ENV, "-5"),
+            (SHUTDOWN_TIMEOUT_SECONDS_ENV, "-5"),
             (REQUEST_BODY_LIMIT_BYTES_ENV, "-100"),
             (SERVER_PORT_ENV, "-1"),
         ]));
@@ -583,6 +627,10 @@ mod tests {
         assert_eq!(
             config.shutdown_drain_seconds,
             DEFAULT_SHUTDOWN_DRAIN_SECONDS
+        );
+        assert_eq!(
+            config.shutdown_timeout_seconds,
+            DEFAULT_SHUTDOWN_TIMEOUT_SECONDS
         );
         assert_eq!(
             config.request_body_limit_bytes,

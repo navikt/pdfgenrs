@@ -35,6 +35,7 @@ pub fn make_state_with_body_limit(
         request_body_limit_bytes,
         compile_timeout_seconds: 30,
         shutdown_drain_seconds: 5,
+        shutdown_timeout_seconds: 30,
         max_concurrent_compilations: 0,
         semaphore_acquire_timeout_seconds: 10,
         comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,

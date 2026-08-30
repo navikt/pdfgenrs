@@ -125,19 +125,36 @@ async fn main() -> Result<()> {
 
     let aliveness_for_shutdown = aliveness_clone.clone();
     let drain_seconds = cfg.shutdown_drain_seconds;
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async move {
-            if let Err(e) = shutdown_signal(aliveness_for_shutdown.clone(), drain_seconds).await {
+    let shutdown_timeout_seconds = cfg.shutdown_timeout_seconds;
+    let (shutdown_started_tx, shutdown_started_rx) = tokio::sync::oneshot::channel();
+    let server = axum::serve(listener, app).with_graceful_shutdown(async move {
+        if let Err(e) = shutdown_signal(
+            aliveness_for_shutdown.clone(),
+            drain_seconds,
+            shutdown_started_tx,
+        )
+        .await
+        {
                 tracing::error!(error = %e, "Shutdown signal handler failed");
                 aliveness_for_shutdown.set_ready(false);
                 aliveness_for_shutdown.set_alive(false);
-            }
-        })
-        .await
-        .map_err(|e| {
+        }
+    });
+    tokio::pin!(server);
+
+    tokio::select! {
+        result = &mut server => result.map_err(|e| {
             tracing::error!(error = %e, "Server error");
             e
-        })?;
+        })?,
+        _ = shutdown_deadline(shutdown_started_rx, shutdown_timeout_seconds) => {
+            tracing::error!(
+                shutdown_timeout_seconds,
+                "Shutdown deadline exceeded; terminating with active requests"
+            );
+            std::process::exit(1);
+        }
+    }
 
     // Flush and export any remaining spans buffered by the batch processor.
     if let Err(e) = tracer_provider.shutdown() {
@@ -147,7 +164,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn shutdown_signal(aliveness: AppAliveness, drain_seconds: u64) -> Result<()> {
+async fn shutdown_signal(
+    aliveness: AppAliveness,
+    drain_seconds: u64,
+    shutdown_started_tx: tokio::sync::oneshot::Sender<()>,
+) -> Result<()> {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -173,12 +194,21 @@ async fn shutdown_signal(aliveness: AppAliveness, drain_seconds: u64) -> Result<
 
     info!("Shutdown signal received, stopping server...");
     aliveness.set_ready(false);
+    let _ = shutdown_started_tx.send(());
     if drain_seconds > 0 {
         info!(drain_seconds, "Draining existing connections...");
         tokio::time::sleep(std::time::Duration::from_secs(drain_seconds)).await;
     }
     aliveness.set_alive(false);
     Ok(())
+}
+
+async fn shutdown_deadline(
+    shutdown_started_rx: tokio::sync::oneshot::Receiver<()>,
+    timeout_seconds: u64,
+) {
+    let _ = shutdown_started_rx.await;
+    tokio::time::sleep(std::time::Duration::from_secs(timeout_seconds)).await;
 }
 
 #[cfg(test)]

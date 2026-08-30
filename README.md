@@ -368,6 +368,7 @@ All configuration is done through environment variables. If an environment varia
 | `REQUEST_BODY_LIMIT_BYTES`    | Maximum accepted request body size in bytes                                                                                                              | `2097152` (2 MiB) |
 | `COMPILE_TIMEOUT_SECONDS`     | Maximum time in seconds allowed for a single compilation task. Requests exceeding this timeout are aborted with `408 Request Timeout`.                   | `30`              |
 | `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
+| `SHUTDOWN_TIMEOUT_SECONDS`    | Maximum total seconds allowed for shutdown after a signal; the process terminates if active requests remain. | `30`              |
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` disables the limit.                                                                          | `4`               |
 | `SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS` | Maximum time in seconds to wait for a compilation semaphore permit. Exceeded timeout returns `503 Service Unavailable`.                              | `10`              |
 | `COMEMO_EVICTION_THRESHOLD`         | Maximum number of cache entries to evict from the comemo memoization cache after each compilation. Higher values free more memory at the cost of cache hit rate. Set to `0` to evict the entire cache. | `15`              |
