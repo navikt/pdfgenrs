@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use image::ImageFormat;
 use ironpress::HtmlConverter;
 use metrics::counter;
 use std::collections::HashMap;
@@ -385,11 +386,11 @@ impl std::fmt::Display for ImageRejection {
 
 impl std::error::Error for ImageRejection {}
 
-/// Validates an uploaded image from its header alone and returns its dimensions.
+/// Validates an uploaded image and returns its dimensions.
 ///
-/// Only the format magic bytes and the dimension fields are inspected, so this is
-/// cheap enough to run before acquiring a compilation permit. No pixel data is
-/// decoded and no allocation proportional to the image size is made.
+/// The magic bytes and dimensions are checked before decoding so configured limits
+/// can reject oversized images without allocating pixel buffers. Valid-size images
+/// are then fully decoded or parsed before compilation to reject malformed bodies.
 ///
 /// # Errors
 /// Returns [`ImageRejection`] describing which check failed. Every variant denotes
@@ -426,7 +427,22 @@ pub fn validate_image(
         max_image_pixels,
     )?;
 
+    validate_image_body(data, detected_ext).ok_or_else(|| ImageRejection::UnreadableDimensions {
+        image_path: image_path.to_string(),
+    })?;
+
     Ok((width, height))
+}
+
+fn validate_image_body(data: &[u8], format: &str) -> Option<()> {
+    match format {
+        "png" => image::load_from_memory_with_format(data, ImageFormat::Png).ok()?,
+        "jpg" => image::load_from_memory_with_format(data, ImageFormat::Jpeg).ok()?,
+        "webp" => image::load_from_memory_with_format(data, ImageFormat::WebP).ok()?,
+        "svg" => usvg::Tree::from_data(data, &usvg::Options::default()).ok()?,
+        _ => return None,
+    };
+    Some(())
 }
 
 /// Converts an image into PDF bytes using configured image dimension limits.

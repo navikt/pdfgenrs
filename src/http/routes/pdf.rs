@@ -999,6 +999,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn post_pdf_from_image_returns_400_for_header_only_png() -> anyhow::Result<()> {
+        let server = TestServer::new(make_router(
+            make_state(HashMap::new(), HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/image/myapp")
+            .content_type("image/png")
+            .bytes(Bytes::from(png_header(1, 1)))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn post_pdf_from_image_returns_400_for_corrupted_jpeg() -> anyhow::Result<()> {
         let server = TestServer::new(make_router(
             make_state(HashMap::new(), HashMap::new(), false)?,
