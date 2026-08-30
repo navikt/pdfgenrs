@@ -127,19 +127,21 @@ async fn main() -> Result<()> {
     let drain_seconds = cfg.shutdown_drain_seconds;
     let shutdown_timeout_seconds = cfg.shutdown_timeout_seconds;
     let (shutdown_started_tx, shutdown_started_rx) = tokio::sync::oneshot::channel();
-    let server = axum::serve(listener, app).with_graceful_shutdown(async move {
-        if let Err(e) = shutdown_signal(
-            aliveness_for_shutdown.clone(),
-            drain_seconds,
-            shutdown_started_tx,
-        )
-        .await
-        {
+    let server = axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            if let Err(e) = shutdown_signal(
+                aliveness_for_shutdown.clone(),
+                drain_seconds,
+                shutdown_started_tx,
+            )
+            .await
+            {
                 tracing::error!(error = %e, "Shutdown signal handler failed");
                 aliveness_for_shutdown.set_ready(false);
                 aliveness_for_shutdown.set_alive(false);
-        }
-    });
+            }
+        })
+        .into_future();
     tokio::pin!(server);
 
     tokio::select! {
@@ -213,6 +215,7 @@ async fn shutdown_deadline(
 
 #[cfg(test)]
 mod tests {
+    use super::shutdown_deadline;
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -1070,5 +1073,21 @@ Dev mode: #data.at("mode", default: "unknown")
         let after_shutdown = client.post(url).send().await;
         assert!(after_shutdown.is_err());
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn shutdown_deadline_starts_after_shutdown_begins() {
+        let (shutdown_started_tx, shutdown_started_rx) = tokio::sync::oneshot::channel();
+        let deadline = tokio::spawn(shutdown_deadline(shutdown_started_rx, 0));
+        tokio::pin!(deadline);
+
+        assert!(
+            tokio::time::timeout(Duration::from_millis(25), &mut deadline)
+                .await
+                .is_err()
+        );
+
+        let _ = shutdown_started_tx.send(());
+        assert!(deadline.await.is_ok());
     }
 }
