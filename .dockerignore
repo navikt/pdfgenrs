@@ -1,0 +1,10 @@
+.git/
+target/
+
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
