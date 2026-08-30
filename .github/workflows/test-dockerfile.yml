@@ -1,0 +1,63 @@
+name: Test Dockerfile
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-dockerfile:
+    name: Build and test Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+      - name: Build Docker image
+        run: docker build --tag pdfgenrs:test .
+      - name: Start container
+        run: |
+          docker run \
+            --name pdfgenrs \
+            --detach \
+            -p 8080:8080 \
+            -v "${{ github.workspace }}/templates:/app/templates:ro" \
+            -v "${{ github.workspace }}/data:/app/data:ro" \
+            -v "${{ github.workspace }}/resources:/app/resources:ro" \
+            -e DEV_MODE=true \
+            pdfgenrs:test
+      - name: Wait for service to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://localhost:8080/internal/is_ready; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs pdfgenrs
+          exit 1
+      - name: Generate PDFs from all test data
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' data_file; do
+            relative="${data_file#data/}"
+            group="$(dirname "$relative")"
+            name="$(basename "$relative" .json)"
+            output="$(mktemp --suffix=.pdf)"
+
+            curl --fail --silent --show-error \
+              --header "Content-Type: application/json" \
+              --data @"$data_file" \
+              --output "$output" \
+              "http://localhost:8080/api/v1/genpdf/$group/$name"
+
+            test "$(file --mime-type --brief "$output")" = "application/pdf"
+          done < <(find data -type f -name '*.json' -print0 | sort -z)
+      - name: Show container logs
+        if: always()
+        run: |
+          docker logs pdfgenrs 2>&1 || true
+          docker rm --force pdfgenrs 2>/dev/null || true
