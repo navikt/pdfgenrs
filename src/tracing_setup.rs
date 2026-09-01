@@ -50,10 +50,7 @@ where
                     .unwrap_or_default(),
             ),
         );
-        log_object.insert(
-            "log_level".to_string(),
-            Value::String(meta.level().to_string()),
-        );
+        log_object.insert("level".to_string(), Value::String(meta.level().to_string()));
         log_object.insert(
             "target".to_string(),
             Value::String(meta.target().to_string()),
@@ -134,7 +131,7 @@ where
             .or_else(|err| {
                 serde_json::to_string(&serde_json::json!({
                     "timestamp": OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default(),
-                    "log_level": "ERROR",
+                    "level": "ERROR",
                     "target": "tracing_setup",
                     "message": "failed to serialize log object",
                     "error": err.to_string(),
@@ -428,7 +425,7 @@ mod tests {
         };
 
         assert!(log_line["timestamp"].as_str().is_some());
-        assert_eq!(log_line["log_level"], Value::String("INFO".to_string()));
+        assert_eq!(log_line["level"], Value::String("INFO".to_string()));
         assert_eq!(
             log_line["target"],
             Value::String(module_path!().to_string())
