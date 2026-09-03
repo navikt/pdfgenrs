@@ -228,7 +228,6 @@ where
     let task_labels = labels.clone();
     let mut handle = tokio::task::spawn_blocking(move || {
         task_started.store(true, std::sync::atomic::Ordering::Relaxed);
-        let _permit = permit;
         let _active = GaugeGuard::new(ACTIVE_COMPILATIONS_METRIC, &task_labels);
         let _in_flight_after_timeout = InFlightAfterTimeoutGuard {
             gauge: gauge!(IN_FLIGHT_AFTER_TIMEOUT_METRIC, &task_labels),
@@ -272,6 +271,7 @@ where
             })
         }
         Err(_elapsed) => {
+            drop(permit);
             warn!(
                 app_name = %app_name,
                 template_name = ?template_name,
@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn compile_blocking_keeps_permit_until_timed_out_task_finishes() -> anyhow::Result<()> {
+    async fn compile_blocking_releases_permit_when_task_times_out() -> anyhow::Result<()> {
         let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
         state.config.compile_timeout_seconds = 1;
         state.config.semaphore_acquire_timeout_seconds = 0;
@@ -362,31 +362,21 @@ mod tests {
             axum::http::StatusCode::REQUEST_TIMEOUT
         );
 
-        let blocked_result: Result<(), _> =
-            compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
-        let blocked_error = match blocked_result {
-            Ok(()) => anyhow::bail!("expected permit to remain held"),
-            Err(error) => error,
-        };
-        assert_eq!(
-            axum::response::IntoResponse::into_response(blocked_error).status(),
-            axum::http::StatusCode::SERVICE_UNAVAILABLE
-        );
-
-        if release_tx.send(()).is_err() {
-            anyhow::bail!("failed to release timed-out task");
-        }
         let semaphore = state
             .compile_semaphore
             .as_ref()
             .context("compile semaphore missing")?;
         let permit = tokio::time::timeout(
-            Duration::from_secs(5),
+            Duration::from_millis(100),
             Arc::clone(semaphore).acquire_owned(),
         )
         .await
         .context("timed-out task did not release permit")??;
         drop(permit);
+
+        if release_tx.send(()).is_err() {
+            anyhow::bail!("failed to release timed-out task");
+        }
 
         Ok(())
     }
