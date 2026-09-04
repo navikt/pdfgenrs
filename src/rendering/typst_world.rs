@@ -211,7 +211,10 @@ impl PdfgenWorld {
         let rootless = vpath.get_without_slash();
         let rootless_path = Path::new(rootless);
         if let Ok(resource_relative) = rootless_path.strip_prefix("resources") {
-            self.resolve_physical_path(&self.resources_dir, self.resources_dir.join(resource_relative))
+            self.resolve_physical_path(
+                &self.resources_dir,
+                self.resources_dir.join(resource_relative),
+            )
         } else {
             self.resolve_physical_path(&self.root, self.root.join(rootless_path))
         }
@@ -222,7 +225,10 @@ impl PdfgenWorld {
         let resource_relative = rootless_path
             .strip_prefix("resources")
             .unwrap_or(rootless_path);
-        self.resolve_physical_path(&self.resources_dir, self.resources_dir.join(resource_relative))
+        self.resolve_physical_path(
+            &self.resources_dir,
+            self.resources_dir.join(resource_relative),
+        )
     }
 }
 
