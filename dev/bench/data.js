@@ -1,92 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788530152331,
+  "lastUpdate": 1788530191293,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "e3c732aee638147af2de13647b901a392aec0b86",
-          "message": "Merge pull request #449 from navikt/copilot/speed-up-cargo-test-ci\n\nCI: scope Rust cache to toolchain",
-          "timestamp": "2026-08-28T21:17:33+02:00",
-          "tree_id": "2e9a874ed5d11b0f02d5fca31e8e54a2ca8d9e34",
-          "url": "https://github.com/navikt/pdfgenrs/commit/e3c732aee638147af2de13647b901a392aec0b86"
-        },
-        "date": 1787944847376,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 225033,
-            "range": "± 1882",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 422749,
-            "range": "± 4364",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5207325,
-            "range": "± 41813",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 91077,
-            "range": "± 6257",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 7610232,
-            "range": "± 68578",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 163889,
-            "range": "± 5387",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 218034,
-            "range": "± 6301",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 445706,
-            "range": "± 2819",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 10785,
-            "range": "± 39",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18513,
-            "range": "± 135",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -839,6 +755,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 19020,
             "range": "± 88",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9cbe622c4f5e69be31ce56986bbf5b2599df638c",
+          "message": "Merge pull request #464 from navikt/dependabot/cargo/uuid-1.26.0\n\nchore(deps): bump uuid from 1.24.1 to 1.26.0",
+          "timestamp": "2026-09-04T15:44:55+02:00",
+          "tree_id": "16ce83aff6583ab203e29af4972166a510f32516",
+          "url": "https://github.com/navikt/pdfgenrs/commit/9cbe622c4f5e69be31ce56986bbf5b2599df638c"
+        },
+        "date": 1788530181636,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 230036,
+            "range": "± 3777",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 430310,
+            "range": "± 17591",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5454769,
+            "range": "± 73499",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 91539,
+            "range": "± 6604",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 7814380,
+            "range": "± 91984",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 173596,
+            "range": "± 6464",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 246348,
+            "range": "± 8038",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 458669,
+            "range": "± 6560",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 10978,
+            "range": "± 83",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18784,
+            "range": "± 96",
             "unit": "ns/iter"
           }
         ]
