@@ -7,8 +7,7 @@ DS_Store
 *.pdb
 
 # Cargo
-.cargo/*
-!.cargo/audit.toml
+.cargo
 # will have compiled files and executables
 debug
 target
