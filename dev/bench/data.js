@@ -1,92 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788531927943,
+  "lastUpdate": 1788539264421,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "4695adc7d5c870ba6f9512874de26ed9f390314a",
-          "message": "Merge pull request #452 from navikt/copilot/speed-up-analyze-task-ci\n\nCI: cache CodeQL dependencies",
-          "timestamp": "2026-08-29T06:34:16+02:00",
-          "tree_id": "fc068db9243f68c85ff2b38750ae634e55cfac57",
-          "url": "https://github.com/navikt/pdfgenrs/commit/4695adc7d5c870ba6f9512874de26ed9f390314a"
-        },
-        "date": 1787978246401,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 228682,
-            "range": "± 15286",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 425532,
-            "range": "± 10753",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5218219,
-            "range": "± 88957",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 89914,
-            "range": "± 8061",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 7592077,
-            "range": "± 105462",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 167757,
-            "range": "± 4314",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 219392,
-            "range": "± 9447",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 447596,
-            "range": "± 2864",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 10593,
-            "range": "± 68",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18467,
-            "range": "± 432",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -839,6 +755,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 19161,
             "range": "± 97",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac643ec3a5b7bfb18759b69dd3463f422d6da31b",
+          "message": "Merge pull request #469 from hestad/fix-quick-xml-via-citationberg-patch\n\nfix(deps): patch citationberg to drop vulnerable quick-xml 0.38",
+          "timestamp": "2026-09-04T18:22:46+02:00",
+          "tree_id": "ae5a8c7a03fa2e34d281fcb160e85b63c74aebe6",
+          "url": "https://github.com/navikt/pdfgenrs/commit/ac643ec3a5b7bfb18759b69dd3463f422d6da31b"
+        },
+        "date": 1788539255501,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 228333,
+            "range": "± 14437",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 421890,
+            "range": "± 5783",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5252202,
+            "range": "± 208433",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 91292,
+            "range": "± 7369",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 7954505,
+            "range": "± 216383",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 167928,
+            "range": "± 5251",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 241227,
+            "range": "± 6791",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 446359,
+            "range": "± 3055",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 10811,
+            "range": "± 87",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18555,
+            "range": "± 260",
             "unit": "ns/iter"
           }
         ]
