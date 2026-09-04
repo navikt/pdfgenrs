@@ -1921,9 +1921,9 @@ checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 
 [[package]]
 name = "ironpress"
-version = "1.5.3"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba9f2ffc5edd973be3d425ec9ac3f9b1bb9c384e9a7ad11014ea76c1f1756abb"
+checksum = "6ce2556d19bd502cc9e029b9b2ce9ae829b432e52217fe54904129ed83702407"
 dependencies = [
  "cssparser",
  "cssparser-color",
