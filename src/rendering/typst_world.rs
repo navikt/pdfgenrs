@@ -180,19 +180,49 @@ impl PdfgenWorld {
             main_id,
             main_source: source,
             virtual_files: vfiles,
-            root: root.to_path_buf(),
-            resources_dir: resources_dir.to_path_buf(),
+            root: root
+                .canonicalize()
+                .context("Failed to canonicalize Typst root directory")?,
+            resources_dir: resources_dir
+                .canonicalize()
+                .context("Failed to canonicalize Typst resources directory")?,
         })
     }
 
-    fn physical_path(&self, vpath: &VirtualPath) -> PathBuf {
+    fn resolve_physical_path(&self, root: &Path, path: PathBuf) -> FileResult<PathBuf> {
+        let canonical_path = path
+            .canonicalize()
+            .map_err(|error| FileError::from_io(error, &path))?;
+
+        if canonical_path.starts_with(root) {
+            Ok(canonical_path)
+        } else {
+            Err(FileError::from_io(
+                std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "path resolves outside its allowed root",
+                ),
+                &canonical_path,
+            ))
+        }
+    }
+
+    fn physical_source_path(&self, vpath: &VirtualPath) -> FileResult<PathBuf> {
         let rootless = vpath.get_without_slash();
         let rootless_path = Path::new(rootless);
         if let Ok(resource_relative) = rootless_path.strip_prefix("resources") {
-            self.resources_dir.join(resource_relative)
+            self.resolve_physical_path(&self.resources_dir, self.resources_dir.join(resource_relative))
         } else {
-            self.root.join(rootless_path)
+            self.resolve_physical_path(&self.root, self.root.join(rootless_path))
         }
+    }
+
+    fn physical_file_path(&self, vpath: &VirtualPath) -> FileResult<PathBuf> {
+        let rootless_path = Path::new(vpath.get_without_slash());
+        let resource_relative = rootless_path
+            .strip_prefix("resources")
+            .unwrap_or(rootless_path);
+        self.resolve_physical_path(&self.resources_dir, self.resources_dir.join(resource_relative))
     }
 }
 
@@ -220,7 +250,7 @@ impl World for PdfgenWorld {
             return Ok(Source::new(id, text));
         }
         let vpath = id.vpath();
-        let physical = self.physical_path(vpath);
+        let physical = self.physical_source_path(vpath)?;
         let text =
             std::fs::read_to_string(&physical).map_err(|e| FileError::from_io(e, &physical))?;
         Ok(Source::new(id, text))
@@ -231,7 +261,7 @@ impl World for PdfgenWorld {
             return Ok(bytes.clone());
         }
         let vpath = id.vpath();
-        let physical = self.physical_path(vpath);
+        let physical = self.physical_file_path(vpath)?;
         let bytes = std::fs::read(&physical).map_err(|e| FileError::from_io(e, &physical))?;
         Ok(Bytes::new(bytes))
     }
@@ -586,7 +616,7 @@ Hello, world!
 
     #[cfg(unix)]
     #[test]
-    fn file_access_can_escape_resources_dir_via_parent_segments() -> Result<()> {
+    fn file_access_cannot_escape_resources_dir_via_parent_segments() -> Result<()> {
         let root = TempDir::new()?;
         let resources = TempDir::new()?;
         fs::write(root.path().join("secret.txt"), b"escaped")?;
@@ -605,15 +635,15 @@ Hello, world!
             VirtualRoot::Project,
             VirtualPath::new("/resources/../secret.txt")?,
         ));
-        let bytes = world.file(file_id)?;
+        let result = world.file(file_id);
 
-        assert_eq!(bytes.as_slice(), b"escaped");
+        assert!(result.is_err());
         Ok(())
     }
 
     #[cfg(unix)]
     #[test]
-    fn file_access_follows_symlink_from_resources_dir_to_outside_target() -> Result<()> {
+    fn file_access_rejects_symlink_from_resources_dir_to_outside_target() -> Result<()> {
         let root = TempDir::new()?;
         let resources = TempDir::new()?;
         let outside = TempDir::new()?;
@@ -637,9 +667,41 @@ Hello, world!
             VirtualRoot::Project,
             VirtualPath::new("/resources/linked.txt")?,
         ));
-        let bytes = world.file(file_id)?;
+        let result = world.file(file_id);
 
-        assert_eq!(bytes.as_slice(), b"outside");
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn source_access_rejects_symlink_from_root_to_outside_target() -> Result<()> {
+        let root = TempDir::new()?;
+        let resources = TempDir::new()?;
+        let outside = TempDir::new()?;
+        fs::write(outside.path().join("outside.typ"), "outside")?;
+        std::os::unix::fs::symlink(
+            outside.path().join("outside.typ"),
+            root.path().join("linked.typ"),
+        )?;
+        let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
+        let world = PdfgenWorld::new(
+            fonts,
+            root.path(),
+            resources.path(),
+            "/main.typ",
+            "Main",
+            HashMap::new(),
+            pdf_library(),
+        )?;
+
+        let file_id = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new("/linked.typ")?,
+        ));
+        let result = world.source(file_id);
+
+        assert!(result.is_err());
         Ok(())
     }
 
