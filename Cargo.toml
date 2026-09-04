@@ -78,3 +78,9 @@ dbg_macro = "warn"
 print_stdout = "warn"
 print_stderr = "warn"
 inefficient_to_string = "warn"
+
+[patch.crates-io]
+# citationberg 0.7.0 pins quick-xml 0.38, which carries RUSTSEC-2026-0194 and RUSTSEC-2026-0195.
+# Upstream main has quick-xml 0.41 since typst/citationberg#44 but no release yet (typst/citationberg#49).
+# Drop this patch once a citationberg release with quick-xml >= 0.41 is picked up by hayagriva/typst.
+citationberg = { git = "https://github.com/typst/citationberg", rev = "072ae9f46b503f6151481ecd02560ac34de5fb78" }
