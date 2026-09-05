@@ -13,7 +13,7 @@
   paper: "a4",
   margin: (top: 16.9mm, bottom: 19.6mm, left: 16.9mm, right: 16.9mm),
   footer: context align(right)[
-    #text(size: 9pt)[Side #counter(page).display() av #counter(page).final().display()]
+    #text(size: 9pt)[Side #counter(page).display() av #counter(page).final().at(0)]
   ],
 )
 
@@ -82,7 +82,7 @@ Vennlig hilsen
 #v(16pt)
 
 #sender.at("saksbehandler", default: "")
-#if sender.at("enhet", default: "") [
+#if sender.at("enhet", default: "") != "" [
   #linebreak()
   #sender.at("enhet")
 ]
