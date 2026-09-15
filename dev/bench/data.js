@@ -1,92 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789487290094,
+  "lastUpdate": 1789488268242,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ac643ec3a5b7bfb18759b69dd3463f422d6da31b",
-          "message": "Merge pull request #469 from hestad/fix-quick-xml-via-citationberg-patch\n\nfix(deps): patch citationberg to drop vulnerable quick-xml 0.38",
-          "timestamp": "2026-09-04T18:22:46+02:00",
-          "tree_id": "ae5a8c7a03fa2e34d281fcb160e85b63c74aebe6",
-          "url": "https://github.com/navikt/pdfgenrs/commit/ac643ec3a5b7bfb18759b69dd3463f422d6da31b"
-        },
-        "date": 1788539255501,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 228333,
-            "range": "± 14437",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 421890,
-            "range": "± 5783",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5252202,
-            "range": "± 208433",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 91292,
-            "range": "± 7369",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 7954505,
-            "range": "± 216383",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 167928,
-            "range": "± 5251",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 241227,
-            "range": "± 6791",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 446359,
-            "range": "± 3055",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 10811,
-            "range": "± 87",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18555,
-            "range": "± 260",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -839,6 +755,90 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 17123,
             "range": "± 1168",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakimkartveit@gmail.com",
+            "name": "Joakim Taule Kartveit",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8133dee2f7b9b1fe9697a7e0da023a7778e810ec",
+          "message": "Merge pull request #476 from navikt/MikAoJk-patch-2\n\nchore: Specify version for cargo-auditable installation",
+          "timestamp": "2026-09-15T18:01:03+02:00",
+          "tree_id": "2a32b074417e207f1a7a68fff6bc6d4e13248b64",
+          "url": "https://github.com/navikt/pdfgenrs/commit/8133dee2f7b9b1fe9697a7e0da023a7778e810ec"
+        },
+        "date": 1789488257322,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 227969,
+            "range": "± 13421",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 425308,
+            "range": "± 16158",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5461506,
+            "range": "± 58204",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 91693,
+            "range": "± 6918",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 8280407,
+            "range": "± 118275",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 161518,
+            "range": "± 4798",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 238215,
+            "range": "± 3950",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 449305,
+            "range": "± 10124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 10924,
+            "range": "± 86",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18907,
+            "range": "± 102",
             "unit": "ns/iter"
           }
         ]
