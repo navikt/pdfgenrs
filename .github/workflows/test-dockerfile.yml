@@ -56,6 +56,19 @@ jobs:
 
             test "$(file --mime-type --brief "$output")" = "application/pdf"
           done < <(find data -type f -name '*.json' -print0 | sort -z)
+      - name: Generate HTML from test data
+        run: |
+           set -euo pipefail
+           output="$(mktemp --suffix=.html)"
+           content_type="$(curl --fail --silent --show-error \
+             --header "Content-Type: application/json" \
+             --data @data/bench/html-bench.json \
+             --output "$output" \
+             --write-out '%{content_type}' \
+             http://localhost:8080/api/v1/genhtml/bench/html-bench)"
+
+           test "$content_type" = "text/html; charset=utf-8"
+           grep --quiet "HTML Benchmark Document" "$output"
       - name: Show container logs
         if: always()
         run: |
