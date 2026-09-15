@@ -24,6 +24,7 @@ pub use rendering::template;
 /// Typst world, font loading, and compilation utilities.
 pub use rendering::typst_world;
 
+use crate::http::routes::error::{ApiError, framework_error_response};
 use axum::extract::DefaultBodyLimit;
 use axum::{
     Router,
@@ -34,7 +35,6 @@ use axum::{
 use metrics_exporter_prometheus::PrometheusHandle;
 use state::AppState;
 use tower_http::limit::RequestBodyLimitLayer;
-use crate::http::routes::error::{ApiError, framework_error_response};
 
 /// Builds a pre-configured HTML-to-PDF converter with font aliases.
 ///
@@ -137,9 +137,21 @@ mod tests {
             "urn:pdfgenrs:error:not-found",
         )?;
         let body: serde_json::Value = serde_json::from_str(&response.text())?;
-        assert!(body["detail"].as_str().is_some_and(|detail| detail.contains("Unknown path. Known templates:")));
-        assert!(body["detail"].as_str().is_some_and(|detail| detail.contains("appa/doc")));
-        assert!(body["detail"].as_str().is_some_and(|detail| detail.contains("appb/letter")));
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("Unknown path. Known templates:"))
+        );
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("appa/doc"))
+        );
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("appb/letter"))
+        );
         Ok(())
     }
 
@@ -159,7 +171,11 @@ mod tests {
             "urn:pdfgenrs:error:not-found",
         )?;
         let body: serde_json::Value = serde_json::from_str(&response.text())?;
-        assert!(body["detail"].as_str().is_some_and(|detail| detail.contains("Unknown path. Known templates:")));
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("Unknown path. Known templates:"))
+        );
         Ok(())
     }
 

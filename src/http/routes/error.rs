@@ -33,9 +33,7 @@ pub(crate) enum ApiError {
     /// The requested template or application was not found.
     NotFound,
     /// The requested path does not match an API route.
-    UnknownPath {
-        detail: String,
-    },
+    UnknownPath { detail: String },
     /// An internal error occurred during document generation.
     GenerationFailed {
         app_name: String,
@@ -142,7 +140,7 @@ fn problem_response(status: StatusCode, problem_type: &str, detail: &str) -> Res
 }
 
 /// Converts framework-generated HTTP errors to RFC 9457 Problem Details responses.
-pub(crate) fn framework_error_response(response: Response) -> Response {
+pub(crate) async fn framework_error_response(response: Response) -> Response {
     if response
         .headers()
         .get(header::CONTENT_TYPE)
