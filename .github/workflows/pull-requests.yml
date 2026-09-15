@@ -17,9 +17,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7.0.1
       - name: Audit dependencies
+        id: audit
+        continue-on-error: true
         uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add audit vulnerabilities to job summary
+        if: ${{ always() }}
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          {
+            echo '## Dependency audit'
+            if [ "$AUDIT_OUTCOME" = 'success' ]; then
+              echo 'No vulnerabilities or warnings found.'
+            else
+              cargo audit --json > audit.json || true
+              jq -r '
+                .vulnerabilities.list[] |
+                "### [\(.advisory.id)](https://rustsec.org/advisories/\(.advisory.id).html)\n\n\(.advisory.title)\n\n- Package: `\(.package.name)` `\(.package.version)`\n- Patched versions: `\(.versions.patched | join(", "))`\n\n\(.advisory.description)\n"
+              ' audit.json
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$AUDIT_OUTCOME" = 'success' ]
   build:
     name: Test and build
     runs-on: ubuntu-latest
