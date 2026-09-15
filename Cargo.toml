@@ -50,7 +50,6 @@ ironpress = "1.5.2"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 uuid = { version = "1.23.4", features = ["v4"] }
-rustls = "0.23.45"
 
 [dev-dependencies]
 axum-test = "21.0.0"
@@ -79,6 +78,9 @@ dbg_macro = "warn"
 print_stdout = "warn"
 print_stderr = "warn"
 inefficient_to_string = "warn"
+
+[patch]
+rustls = "0.23.45"
 
 [patch.crates-io]
 citationberg = { git = "https://github.com/typst/citationberg", rev = "072ae9f46b503f6151481ecd02560ac34de5fb78" }
