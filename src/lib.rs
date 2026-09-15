@@ -213,7 +213,7 @@ mod tests {
         let response = server
             .post("/api/v1/genpdf/myapp/mytemplate")
             .content_type("application/json")
-            .text("{")
+            .bytes(axum::body::Bytes::from_static(b"{"))
             .await;
 
         assert_problem_response(
