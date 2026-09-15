@@ -1,5 +1,5 @@
 FROM clux/muslrust:stable@sha256:bde72f6203d191462cb6bb3f24a41b1bd8edf90788962b11715d4df54144894c AS builder
-RUN cargo install cargo-auditable
+RUN cargo install cargo-auditable --version 0.7.5
 WORKDIR /build
 ENV RUSTFLAGS='-C target-feature=+crt-static'
 COPY Cargo.toml Cargo.lock ./
