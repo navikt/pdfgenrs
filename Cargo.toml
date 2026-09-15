@@ -50,7 +50,6 @@ ironpress = "1.5.2"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 uuid = { version = "1.23.4", features = ["v4"] }
-rustls = ">=0.23.45"
 
 [dev-dependencies]
 axum-test = "21.0.0"
@@ -81,7 +80,5 @@ print_stderr = "warn"
 inefficient_to_string = "warn"
 
 [patch.crates-io]
-# citationberg 0.7.0 pins quick-xml 0.38, which carries RUSTSEC-2026-0194 and RUSTSEC-2026-0195.
-# Upstream main has quick-xml 0.41 since typst/citationberg#44 but no release yet (typst/citationberg#49).
-# Drop this patch once a citationberg release with quick-xml >= 0.41 is picked up by hayagriva/typst.
+rustls = "0.23.45"
 citationberg = { git = "https://github.com/typst/citationberg", rev = "072ae9f46b503f6151481ecd02560ac34de5fb78" }
