@@ -415,14 +415,19 @@ rustc --version
 cargo --version
 ```
 
-### Development commands
+### CI-equivalent pre-commit checks
 
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo build
-cargo test
-cargo bench --bench performance
+cargo fmt -- --check
+cargo clippy --locked --release --all-targets -- -D warnings
+cargo test --locked -- --nocapture
+cargo bench --locked --bench performance
+cargo build --locked --release
+```
+
+### Additional development commands
+
+```bash
 cargo bench --bench criterion_bench
 DEV_MODE=true cargo run
 ```
