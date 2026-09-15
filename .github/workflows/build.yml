@@ -19,9 +19,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7.0.1
       - name: Audit dependencies
+        id: audit
+        continue-on-error: true
         uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add audit results to job summary
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          {
+            echo '## Dependency audit'
+            if [ "$AUDIT_OUTCOME" = 'success' ]; then
+              echo 'No vulnerabilities or warnings found.'
+            else
+              report="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" --jq '[.check_runs[] | select(.name == "Security audit") | select(.status == "completed")] | sort_by(.completed_at) | last | .output.text // empty')"
+              if [ -n "$report" ]; then
+                printf '%s\n' "$report"
+              else
+                echo 'The audit failed before it could produce a report. See the audit step logs for details.'
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$AUDIT_OUTCOME" = 'success' ]
   build:
     name: Test and build application
     runs-on: ubuntu-latest
