@@ -32,6 +32,10 @@ impl From<ImageRejection> for ApiError {
 pub(crate) enum ApiError {
     /// The requested template or application was not found.
     NotFound,
+    /// The requested path does not match an API route.
+    UnknownPath {
+        detail: String,
+    },
     /// An internal error occurred during document generation.
     GenerationFailed {
         app_name: String,
@@ -72,6 +76,7 @@ impl std::fmt::Debug for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotFound => write!(f, "NotFound"),
+            Self::UnknownPath { .. } => write!(f, "UnknownPath"),
             Self::GenerationFailed {
                 app_name,
                 template_name,
@@ -136,6 +141,45 @@ fn problem_response(status: StatusCode, problem_type: &str, detail: &str) -> Res
         .into_response()
 }
 
+/// Converts framework-generated HTTP errors to RFC 9457 Problem Details responses.
+pub(crate) fn framework_error_response(response: Response) -> Response {
+    if response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("application/problem+json"))
+    {
+        return response;
+    }
+
+    let (problem_type, detail) = match response.status() {
+        StatusCode::BAD_REQUEST => (
+            "urn:pdfgenrs:error:invalid-request",
+            "Request body is invalid",
+        ),
+        StatusCode::METHOD_NOT_ALLOWED => (
+            "urn:pdfgenrs:error:method-not-allowed",
+            "Method not allowed",
+        ),
+        StatusCode::PAYLOAD_TOO_LARGE => (
+            "urn:pdfgenrs:error:payload-too-large",
+            "Request body exceeds the configured size limit",
+        ),
+        StatusCode::UNSUPPORTED_MEDIA_TYPE => (
+            "urn:pdfgenrs:error:unsupported-media-type",
+            "Unsupported media type",
+        ),
+        _ => return response,
+    };
+
+    let allow = response.headers().get(header::ALLOW).cloned();
+    let mut response = problem_response(response.status(), problem_type, detail);
+    if let Some(allow) = allow {
+        response.headers_mut().insert(header::ALLOW, allow);
+    }
+    response
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
@@ -143,6 +187,11 @@ impl IntoResponse for ApiError {
                 StatusCode::NOT_FOUND,
                 "urn:pdfgenrs:error:not-found",
                 "Template or application not found",
+            ),
+            Self::UnknownPath { ref detail } => problem_response(
+                StatusCode::NOT_FOUND,
+                "urn:pdfgenrs:error:not-found",
+                detail,
             ),
             Self::GenerationFailed {
                 ref app_name,
