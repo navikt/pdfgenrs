@@ -24,13 +24,12 @@ pub use rendering::template;
 /// Typst world, font loading, and compilation utilities.
 pub use rendering::typst_world;
 
+use crate::http::routes::error::{ApiError, framework_error_response};
 use axum::extract::DefaultBodyLimit;
 use axum::{
     Router,
     extract::State,
-    http::StatusCode,
     middleware,
-    response::IntoResponse,
     routing::{get, post},
 };
 use metrics_exporter_prometheus::PrometheusHandle;
@@ -67,7 +66,8 @@ pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router
     let api_routes = Router::new()
         .nest("/api/v1/genpdf", pdf_router)
         .nest("/api/v1/genhtml", html_router)
-        .fallback(fallback_handler);
+        .fallback(fallback_handler)
+        .layer(middleware::map_response(framework_error_response));
 
     let api_routes = http_tracing::apply_http_tracing_layer(api_routes);
 
@@ -81,7 +81,7 @@ pub fn build_router(state: AppState, metrics_handle: PrometheusHandle) -> Router
 }
 
 /// Fallback handler that returns 404 with a list of all known templates.
-async fn fallback_handler(State(state): State<AppState>) -> impl IntoResponse {
+async fn fallback_handler(State(state): State<AppState>) -> ApiError {
     let mut template_names: Vec<String> = state
         .templates
         .keys()
@@ -98,7 +98,7 @@ async fn fallback_handler(State(state): State<AppState>) -> impl IntoResponse {
             .join("\n")
     );
 
-    (StatusCode::NOT_FOUND, body)
+    ApiError::UnknownPath { detail: body }
 }
 
 #[cfg(test)]
@@ -131,10 +131,27 @@ mod tests {
         let response = server.get("/nonexistent/path").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
-        let body = response.text();
-        assert!(body.contains("Unknown path. Known templates:"));
-        assert!(body.contains("appa/doc"));
-        assert!(body.contains("appb/letter"));
+        assert_problem_response(
+            &response,
+            StatusCode::NOT_FOUND,
+            "urn:pdfgenrs:error:not-found",
+        )?;
+        let body: serde_json::Value = serde_json::from_str(&response.text())?;
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("Unknown path. Known templates:"))
+        );
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("appa/doc"))
+        );
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("appb/letter"))
+        );
         Ok(())
     }
 
@@ -148,8 +165,17 @@ mod tests {
         let response = server.get("/does-not-exist").await;
 
         assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
-        let body = response.text();
-        assert!(body.contains("Unknown path. Known templates:"));
+        assert_problem_response(
+            &response,
+            StatusCode::NOT_FOUND,
+            "urn:pdfgenrs:error:not-found",
+        )?;
+        let body: serde_json::Value = serde_json::from_str(&response.text())?;
+        assert!(
+            body["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("Unknown path. Known templates:"))
+        );
         Ok(())
     }
 
@@ -171,6 +197,63 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_problem_response(
+            &response,
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "urn:pdfgenrs:error:payload-too-large",
+        )?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn invalid_json_returns_problem_details() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/mytemplate")
+            .content_type("application/json")
+            .bytes(axum::body::Bytes::from_static(b"{"))
+            .await;
+
+        assert_problem_response(
+            &response,
+            StatusCode::BAD_REQUEST,
+            "urn:pdfgenrs:error:invalid-request",
+        )
+    }
+
+    #[tokio::test]
+    async fn method_not_allowed_returns_problem_details() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+
+        let response = server.get("/api/v1/genpdf/myapp/mytemplate").await;
+
+        assert_problem_response(
+            &response,
+            StatusCode::METHOD_NOT_ALLOWED,
+            "urn:pdfgenrs:error:method-not-allowed",
+        )
+    }
+
+    fn assert_problem_response(
+        response: &axum_test::TestResponse,
+        expected_status: StatusCode,
+        expected_type: &str,
+    ) -> anyhow::Result<()> {
+        assert_eq!(response.status_code(), expected_status);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .ok_or_else(|| anyhow::anyhow!("missing content-type header"))?
+                .to_str()?,
+            "application/problem+json; charset=utf-8"
+        );
+        let body: serde_json::Value = serde_json::from_str(&response.text())?;
+        assert_eq!(body["type"], expected_type);
+        assert_eq!(body["status"], expected_status.as_u16());
         Ok(())
     }
 

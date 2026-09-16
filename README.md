@@ -165,16 +165,18 @@ The `type` member is a stable, machine-readable identifier. Clients should branc
 | `type`                                   | Status | Meaning                                              |
 |------------------------------------------|--------|------------------------------------------------------|
 | `urn:pdfgenrs:error:not-found`           | `404`  | Template or application not found                    |
+| `urn:pdfgenrs:error:invalid-request`     | `400`  | Request body is invalid                              |
 | `urn:pdfgenrs:error:unsupported-media-type` | `415` | Request Content-Type not supported                 |
+| `urn:pdfgenrs:error:method-not-allowed`  | `405`  | HTTP method is not supported for the route           |
+| `urn:pdfgenrs:error:payload-too-large`   | `413`  | Request body exceeds the configured size limit       |
 | `urn:pdfgenrs:error:invalid-image`       | `400`  | Image is malformed or contradicts its Content-Type   |
 | `urn:pdfgenrs:error:image-too-large`     | `413`  | Image exceeds a configured dimension or pixel limit  |
 | `urn:pdfgenrs:error:timeout`             | `408`  | Compilation exceeded `COMPILE_TIMEOUT_SECONDS`       |
 | `urn:pdfgenrs:error:overloaded`          | `503`  | Too many concurrent compilations (includes `Retry-After`) |
 | `urn:pdfgenrs:error:generation-failed`   | `500`  | Internal rendering error                             |
 
-Request body-limit rejections, Axum JSON extractor rejections, and unknown-path
-fallbacks do not pass through the application error handler and are not guaranteed to
-use Problem Details. Clients must handle these responses by HTTP status.
+Request body-limit rejections, Axum JSON extractor rejections, method-not-allowed
+responses, and unknown-path fallbacks also use Problem Details.
 
 `400` and `413` are permanent client errors: retrying the same request will not
 succeed. `503` and `408` are transient and may be retried.
