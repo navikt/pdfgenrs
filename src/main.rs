@@ -5,7 +5,7 @@ use pdfgenrs::metrics;
 use pdfgenrs::state::{AppAliveness, AppState};
 use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Semaphore};
 use tracing::{info, warn};
 use typst::{Feature, Features};
 
@@ -68,10 +68,10 @@ async fn main() -> Result<()> {
         "Built HTML converter with font aliases"
     );
 
-    let compile_semaphore = if cfg.max_concurrent_compilations > 0 {
-        Some(Arc::new(tokio::sync::Semaphore::new(
-            cfg.max_concurrent_compilations,
-        )))
+    let compile_semaphore = if cfg.max_concurrent_compilations > 0
+        || cfg.max_concurrent_compilations > Semaphore::MAX_PERMITS
+    {
+        Some(Arc::new(Semaphore::new(cfg.max_concurrent_compilations)))
     } else {
         None
     };
