@@ -1,5 +1,7 @@
 use std::env;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use tracing::warn;
 
@@ -33,6 +35,21 @@ const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
 pub const DEFAULT_MAX_IMAGE_DIMENSION_PIXELS: u32 = 8_192;
 pub const DEFAULT_MAX_IMAGE_PIXELS: u64 = 25_000_000;
+
+fn parse_env<T>(env_var: &impl Fn(&str) -> Option<String>, key: &str) -> Option<T>
+where
+    T: FromStr,
+    T::Err: Display,
+{
+    let raw = env_var(key)?;
+    match raw.parse() {
+        Ok(value) => Some(value),
+        Err(error) => {
+            warn!(env = key, value = %raw, error = %error, "Invalid env value, falling back to default");
+            None
+        }
+    }
+}
 
 /// Runtime configuration for the pdfgenrs server.
 ///
@@ -100,46 +117,6 @@ impl Config {
     /// calls in tests — callers can supply a closure backed by a `HashMap`
     /// instead of mutating the process environment.
     fn from_env_fn(env_var: impl Fn(&str) -> Option<String>) -> Self {
-        let parse_u16 = |key: &str| {
-            let raw = env_var(key)?;
-            match raw.parse::<u16>() {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
-                    None
-                }
-            }
-        };
-        let parse_u32 = |key: &str| {
-            let raw = env_var(key)?;
-            match raw.parse::<u32>() {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
-                    None
-                }
-            }
-        };
-        let parse_usize = |key: &str| {
-            let raw = env_var(key)?;
-            match raw.parse::<usize>() {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
-                    None
-                }
-            }
-        };
-        let parse_u64 = |key: &str| {
-            let raw = env_var(key)?;
-            match raw.parse::<u64>() {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    warn!(env = key, value = %raw, error = %e, "Invalid env value, falling back to default");
-                    None
-                }
-            }
-        };
         let path_or = |key: &str, default: &str| {
             PathBuf::from(env_var(key).unwrap_or_else(|| default.to_owned()))
         };
@@ -150,28 +127,32 @@ impl Config {
         };
 
         Self {
-            port: parse_u16(SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
+            port: parse_env(&env_var, SERVER_PORT_ENV).unwrap_or(DEFAULT_PORT),
             root_dir: path_or(ROOT_DIR_ENV, DEFAULT_ROOT_DIR),
             templates_dir: path_or(TEMPLATES_DIR_ENV, DEFAULT_TEMPLATES_DIR),
             resources_dir: path_or(RESOURCES_DIR_ENV, DEFAULT_RESOURCES_DIR),
             data_dir: path_or(DATA_DIR_ENV, DEFAULT_DATA_DIR),
             fonts_dir: path_or(FONTS_DIR_ENV, DEFAULT_FONTS_DIR),
             dev_mode: bool_var(DEV_MODE_ENV),
-            request_body_limit_bytes: parse_usize(REQUEST_BODY_LIMIT_BYTES_ENV)
+            request_body_limit_bytes: parse_env(&env_var, REQUEST_BODY_LIMIT_BYTES_ENV)
                 .unwrap_or(DEFAULT_REQUEST_BODY_LIMIT_BYTES),
-            compile_timeout_seconds: parse_u64(COMPILE_TIMEOUT_SECONDS_ENV)
+            compile_timeout_seconds: parse_env(&env_var, COMPILE_TIMEOUT_SECONDS_ENV)
                 .unwrap_or(DEFAULT_COMPILE_TIMEOUT_SECONDS),
-            shutdown_drain_seconds: parse_u64(SHUTDOWN_DRAIN_SECONDS_ENV)
+            shutdown_drain_seconds: parse_env(&env_var, SHUTDOWN_DRAIN_SECONDS_ENV)
                 .unwrap_or(DEFAULT_SHUTDOWN_DRAIN_SECONDS),
-            max_concurrent_compilations: parse_usize(MAX_CONCURRENT_COMPILATIONS_ENV)
+            max_concurrent_compilations: parse_env(&env_var, MAX_CONCURRENT_COMPILATIONS_ENV)
                 .unwrap_or(DEFAULT_MAX_CONCURRENT_COMPILATIONS),
-            semaphore_acquire_timeout_seconds: parse_u64(SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV)
-                .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
-            comemo_eviction_threshold: parse_usize(COMEMO_EVICTION_THRESHOLD_ENV)
+            semaphore_acquire_timeout_seconds: parse_env(
+                &env_var,
+                SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV,
+            )
+            .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
+            comemo_eviction_threshold: parse_env(&env_var, COMEMO_EVICTION_THRESHOLD_ENV)
                 .unwrap_or(DEFAULT_COMEMO_EVICTION_THRESHOLD),
-            max_image_dimension_pixels: parse_u32(MAX_IMAGE_DIMENSION_PIXELS_ENV)
+            max_image_dimension_pixels: parse_env(&env_var, MAX_IMAGE_DIMENSION_PIXELS_ENV)
                 .unwrap_or(DEFAULT_MAX_IMAGE_DIMENSION_PIXELS),
-            max_image_pixels: parse_u64(MAX_IMAGE_PIXELS_ENV).unwrap_or(DEFAULT_MAX_IMAGE_PIXELS),
+            max_image_pixels: parse_env(&env_var, MAX_IMAGE_PIXELS_ENV)
+                .unwrap_or(DEFAULT_MAX_IMAGE_PIXELS),
         }
     }
 
