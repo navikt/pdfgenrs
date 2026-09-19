@@ -68,9 +68,14 @@ async fn main() -> Result<()> {
         "Built HTML converter with font aliases"
     );
 
-    let compile_semaphore = if cfg.max_concurrent_compilations > 0
-        || cfg.max_concurrent_compilations > Semaphore::MAX_PERMITS
-    {
+    if cfg.max_concurrent_compilations > Semaphore::MAX_PERMITS {
+        anyhow::bail!(
+            "MAX_CONCURRENT_COMPILATIONS must not exceed {}",
+            Semaphore::MAX_PERMITS
+        );
+    }
+
+    let compile_semaphore = if cfg.max_concurrent_compilations > 0 {
         Some(Arc::new(Semaphore::new(cfg.max_concurrent_compilations)))
     } else {
         None
