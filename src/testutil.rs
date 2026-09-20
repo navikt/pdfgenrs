@@ -14,7 +14,7 @@ use typst::{Feature, Features};
 ///
 /// Accepts pre-built template and data maps, a `dev_mode` flag, and a custom
 /// `request_body_limit_bytes` value.
-pub fn make_state_with_body_limit(
+pub(crate) fn make_state_with_body_limit(
     templates: HashMap<(String, String), String>,
     data: HashMap<(String, String), Arc<Value>>,
     dev_mode: bool,
@@ -70,7 +70,7 @@ pub fn make_state_with_body_limit(
 ///
 /// Accepts pre-built template and data maps as well as a `dev_mode` flag.
 /// Templates and data may be empty when not needed by the test.
-pub fn make_state(
+pub(crate) fn make_state(
     templates: HashMap<(String, String), String>,
     data: HashMap<(String, String), Arc<Value>>,
     dev_mode: bool,

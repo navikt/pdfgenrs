@@ -198,10 +198,73 @@ mod tests {
     use axum::routing::post;
     use axum_test::TestServer;
 
-    use pdfgenrs::testutil::make_state;
-    use pdfgenrs::{build_router, metrics};
+    use pdfgenrs::config;
+    use pdfgenrs::state::{AppAliveness, AppState};
+    use pdfgenrs::{build_html_converter, build_router, metrics, typst_world};
+    use tokio::sync::RwLock;
+    use typst::{Feature, Features};
 
-    fn make_empty_state(dev_mode: bool) -> anyhow::Result<pdfgenrs::state::AppState> {
+    fn make_state_with_body_limit(
+        templates: HashMap<(String, String), String>,
+        data: HashMap<(String, String), Arc<serde_json::Value>>,
+        dev_mode: bool,
+        request_body_limit_bytes: usize,
+    ) -> anyhow::Result<AppState> {
+        let templates = templates
+            .into_iter()
+            .map(|(k, v)| (k, Arc::from(v)))
+            .collect();
+        let cfg = config::Config {
+            port: 8080,
+            root_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+            templates_dir: PathBuf::from("templates"),
+            resources_dir: PathBuf::from("resources"),
+            data_dir: PathBuf::from("data"),
+            fonts_dir: PathBuf::from("fonts"),
+            dev_mode,
+            request_body_limit_bytes,
+            compile_timeout_seconds: 30,
+            shutdown_drain_seconds: 5,
+            max_concurrent_compilations: 0,
+            semaphore_acquire_timeout_seconds: 10,
+            comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: config::DEFAULT_MAX_IMAGE_PIXELS,
+        };
+        Ok(AppState {
+            templates: Arc::new(templates),
+            data: Arc::new(RwLock::new(data)),
+            aliveness: AppAliveness::new(),
+            root_dir: Arc::new(cfg.root_dir.clone()),
+            resources_dir: Arc::new(cfg.resource_root()),
+            config: cfg,
+            fonts: Arc::new(typst_world::load_fonts(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+            )?),
+            pdf_library: Arc::new(typst_world::build_library(Features::default())),
+            html_library: Arc::new(typst_world::build_library(
+                [Feature::Html].into_iter().collect(),
+            )),
+            compile_semaphore: None,
+            html_converter: Arc::new(
+                build_html_converter(
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                )
+                .0,
+            ),
+        })
+    }
+
+    fn make_state(
+        templates: HashMap<(String, String), String>,
+        data: HashMap<(String, String), Arc<serde_json::Value>>,
+        dev_mode: bool,
+    ) -> anyhow::Result<AppState> {
+        make_state_with_body_limit(templates, data, dev_mode, 2 * 1024 * 1024)
+    }
+
+    fn make_empty_state(dev_mode: bool) -> anyhow::Result<AppState> {
         make_state(HashMap::new(), HashMap::new(), dev_mode)
     }
 
@@ -628,8 +691,6 @@ Dev mode: #data.at("mode", default: "unknown")
 
     #[tokio::test]
     async fn build_router_enforces_custom_request_body_limit() -> anyhow::Result<()> {
-        use pdfgenrs::testutil::make_state_with_body_limit;
-
         // Set limit slightly over axum's implicit DefaultBodyLimit of 2MB
         // (see https://docs.rs/axum/latest/axum/extract/struct.DefaultBodyLimit.html)
         let custom_limit: usize = 1024 + 2 * 1024 * 1024;
@@ -665,8 +726,6 @@ Dev mode: #data.at("mode", default: "unknown")
 
     #[tokio::test]
     async fn build_router_zero_request_body_limit_rejects_any_body() -> anyhow::Result<()> {
-        use pdfgenrs::testutil::make_state_with_body_limit;
-
         // REQUEST_BODY_LIMIT_BYTES=0 is parseable but semantically degenerate: it should
         // cause every request carrying a body to be rejected as too large, not panic or
         // silently accept the request.

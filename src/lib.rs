@@ -11,8 +11,8 @@ pub mod metrics;
 mod rendering;
 /// Shared application state and liveness/readiness primitives.
 pub mod state;
-#[doc(hidden)]
-pub mod testutil;
+#[cfg(test)]
+mod testutil;
 
 pub(crate) use http::{http_tracing, request_id, routes};
 /// Typst-to-HTML rendering functions.
