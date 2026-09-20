@@ -188,6 +188,13 @@ impl Config {
                 "request_body_limit_bytes is 0, all requests with a body will be rejected"
             );
         }
+        if self.max_image_pixels < u64::from(self.max_image_dimension_pixels) {
+            warn!(
+                max_image_pixels = self.max_image_pixels,
+                max_image_dimension_pixels = self.max_image_dimension_pixels,
+                "MAX_IMAGE_PIXELS is lower than MAX_IMAGE_DIMENSION_PIXELS, images within the dimension limit may still be rejected by the pixel limit"
+            );
+        }
     }
 
     /// Returns the absolute resource directory used to resolve `/resources/...` Typst paths.
@@ -634,6 +641,16 @@ mod tests {
     #[test]
     fn warn_degenerate_values_does_not_panic_with_defaults() {
         let config = Config::from_env_fn(|_| None);
+
+        config.warn_degenerate_values();
+    }
+
+    #[test]
+    fn warn_degenerate_values_handles_conflicting_image_limits() {
+        let config = Config::from_env_fn(env_from(&[
+            (MAX_IMAGE_DIMENSION_PIXELS_ENV, "100"),
+            (MAX_IMAGE_PIXELS_ENV, "99"),
+        ]));
 
         config.warn_degenerate_values();
     }
