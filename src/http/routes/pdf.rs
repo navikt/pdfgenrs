@@ -273,7 +273,7 @@ mod tests {
             "_metadata": { "language": "nb-NO" },
             "name": "Alice"
         });
-        let (data, language) = split_pdf_metadata(input);
+        let (data, language) = super::split_pdf_metadata(input);
 
         assert_eq!(language.as_deref(), Some("nb-NO"));
         assert_eq!(data, serde_json::json!({ "name": "Alice" }));
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn split_pdf_metadata_preserves_payload_without_metadata() {
         let input = serde_json::json!({ "name": "Alice" });
-        let (data, language) = split_pdf_metadata(input.clone());
+        let (data, language) = super::split_pdf_metadata(input.clone());
         assert_eq!(language, None);
         assert_eq!(data, input);
     }
