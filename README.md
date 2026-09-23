@@ -194,16 +194,15 @@ Compiles a Typst template using JSON request data and returns a PDF.
   - `404 Not Found` (template/app not found)
   - `500 Internal Server Error` (rendering failed)
 
-Optional PDF metadata language can be provided through a reserved request field:
+Optional PDF metadata language can be provided through a request header:
 
-- `_metadata.language`: BCP 47 language tag (for example `nb-NO` or `en-US`)
-
-When present, this field is removed from the JSON passed to Typst as template data.
+- `language`: BCP 47 language tag (for example `nb-NO` or `en-US`)
 
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/<your_appname>/<template> \
   -H "Content-Type: application/json" \
-  -d '{"_metadata":{"language":"nb-NO"},"key":"value"}' \
+  -H "language: nb-NO" \
+  -d '{"key":"value"}' \
   --output output.pdf
 ```
 

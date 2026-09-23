@@ -286,6 +286,7 @@ where
         comemo_eviction_threshold,
         crate::config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
         crate::config::DEFAULT_MAX_IMAGE_PIXELS,
+        None,
     )
 }
 
@@ -467,6 +468,7 @@ pub fn image_to_pdf_with_limits<B>(
     comemo_eviction_threshold: usize,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
+    metadata_language: Option<&str>,
 ) -> Result<Vec<u8>>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
@@ -481,7 +483,9 @@ where
     let mut vfiles = HashMap::new();
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
 
-    let source = image_typst_source(image_path, w, h);
+    let source =
+        template_source_with_language(&image_typst_source(image_path, w, h), metadata_language)
+            .into_owned();
 
     let result = typst_world::compile_to_pdf(
         fonts,

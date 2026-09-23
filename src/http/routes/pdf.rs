@@ -14,6 +14,8 @@ use super::{compile_blocking, lookup_template_and_data, lookup_template_with_dat
 use crate::pdf as gen_pdf;
 use crate::state::AppState;
 
+const LANGUAGE_HEADER: &str = "language";
+
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
 /// Looks up the template source and preloaded test JSON data for the given
@@ -22,9 +24,11 @@ use crate::state::AppState;
 pub(crate) async fn get_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
+    headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name.clone(), template_name.clone());
+    let metadata_language = metadata_language_from_headers(&headers);
 
     let params = lookup_template_and_data(&state, &template_key).await?;
 
@@ -43,7 +47,7 @@ pub(crate) async fn get_pdf(
                 template_name: &template_name,
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
-                metadata_language: None,
+                metadata_language: metadata_language.as_deref(),
             })
         },
     )
@@ -61,11 +65,12 @@ pub(crate) async fn get_pdf(
 pub(crate) async fn post_pdf(
     State(state): State<AppState>,
     Path((app_name, template_name)): Path<(String, String)>,
+    headers: HeaderMap,
     Json(json_data): Json<Value>,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name.clone(), template_name.clone());
-    let (json_data, metadata_language) = split_pdf_metadata(json_data);
+    let metadata_language = metadata_language_from_headers(&headers);
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
 
@@ -94,20 +99,13 @@ pub(crate) async fn post_pdf(
     Ok(pdf_response(pdf_bytes))
 }
 
-fn split_pdf_metadata(json_data: Value) -> (Value, Option<String>) {
-    let Some(mut data_map) = json_data.as_object().cloned() else {
-        return (json_data, None);
-    };
-    let Some(metadata) = data_map.remove("_metadata") else {
-        return (Value::Object(data_map), None);
-    };
-    let language = metadata
-        .get("language")
-        .and_then(Value::as_str)
+fn metadata_language_from_headers(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get(LANGUAGE_HEADER)
+        .and_then(|value| value.to_str().ok())
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(ToString::to_string);
-    (Value::Object(data_map), language)
+        .map(ToString::to_string)
 }
 
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
@@ -140,6 +138,7 @@ pub(crate) async fn post_pdf_from_image(
     image_bytes: Bytes,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
+    let metadata_language = metadata_language_from_headers(&headers);
     let Some(image_path) = image_virtual_path(headers.get(header::CONTENT_TYPE)) else {
         return Err(ApiError::UnsupportedMediaType);
     };
@@ -174,6 +173,7 @@ pub(crate) async fn post_pdf_from_image(
             eviction_threshold,
             max_image_dimension_pixels,
             max_image_pixels,
+            metadata_language.as_deref(),
         )
     })
     .await?;
@@ -228,7 +228,7 @@ mod tests {
     use tokio::time::{Duration, timeout};
 
     use axum::body::Bytes;
-    use axum::http::{HeaderValue, header};
+    use axum::http::{HeaderMap, HeaderValue, header};
 
     use super::{get_pdf, image_virtual_path, post_pdf, post_pdf_from_html, post_pdf_from_image};
     use crate::state::AppState;
@@ -255,12 +255,14 @@ mod tests {
     async fn delayed_post_pdf(
         State(state): State<AppState>,
         Path((app_name, template_name)): Path<(String, String)>,
+        headers: HeaderMap,
         Json(json_data): Json<Value>,
     ) -> Response {
         tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
         post_pdf(
             State(state),
             Path((app_name, template_name)),
+            headers,
             Json(json_data),
         )
         .await
@@ -268,23 +270,23 @@ mod tests {
     }
 
     #[test]
-    fn split_pdf_metadata_extracts_language_and_removes_metadata_object() {
-        let input = serde_json::json!({
-            "_metadata": { "language": "nb-NO" },
-            "name": "Alice"
-        });
-        let (data, language) = super::split_pdf_metadata(input);
+    fn metadata_language_from_headers_extracts_trimmed_language() {
+        let mut headers = HeaderMap::new();
+        headers.insert("language", HeaderValue::from_static(" nb-NO "));
 
+        let language = super::metadata_language_from_headers(&headers);
         assert_eq!(language.as_deref(), Some("nb-NO"));
-        assert_eq!(data, serde_json::json!({ "name": "Alice" }));
     }
 
     #[test]
-    fn split_pdf_metadata_preserves_payload_without_metadata() {
-        let input = serde_json::json!({ "name": "Alice" });
-        let (data, language) = super::split_pdf_metadata(input.clone());
+    fn metadata_language_from_headers_ignores_missing_or_blank_language() {
+        let mut headers = HeaderMap::new();
+        let language = super::metadata_language_from_headers(&headers);
         assert_eq!(language, None);
-        assert_eq!(data, input);
+
+        headers.insert("language", HeaderValue::from_static("   "));
+        let language = super::metadata_language_from_headers(&headers);
+        assert_eq!(language, None);
     }
 
     fn make_router_with_delayed_post(state: AppState) -> Router {
@@ -350,6 +352,29 @@ mod tests {
                 .ok_or_else(|| anyhow::anyhow!("missing content-length header"))?,
             response.as_bytes().len().to_string().as_str()
         );
+        assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_returns_pdf_for_valid_template_with_language_header() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "mytemplate".to_string()),
+            SIMPLE_TEMPLATE.to_string(),
+        );
+        let server = TestServer::new(make_router(
+            make_state(templates, HashMap::new(), false)?,
+            false,
+        ));
+
+        let response = server
+            .post("/myapp/mytemplate")
+            .add_header("language", "nb")
+            .json(&serde_json::json!({}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
         assert!(is_pdf(response.as_bytes()));
         Ok(())
     }
@@ -1103,7 +1128,7 @@ mod tests {
     async fn delayed_post_pdf_from_image(
         State(state): State<AppState>,
         Path(app_name): Path<String>,
-        headers: axum::http::HeaderMap,
+        headers: HeaderMap,
         image_bytes: Bytes,
     ) -> Response {
         tokio::time::sleep(Duration::from_millis(DELAYED_REQUEST_DURATION_MS)).await;
