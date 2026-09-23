@@ -43,6 +43,7 @@ pub(crate) async fn get_pdf(
                 template_name: &template_name,
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
+                metadata_language: None,
             })
         },
     )
@@ -64,6 +65,7 @@ pub(crate) async fn post_pdf(
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
     let template_key = (app_name.clone(), template_name.clone());
+    let (json_data, metadata_language) = split_pdf_metadata(json_data);
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
 
@@ -82,6 +84,7 @@ pub(crate) async fn post_pdf(
                 template_name: &template_name,
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
+                metadata_language: metadata_language.as_deref(),
             })
         },
     )
@@ -89,6 +92,22 @@ pub(crate) async fn post_pdf(
 
     info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
     Ok(pdf_response(pdf_bytes))
+}
+
+fn split_pdf_metadata(json_data: Value) -> (Value, Option<String>) {
+    let Some(mut data_map) = json_data.as_object().cloned() else {
+        return (json_data, None);
+    };
+    let Some(metadata) = data_map.remove("_metadata") else {
+        return (Value::Object(data_map), None);
+    };
+    let language = metadata
+        .get("language")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string);
+    (Value::Object(data_map), language)
 }
 
 /// Handles `POST /api/v1/genpdf/html/{app_name}`.
@@ -246,6 +265,26 @@ mod tests {
         )
         .await
         .into_response()
+    }
+
+    #[test]
+    fn split_pdf_metadata_extracts_language_and_removes_metadata_object() {
+        let input = serde_json::json!({
+            "_metadata": { "language": "nb-NO" },
+            "name": "Alice"
+        });
+        let (data, language) = split_pdf_metadata(input);
+
+        assert_eq!(language.as_deref(), Some("nb-NO"));
+        assert_eq!(data, serde_json::json!({ "name": "Alice" }));
+    }
+
+    #[test]
+    fn split_pdf_metadata_preserves_payload_without_metadata() {
+        let input = serde_json::json!({ "name": "Alice" });
+        let (data, language) = split_pdf_metadata(input.clone());
+        assert_eq!(language, None);
+        assert_eq!(data, input);
     }
 
     fn make_router_with_delayed_post(state: AppState) -> Router {

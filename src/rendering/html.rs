@@ -75,6 +75,7 @@ mod tests {
             template_name: "simple",
             library: html_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(
             html.contains("<!DOCTYPE html>") && html.contains("<html"),
@@ -100,6 +101,7 @@ mod tests {
             template_name: "app",
             library: html_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(html.contains("Test User"));
         Ok(())
@@ -119,6 +121,7 @@ mod tests {
             template_name: "invalid",
             library: html_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         });
         assert!(
             result.is_err(),
@@ -148,6 +151,7 @@ mod tests {
             template_name: "nested",
             library: html_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(html.contains("Alice"));
         Ok(())
@@ -173,6 +177,7 @@ mod tests {
             template_name: "array",
             library: html_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(html.contains("alpha"));
         assert!(html.contains("beta"));
@@ -196,6 +201,7 @@ Empty: #data.keys().len()
             template_name: "empty",
             library: html_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(html.contains("<!DOCTYPE html>"));
         Ok(())

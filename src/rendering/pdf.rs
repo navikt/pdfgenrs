@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use ironpress::HtmlConverter;
 use metrics::counter;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -187,6 +188,8 @@ pub struct CompileRequest<'a> {
     pub library: Arc<LazyHash<Library>>,
     /// Number of cache entries to evict from the comemo memoization cache after compilation.
     pub comemo_eviction_threshold: usize,
+    /// Optional BCP 47 language tag used to set document language metadata in generated PDFs.
+    pub metadata_language: Option<&'a str>,
 }
 
 impl std::fmt::Debug for CompileRequest<'_> {
@@ -215,19 +218,37 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
     let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
+    let template_source = template_source_with_language(req.template_source, req.metadata_language);
 
     let result = typst_world::compile_to_pdf(
         req.fonts,
         req.root,
         req.resources_dir,
         "/main.typ",
-        req.template_source,
+        template_source.as_ref(),
         vfiles,
         req.library,
     );
     comemo::evict(req.comemo_eviction_threshold);
     counter!("comemo_evictions_total", &[("output", "pdf")]).increment(1);
     result
+}
+
+fn template_source_with_language<'a>(
+    template_source: &'a str,
+    metadata_language: Option<&str>,
+) -> Cow<'a, str> {
+    let Some(language) = metadata_language
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return Cow::Borrowed(template_source);
+    };
+
+    let escaped_language = language.replace('\\', r"\\").replace('"', "\\\"");
+    Cow::Owned(format!(
+        "#set text(lang: \"{escaped_language}\")\n{template_source}"
+    ))
 }
 
 /// Converts an HTML document into PDF bytes using a pre-built converter.
@@ -816,6 +837,21 @@ mod tests {
     }
 
     #[test]
+    fn template_source_with_language_prepends_text_lang_rule() {
+        let source = "#set document(title: \"Test\")\nHello";
+        let updated = template_source_with_language(source, Some("nb-NO"));
+        assert!(updated.starts_with("#set text(lang: \"nb-NO\")\n"));
+        assert!(updated.ends_with(source));
+    }
+
+    #[test]
+    fn template_source_with_language_ignores_missing_or_blank_value() {
+        let source = "#set document(title: \"Test\")\nHello";
+        assert_eq!(template_source_with_language(source, None), source);
+        assert_eq!(template_source_with_language(source, Some("   ")), source);
+    }
+
+    #[test]
     fn typst_to_pdf_simple_template_returns_pdf_bytes() -> Result<()> {
         let source = r#"#set document(title: "Test", date: auto)
 #set page(margin: 1cm)
@@ -832,6 +868,7 @@ Hello, world!
             template_name: "simple",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -859,6 +896,7 @@ Numbers: ٠١٢٣٤٥٦٧٨٩
             template_name: "simple",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -884,6 +922,7 @@ Hello, world!
                 template_name: "simple",
                 library: pdf_library(),
                 comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                metadata_language: None,
             })?;
             Ok(())
         })?;
@@ -913,6 +952,7 @@ Hello, world!
             template_name: "app",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
@@ -932,6 +972,7 @@ Hello, world!
             template_name: "invalid",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         });
         assert!(
             result.is_err(),
@@ -1008,6 +1049,7 @@ Hello, world!
             template_name: "assets-missing",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         });
         assert!(result.is_err());
         Ok(())
@@ -1032,6 +1074,7 @@ Hello, world!
             template_name: "assets-malformed",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         });
         assert!(result.is_err());
         Ok(())
@@ -1673,6 +1716,7 @@ Hello, world!
             template_name: "resource",
             library: pdf_library(),
             comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            metadata_language: None,
         })?;
         assert!(is_pdf(&bytes));
         Ok(())
