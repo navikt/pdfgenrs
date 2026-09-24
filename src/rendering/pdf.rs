@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
 use ironpress::HtmlConverter;
 use metrics::counter;
 use std::collections::HashMap;
@@ -12,6 +12,53 @@ use walkdir::WalkDir;
 use crate::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
+
+type StdResult<T, E> = Result<T, E>;
+
+/// Errors returned by PDF rendering helpers.
+#[derive(Debug)]
+pub enum PdfRenderError {
+    JsonSerialization {
+        source: serde_json::Error,
+    },
+    TypstWorld {
+        source: typst_world::TypstWorldError,
+    },
+    HtmlToPdf {
+        source: anyhow::Error,
+    },
+    InvalidImage {
+        source: ImageRejection,
+    },
+}
+
+impl std::fmt::Display for PdfRenderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::JsonSerialization { .. } => write!(f, "Failed to serialize JSON data"),
+            Self::TypstWorld { source } => write!(f, "{source}"),
+            Self::HtmlToPdf { source } => write!(f, "{source}"),
+            Self::InvalidImage { source } => write!(f, "{source}"),
+        }
+    }
+}
+
+impl std::error::Error for PdfRenderError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::JsonSerialization { source } => Some(source),
+            Self::TypstWorld { source } => Some(source),
+            Self::HtmlToPdf { source } => Some(source.as_ref()),
+            Self::InvalidImage { source } => Some(source),
+        }
+    }
+}
+
+impl From<typst_world::TypstWorldError> for PdfRenderError {
+    fn from(source: typst_world::TypstWorldError) -> Self {
+        Self::TypstWorld { source }
+    }
+}
 
 /// Cached font data discovered from each fonts directory. The `Arc<Vec<u8>>`
 /// wrapping lets multiple font faces from the same collection file share one
@@ -78,7 +125,7 @@ fn discover_fonts(fonts_dir: &Path) -> Arc<Vec<(String, Arc<Vec<u8>>)>> {
             let mut loaded: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
             let entries = match WalkDir::new(fonts_dir)
                 .into_iter()
-                .collect::<std::result::Result<Vec<_>, _>>()
+                .collect::<Result<Vec<_>, _>>()
             {
                 Ok(entries) => entries,
                 Err(error) => {
@@ -211,8 +258,9 @@ impl std::fmt::Debug for CompileRequest<'_> {
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
-pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
-    let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
+pub fn typst_to_pdf(req: CompileRequest<'_>) -> StdResult<Vec<u8>, PdfRenderError> {
+    let json_bytes = serde_json::to_vec(req.json_data)
+        .map_err(|source| PdfRenderError::JsonSerialization { source })?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
@@ -227,14 +275,15 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>> {
     );
     comemo::evict(req.comemo_eviction_threshold);
     counter!("comemo_evictions_total", &[("output", "pdf")]).increment(1);
-    result
+    result.map_err(PdfRenderError::from)
 }
 
 /// Converts an HTML document into PDF bytes using a pre-built converter.
-pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>> {
+pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> StdResult<Vec<u8>, PdfRenderError> {
     converter
         .convert(html)
         .context("Failed to convert HTML to PDF")
+        .map_err(|source| PdfRenderError::HtmlToPdf { source })
 }
 
 /// Converts a PNG, JPEG, WebP, or SVG image into PDF bytes.
@@ -251,7 +300,7 @@ pub fn image_to_pdf<B>(
     resources_dir: &Path,
     library: Arc<LazyHash<Library>>,
     comemo_eviction_threshold: usize,
-) -> Result<Vec<u8>>
+) -> StdResult<Vec<u8>, PdfRenderError>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
@@ -399,7 +448,7 @@ pub fn validate_image(
     image_path: &str,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
-) -> std::result::Result<(u32, u32), ImageRejection> {
+) -> StdResult<(u32, u32), ImageRejection> {
     let declared_ext = image_path.rsplit('.').next().unwrap_or("");
     let detected_ext =
         detect_image_format(data).ok_or_else(|| ImageRejection::UndetectableFormat {
@@ -446,7 +495,7 @@ pub fn image_to_pdf_with_limits<B>(
     comemo_eviction_threshold: usize,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
-) -> Result<Vec<u8>>
+) -> StdResult<Vec<u8>, PdfRenderError>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
@@ -455,7 +504,8 @@ where
         image_path,
         max_image_dimension_pixels,
         max_image_pixels,
-    )?;
+    )
+    .map_err(|source| PdfRenderError::InvalidImage { source })?;
 
     let mut vfiles = HashMap::new();
     vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
@@ -473,7 +523,7 @@ where
     );
     comemo::evict(comemo_eviction_threshold);
     counter!("comemo_evictions_total", &[("output", "image")]).increment(1);
-    result
+    result.map_err(PdfRenderError::from)
 }
 
 /// A4 edge lengths in millimetres, matching the page size Typst uses by default.
@@ -536,7 +586,7 @@ fn validate_image_dimensions(
     image_path: &str,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
-) -> std::result::Result<(), ImageRejection> {
+) -> StdResult<(), ImageRejection> {
     if width == 0 || height == 0 {
         return Err(ImageRejection::ZeroDimension {
             image_path: image_path.to_string(),
@@ -785,6 +835,7 @@ fn trim_leading_whitespace(data: &[u8]) -> &[u8] {
 mod tests {
     use super::*;
     use crate::typst_world::{build_library, load_fonts};
+    use anyhow::Result;
     use std::fs;
     use std::path::PathBuf;
     use std::sync::Arc;

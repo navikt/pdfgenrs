@@ -44,6 +44,7 @@ pub(crate) async fn get_pdf(
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
+            .map_err(anyhow::Error::new)
         },
     )
     .await?;
@@ -83,6 +84,7 @@ pub(crate) async fn post_pdf(
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
+            .map_err(anyhow::Error::new)
         },
     )
     .await?;
@@ -103,7 +105,7 @@ pub(crate) async fn post_pdf_from_html(
     let html_converter = Arc::clone(&state.html_converter);
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::html_to_pdf(&html, &html_converter)
+        gen_pdf::html_to_pdf(&html, &html_converter).map_err(anyhow::Error::new)
     })
     .await?;
 
@@ -156,6 +158,7 @@ pub(crate) async fn post_pdf_from_image(
             max_image_dimension_pixels,
             max_image_pixels,
         )
+        .map_err(anyhow::Error::new)
     })
     .await?;
 

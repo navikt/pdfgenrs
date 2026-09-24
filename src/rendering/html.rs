@@ -1,10 +1,38 @@
-use anyhow::{Context, Result};
 use metrics::counter;
 use std::collections::HashMap;
 use typst::foundations::Bytes;
 
 use crate::pdf::CompileRequest;
 use crate::typst_world;
+
+/// Errors returned by HTML rendering helpers.
+#[derive(Debug)]
+pub enum HtmlRenderError {
+    JsonSerialization {
+        source: serde_json::Error,
+    },
+    TypstWorld {
+        source: typst_world::TypstWorldError,
+    },
+}
+
+impl std::fmt::Display for HtmlRenderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::JsonSerialization { .. } => write!(f, "Failed to serialize JSON data"),
+            Self::TypstWorld { source } => write!(f, "{source}"),
+        }
+    }
+}
+
+impl std::error::Error for HtmlRenderError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::JsonSerialization { source } => Some(source),
+            Self::TypstWorld { source } => Some(source),
+        }
+    }
+}
 
 /// Compiles a Typst template with JSON data and returns the resulting HTML string.
 ///
@@ -15,8 +43,9 @@ use crate::typst_world;
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
-pub fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
-    let json_bytes = serde_json::to_vec(req.json_data).context("Failed to serialize JSON data")?;
+pub fn typst_to_html(req: CompileRequest<'_>) -> Result<String, HtmlRenderError> {
+    let json_bytes = serde_json::to_vec(req.json_data)
+        .map_err(|source| HtmlRenderError::JsonSerialization { source })?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
     let vfiles = HashMap::from([(data_path, Bytes::new(json_bytes))]);
 
@@ -31,7 +60,7 @@ pub fn typst_to_html(req: CompileRequest<'_>) -> Result<String> {
     );
     comemo::evict(req.comemo_eviction_threshold);
     counter!("comemo_evictions_total", &[("output", "html")]).increment(1);
-    result
+    result.map_err(|source| HtmlRenderError::TypstWorld { source })
 }
 
 #[cfg(test)]
@@ -39,6 +68,7 @@ mod tests {
     use super::*;
     use crate::pdf::CompileRequest;
     use crate::typst_world::{build_library, load_fonts};
+    use anyhow::Result;
     use std::path::PathBuf;
     use std::sync::Arc;
     use typst::Feature;
