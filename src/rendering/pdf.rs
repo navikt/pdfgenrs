@@ -279,10 +279,7 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> StdResult<Vec<u8>, PdfRenderErro
 }
 
 /// Converts an HTML document into PDF bytes using a pre-built converter.
-pub fn html_to_pdf(
-    html: &str,
-    converter: &HtmlConverter,
-) -> StdResult<Vec<u8>, PdfRenderError> {
+pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> StdResult<Vec<u8>, PdfRenderError> {
     converter
         .convert(html)
         .context("Failed to convert HTML to PDF")
