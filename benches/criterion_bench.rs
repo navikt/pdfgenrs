@@ -58,6 +58,7 @@ Hello, world!
                 template_name: "simple",
                 library: Arc::clone(&library),
                 comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                metadata_language: None,
             });
         });
     });
@@ -92,6 +93,7 @@ fn bench_typst_to_pdf_with_data(c: &mut Criterion) {
                 template_name: "template",
                 library: Arc::clone(&library),
                 comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                metadata_language: None,
             });
         });
     });
@@ -179,6 +181,7 @@ fn bench_typst_to_pdf_large_json(c: &mut Criterion) {
                 template_name: "large",
                 library: Arc::clone(&library),
                 comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                metadata_language: None,
             });
         });
     });
@@ -224,6 +227,7 @@ Hello, concurrent world!
                                     library: Arc::clone(&library),
                                     comemo_eviction_threshold:
                                         pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                                    metadata_language: None,
                                 });
                             }
                         })
@@ -313,6 +317,7 @@ Hello, world!
                 template_name: "simple",
                 library: Arc::clone(&library),
                 comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                metadata_language: None,
             });
         });
     });
@@ -346,6 +351,7 @@ fn bench_typst_to_html_with_data(c: &mut Criterion) {
                 template_name: "template",
                 library: Arc::clone(&library),
                 comemo_eviction_threshold: pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                metadata_language: None,
             });
         });
     });
