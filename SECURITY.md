@@ -10,4 +10,4 @@ the security and privacy of all our users.
 
 If you believe you have found a security vulnerability in any of our
 repositories, please report it to us using the
-[Github Private vulnerability reporting tool](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability).
+[GitHub Private vulnerability reporting tool](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability).
