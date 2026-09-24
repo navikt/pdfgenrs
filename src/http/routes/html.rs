@@ -43,6 +43,7 @@ pub(crate) async fn get_html(
                 library: params.html_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
+            .map_err(anyhow::Error::new)
         },
     )
     .await?;
@@ -82,6 +83,7 @@ pub(crate) async fn post_html(
                 library: params.html_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
+            .map_err(anyhow::Error::new)
         },
     )
     .await?;

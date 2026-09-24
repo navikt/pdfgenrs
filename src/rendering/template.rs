@@ -1,9 +1,61 @@
-use anyhow::Context;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use walkdir::WalkDir;
+
+/// Errors returned when loading Typst templates from disk.
+#[derive(Debug)]
+pub enum TemplateLoadError {
+    /// Failed to traverse or read a directory entry.
+    ReadDirectoryEntry { source: walkdir::Error },
+    /// Failed to derive a relative path under the templates root.
+    StripPrefix {
+        path: PathBuf,
+        root: PathBuf,
+        source: std::path::StripPrefixError,
+    },
+    /// Template path did not match `<app_name>/<template_name>.typ`.
+    InvalidTemplatePath { path: PathBuf, reason: &'static str },
+    /// Failed to read a template file.
+    ReadTemplateFile {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+}
+
+impl std::fmt::Display for TemplateLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ReadDirectoryEntry { source } => {
+                write!(f, "Failed to read template directory entry: {source}")
+            }
+            Self::StripPrefix { path, root, .. } => write!(
+                f,
+                "Failed to strip '{}' from '{}'",
+                root.display(),
+                path.display()
+            ),
+            Self::InvalidTemplatePath { path, reason } => {
+                write!(f, "{reason}: {}", path.display())
+            }
+            Self::ReadTemplateFile { path, source } => {
+                write!(f, "Failed to read template file '{}': {source}", path.display())
+            }
+        }
+    }
+}
+
+impl std::error::Error for TemplateLoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ReadDirectoryEntry { source } => Some(source),
+            Self::StripPrefix { source, .. } => Some(source),
+            Self::InvalidTemplatePath { .. } => None,
+            Self::ReadTemplateFile { source, .. } => Some(source),
+        }
+    }
+}
 
 /// Categorises errors encountered while loading test data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -58,11 +110,11 @@ impl TestDataLoadResult {
 /// Returns an error if any file cannot be read or a path cannot be processed.
 pub fn load_templates_from_dir(
     templates_dir: &Path,
-) -> anyhow::Result<HashMap<(String, String), Arc<str>>> {
+) -> std::result::Result<HashMap<(String, String), Arc<str>>, TemplateLoadError> {
     let mut templates = HashMap::new();
 
     for entry in WalkDir::new(templates_dir).follow_links(true).into_iter() {
-        let entry = entry.context("Failed to read template directory entry")?;
+        let entry = entry.map_err(|source| TemplateLoadError::ReadDirectoryEntry { source })?;
         let path = entry.path();
         if path.is_file()
             && let Some(ext) = path.extension()
@@ -70,23 +122,38 @@ pub fn load_templates_from_dir(
         {
             let relative = path
                 .strip_prefix(templates_dir)
-                .context("Failed to strip prefix")?;
+                .map_err(|source| TemplateLoadError::StripPrefix {
+                    path: path.to_path_buf(),
+                    root: templates_dir.to_path_buf(),
+                    source,
+                })?;
             let relative_no_ext = relative.with_extension("");
             let mut parts = relative_no_ext.iter();
             let app_name = parts
                 .next()
                 .and_then(|part| part.to_str())
-                .context("Template path must start with '<app_name>/' and use valid UTF-8")?;
-            let template_name = parts.next().and_then(|part| part.to_str()).context(
-                "Template path must include '<template_name>.typ' under app_name and use valid UTF-8",
-            )?;
+                .ok_or_else(|| TemplateLoadError::InvalidTemplatePath {
+                    path: relative.to_path_buf(),
+                    reason: "Template path must start with '<app_name>/' and use valid UTF-8",
+                })?;
+            let template_name = parts.next().and_then(|part| part.to_str()).ok_or_else(|| {
+                TemplateLoadError::InvalidTemplatePath {
+                    path: relative.to_path_buf(),
+                    reason:
+                        "Template path must include '<template_name>.typ' under app_name and use valid UTF-8",
+                }
+            })?;
             if parts.next().is_some() {
-                return Err(anyhow::anyhow!(
-                    "Template path must be exactly '<app_name>/<template_name>.typ': {}",
-                    relative.display()
-                ));
+                return Err(TemplateLoadError::InvalidTemplatePath {
+                    path: relative.to_path_buf(),
+                    reason: "Template path must be exactly '<app_name>/<template_name>.typ'",
+                });
             }
-            let source = std::fs::read_to_string(path).context("Failed to read template file")?;
+            let source =
+                std::fs::read_to_string(path).map_err(|source| TemplateLoadError::ReadTemplateFile {
+                    path: path.to_path_buf(),
+                    source,
+                })?;
             templates.insert(
                 (app_name.to_string(), template_name.to_string()),
                 Arc::from(source),

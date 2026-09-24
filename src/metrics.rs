@@ -5,14 +5,38 @@ use axum::{body::Body, extract::MatchedPath, http::Request, middleware::Next, re
 use metrics::{counter, histogram};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 
+/// Errors returned when setting up the Prometheus metrics recorder.
+#[derive(Debug)]
+pub enum MetricsSetupError {
+    /// Failed to install the global Prometheus recorder.
+    InstallRecorder { source: anyhow::Error },
+}
+
+impl std::fmt::Display for MetricsSetupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InstallRecorder { .. } => write!(f, "Failed to install Prometheus recorder"),
+        }
+    }
+}
+
+impl std::error::Error for MetricsSetupError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::InstallRecorder { source } => Some(source.as_ref()),
+        }
+    }
+}
+
 /// Installs the global Prometheus metrics recorder and returns a handle for rendering.
 ///
 /// Must be called once at application startup before any metrics are recorded.
-pub fn setup_metrics_recorder() -> anyhow::Result<PrometheusHandle> {
+pub fn setup_metrics_recorder() -> std::result::Result<PrometheusHandle, MetricsSetupError> {
     let builder = PrometheusBuilder::new();
     builder
         .install_recorder()
         .context("Failed to install Prometheus recorder")
+        .map_err(|source| MetricsSetupError::InstallRecorder { source })
 }
 
 /// Creates a [`PrometheusHandle`] without installing a global recorder.
