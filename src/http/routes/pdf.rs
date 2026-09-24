@@ -84,6 +84,7 @@ pub(crate) async fn post_pdf(
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
+            .map_err(anyhow::Error::new)
         },
     )
     .await?;

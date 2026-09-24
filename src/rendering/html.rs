@@ -8,8 +8,12 @@ use crate::typst_world;
 /// Errors returned by HTML rendering helpers.
 #[derive(Debug)]
 pub enum HtmlRenderError {
-    JsonSerialization { source: serde_json::Error },
-    TypstWorld { source: typst_world::TypstWorldError },
+    JsonSerialization {
+        source: serde_json::Error,
+    },
+    TypstWorld {
+        source: typst_world::TypstWorldError,
+    },
 }
 
 impl std::fmt::Display for HtmlRenderError {
@@ -39,7 +43,7 @@ impl std::error::Error for HtmlRenderError {
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / HTML export fails.
-pub fn typst_to_html(req: CompileRequest<'_>) -> std::result::Result<String, HtmlRenderError> {
+pub fn typst_to_html(req: CompileRequest<'_>) -> Result<String, HtmlRenderError> {
     let json_bytes = serde_json::to_vec(req.json_data)
         .map_err(|source| HtmlRenderError::JsonSerialization { source })?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
@@ -64,12 +68,12 @@ mod tests {
     use super::*;
     use crate::pdf::CompileRequest;
     use crate::typst_world::{build_library, load_fonts};
+    use anyhow::Result;
     use std::path::PathBuf;
     use std::sync::Arc;
     use typst::Feature;
     use typst::Library;
     use typst::utils::LazyHash;
-    use anyhow::Result;
 
     fn root_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))

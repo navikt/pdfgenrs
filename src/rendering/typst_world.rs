@@ -22,19 +22,31 @@ pub enum TypstWorldError {
         path: PathBuf,
         source: walkdir::Error,
     },
-    NoFontFiles { path: PathBuf },
+    NoFontFiles {
+        path: PathBuf,
+    },
     ReadFontFile {
         path: PathBuf,
         source: std::io::Error,
     },
-    NoValidFontFaces { path: PathBuf },
-    InvalidMainPath { path: String, detail: String },
-    InvalidVirtualPath { path: String, detail: String },
+    NoValidFontFaces {
+        path: PathBuf,
+    },
+    InvalidMainPath {
+        path: String,
+        detail: String,
+    },
+    InvalidVirtualPath {
+        path: String,
+        detail: String,
+    },
     CompilationFailed {
         context: &'static str,
         messages: Vec<String>,
     },
-    ConfigurePdfStandards { detail: String },
+    ConfigurePdfStandards {
+        detail: String,
+    },
 }
 
 impl std::fmt::Display for TypstWorldError {
@@ -103,7 +115,7 @@ pub struct Fonts {
 }
 
 /// Loads fonts from the provided directory and returns a [`Fonts`] instance.
-pub fn load_fonts(fonts_dir: &Path) -> std::result::Result<Fonts, TypstWorldError> {
+pub fn load_fonts(fonts_dir: &Path) -> Result<Fonts, TypstWorldError> {
     let font_paths = collect_font_files(fonts_dir)?;
 
     if font_paths.is_empty() {
@@ -114,10 +126,11 @@ pub fn load_fonts(fonts_dir: &Path) -> std::result::Result<Fonts, TypstWorldErro
 
     let mut fonts = Vec::new();
     for font_path in font_paths {
-        let font_bytes = std::fs::read(&font_path).map_err(|source| TypstWorldError::ReadFontFile {
-            path: font_path.clone(),
-            source,
-        })?;
+        let font_bytes =
+            std::fs::read(&font_path).map_err(|source| TypstWorldError::ReadFontFile {
+                path: font_path.clone(),
+                source,
+            })?;
         let mut parsed_fonts: Vec<Font> = Font::iter(Bytes::new(font_bytes)).collect();
         if parsed_fonts.is_empty() {
             tracing::warn!(
@@ -143,7 +156,7 @@ pub fn load_fonts(fonts_dir: &Path) -> std::result::Result<Fonts, TypstWorldErro
 }
 
 /// Walks `dir` and collects all supported font files.
-fn collect_font_files(dir: &Path) -> std::result::Result<Vec<PathBuf>, TypstWorldError> {
+fn collect_font_files(dir: &Path) -> Result<Vec<PathBuf>, TypstWorldError> {
     let mut files = Vec::new();
     for entry in WalkDir::new(dir).into_iter() {
         let entry = entry.map_err(|source| TypstWorldError::ReadFontDirectory {
@@ -227,9 +240,9 @@ impl PdfgenWorld {
         main_source: &str,
         virtual_files: HashMap<String, Bytes>,
         library: Arc<LazyHash<Library>>,
-    ) -> std::result::Result<Self, TypstWorldError> {
-        let main_vpath = VirtualPath::new(main_path)
-            .map_err(|error| TypstWorldError::InvalidMainPath {
+    ) -> Result<Self, TypstWorldError> {
+        let main_vpath =
+            VirtualPath::new(main_path).map_err(|error| TypstWorldError::InvalidMainPath {
                 path: main_path.to_string(),
                 detail: error.to_string(),
             })?;
@@ -238,8 +251,8 @@ impl PdfgenWorld {
 
         let mut vfiles: HashMap<FileId, Bytes> = HashMap::new();
         for (path, bytes) in virtual_files {
-            let vpath = VirtualPath::new(&path)
-                .map_err(|error| TypstWorldError::InvalidVirtualPath {
+            let vpath =
+                VirtualPath::new(&path).map_err(|error| TypstWorldError::InvalidVirtualPath {
                     path: path.clone(),
                     detail: error.to_string(),
                 })?;
@@ -356,7 +369,7 @@ pub fn compile_to_pdf(
     main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
-) -> std::result::Result<Vec<u8>, TypstWorldError> {
+) -> Result<Vec<u8>, TypstWorldError> {
     let world = PdfgenWorld::new(
         fonts,
         root,
@@ -411,7 +424,7 @@ pub fn compile_to_html(
     main_source: &str,
     virtual_files: HashMap<String, Bytes>,
     library: Arc<LazyHash<Library>>,
-) -> std::result::Result<String, TypstWorldError> {
+) -> Result<String, TypstWorldError> {
     let world = PdfgenWorld::new(
         fonts,
         root,
@@ -476,8 +489,8 @@ fn build_timestamp() -> Option<typst_pdf::Timestamp> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
     use super::*;
+    use anyhow::Result;
     use std::fs;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -897,7 +910,7 @@ Hello, world!
             let resources = resources_dir();
             handles.push(tokio::spawn(async move {
                 let _permit = sem.acquire().await.map_err(|e| anyhow::anyhow!("{e}"))?;
-                tokio::task::spawn_blocking(move || {
+                let pdf = tokio::task::spawn_blocking(move || {
                     let source = format!(
                         "#set document(title: \"Concurrent {i}\", date: auto)\n#set page(margin: 1cm)\nDocument {i}.\n"
                     );
@@ -910,9 +923,11 @@ Hello, world!
                         HashMap::new(),
                         library,
                     )
+                    .map_err(anyhow::Error::new)
                 })
                 .await
-                .map_err(|e| anyhow::anyhow!("Join error: {e}"))?
+                .map_err(|e| anyhow::anyhow!("Join error: {e}"))??;
+                Ok::<Vec<u8>, anyhow::Error>(pdf)
             }));
         }
 

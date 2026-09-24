@@ -31,7 +31,7 @@ impl std::error::Error for MetricsSetupError {
 /// Installs the global Prometheus metrics recorder and returns a handle for rendering.
 ///
 /// Must be called once at application startup before any metrics are recorded.
-pub fn setup_metrics_recorder() -> std::result::Result<PrometheusHandle, MetricsSetupError> {
+pub fn setup_metrics_recorder() -> Result<PrometheusHandle, MetricsSetupError> {
     let builder = PrometheusBuilder::new();
     builder
         .install_recorder()
