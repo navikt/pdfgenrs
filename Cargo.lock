@@ -1926,9 +1926,9 @@ checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 
 [[package]]
 name = "ironpress"
-version = "1.6.0"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ce2556d19bd502cc9e029b9b2ce9ae829b432e52217fe54904129ed83702407"
+checksum = "cb193cd0e4909bf5203ab6d074594d75674a3cd034e7966114a3bc1283301e61"
 dependencies = [
  "cssparser",
  "cssparser-color",
@@ -1938,12 +1938,14 @@ dependencies = [
  "image",
  "language-tags",
  "lightningcss",
+ "lru",
  "markup5ever_rcdom",
  "parcel_selectors",
  "png",
  "pulldown-cmark",
  "resvg",
  "rustybuzz",
+ "self_cell",
  "sha2",
  "skrifa",
  "subsetter",
@@ -2257,6 +2259,15 @@ dependencies = [
  "scoped-tls",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "lru"
+version = "0.18.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef9ac18847474e638e3702b76c65d4eb93428471a74778ef0f1be711717f89b5"
+dependencies = [
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
@@ -3731,6 +3742,12 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
+
+[[package]]
+name = "self_cell"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ab42ca02749e120097e328d91d415325bdf43b1c72c4c8badf37375fe40a813"
 
 [[package]]
 name = "semver"
