@@ -317,6 +317,43 @@ where
     )
 }
 
+pub(crate) struct ValidatedImageRenderRequest<'a> {
+    pub image_path: &'a str,
+    pub width: u32,
+    pub height: u32,
+    pub fonts: Arc<Fonts>,
+    pub root: &'a Path,
+    pub resources_dir: &'a Path,
+    pub library: Arc<LazyHash<Library>>,
+    pub comemo_eviction_threshold: usize,
+}
+
+pub(crate) fn image_to_pdf_with_validated_dimensions<B>(
+    image_bytes: B,
+    req: ValidatedImageRenderRequest<'_>,
+) -> StdResult<Vec<u8>, PdfRenderError>
+where
+    B: AsRef<[u8]> + Send + Sync + 'static,
+{
+    let mut vfiles = HashMap::new();
+    vfiles.insert(req.image_path.to_string(), Bytes::new(image_bytes));
+
+    let source = image_typst_source(req.image_path, req.width, req.height);
+
+    let result = typst_world::compile_to_pdf(
+        req.fonts,
+        req.root,
+        req.resources_dir,
+        "/main.typ",
+        &source,
+        vfiles,
+        req.library,
+    );
+    comemo::evict(req.comemo_eviction_threshold);
+    counter!("comemo_evictions_total", &[("output", "image")]).increment(1);
+    result.map_err(PdfRenderError::from)
+}
+
 /// Why an uploaded image was rejected before compilation started.
 ///
 /// The variants separate malformed input (which maps to `400 Bad Request`) from
@@ -499,31 +536,26 @@ pub fn image_to_pdf_with_limits<B>(
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
-    let (w, h) = validate_image(
+    let (width, height) = validate_image(
         image_bytes.as_ref(),
         image_path,
         max_image_dimension_pixels,
         max_image_pixels,
     )
     .map_err(|source| PdfRenderError::InvalidImage { source })?;
-
-    let mut vfiles = HashMap::new();
-    vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
-
-    let source = image_typst_source(image_path, w, h);
-
-    let result = typst_world::compile_to_pdf(
-        fonts,
-        root,
-        resources_dir,
-        "/main.typ",
-        &source,
-        vfiles,
-        library,
-    );
-    comemo::evict(comemo_eviction_threshold);
-    counter!("comemo_evictions_total", &[("output", "image")]).increment(1);
-    result.map_err(PdfRenderError::from)
+    image_to_pdf_with_validated_dimensions(
+        image_bytes,
+        ValidatedImageRenderRequest {
+            image_path,
+            width,
+            height,
+            fonts,
+            root,
+            resources_dir,
+            library,
+            comemo_eviction_threshold,
+        },
+    )
 }
 
 /// A4 edge lengths in millimetres, matching the page size Typst uses by default.
@@ -1119,6 +1151,32 @@ Hello, world!
             &resources_dir(),
             pdf_library(),
             crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        )?;
+        assert!(is_pdf(&bytes));
+        Ok(())
+    }
+
+    #[test]
+    fn image_to_pdf_with_validated_dimensions_png_returns_pdf_bytes() -> Result<()> {
+        let image_bytes = fs::read(root_dir().join("resources").join("NAVLogoRed.png"))?;
+        let (width, height) = validate_image(
+            &image_bytes,
+            "/image.png",
+            crate::config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            crate::config::DEFAULT_MAX_IMAGE_PIXELS,
+        )?;
+        let bytes = image_to_pdf_with_validated_dimensions(
+            image_bytes,
+            ValidatedImageRenderRequest {
+                image_path: "/image.png",
+                width,
+                height,
+                fonts: test_fonts()?,
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                library: pdf_library(),
+                comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            },
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
