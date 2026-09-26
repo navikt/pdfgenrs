@@ -355,6 +355,7 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 - https://github.com/navikt/pia-pdfgen
 - https://github.com/navikt/klage-dittnav-pdfgen
 - https://github.com/navikt/medlemskap-oppslag-pdfgen
+- https://github.com/navikt/esyfo-pdfgen
 
 ## Environment variables
 
