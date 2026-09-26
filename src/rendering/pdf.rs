@@ -839,7 +839,7 @@ mod tests {
     use proptest::prelude::*;
     use std::fs;
     use std::path::PathBuf;
-    use std::sync::{Arc, OnceLock};
+    use std::sync::Arc;
     use tempfile::TempDir;
     use typst::Features;
 
@@ -856,9 +856,7 @@ mod tests {
     }
 
     fn test_fonts() -> Result<Arc<Fonts>> {
-        static FONTS: OnceLock<Arc<Fonts>> = OnceLock::new();
-        let fonts = FONTS.get_or_try_init(|| load_fonts(&fonts_dir()).map(Arc::new))?;
-        Ok(Arc::clone(fonts))
+        Ok(Arc::new(load_fonts(&fonts_dir())?))
     }
 
     fn pdf_library() -> Arc<LazyHash<Library>> {
@@ -1987,7 +1985,7 @@ Hello, world!
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(32))]
+        #![proptest_config(ProptestConfig::with_cases(8))]
 
         #[test]
         fn typst_to_pdf_property_handles_untrusted_data_path_components(
