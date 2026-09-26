@@ -317,6 +317,7 @@ where
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn image_to_pdf_with_validated_dimensions<B>(
     image_bytes: B,
     image_path: &str,
