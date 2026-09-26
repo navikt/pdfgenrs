@@ -1,0 +1,32 @@
+name: Workflow policy
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'Cargo.toml'
+      - 'scripts/ci/check-workflow-policy.sh'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - 'Cargo.toml'
+      - 'scripts/ci/check-workflow-policy.sh'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Check workflow policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+      - name: Validate workflow policy
+        run: ./scripts/ci/check-workflow-policy.sh
