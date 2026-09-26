@@ -836,9 +836,10 @@ mod tests {
     use super::*;
     use crate::typst_world::{build_library, load_fonts};
     use anyhow::Result;
+    use proptest::prelude::*;
     use std::fs;
     use std::path::PathBuf;
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
     use tempfile::TempDir;
     use typst::Features;
 
@@ -855,7 +856,9 @@ mod tests {
     }
 
     fn test_fonts() -> Result<Arc<Fonts>> {
-        Ok(Arc::new(load_fonts(&fonts_dir())?))
+        static FONTS: OnceLock<Arc<Fonts>> = OnceLock::new();
+        let fonts = FONTS.get_or_try_init(|| load_fonts(&fonts_dir()).map(Arc::new))?;
+        Ok(Arc::clone(fonts))
     }
 
     fn pdf_library() -> Arc<LazyHash<Library>> {
@@ -1956,6 +1959,70 @@ Hello, world!
 
         assert_eq!(detect_image_format(b"not an image"), None);
         Ok(())
+    }
+
+    fn untrusted_typst_component() -> impl Strategy<Value = String> {
+        prop::collection::vec(any::<char>(), 0..24).prop_map(|chars| chars.into_iter().collect())
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(128))]
+
+        #[test]
+        fn validate_image_property_arbitrary_payloads_stay_within_guards(
+            payload in prop::collection::vec(any::<u8>(), 0..512),
+            declared_ext in prop_oneof![Just("png"), Just("jpg"), Just("webp"), Just("svg")]
+        ) {
+            let image_path = format!("/upload.{declared_ext}");
+            let result = validate_image(&payload, &image_path, 8_192, 25_000_000);
+            if let Ok((width, height)) = result {
+                prop_assert!(width > 0);
+                prop_assert!(height > 0);
+                prop_assert!(width <= 8_192);
+                prop_assert!(height <= 8_192);
+                prop_assert!(u64::from(width) * u64::from(height) <= 25_000_000);
+                prop_assert_eq!(detect_image_format(&payload), Some(declared_ext));
+            }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(32))]
+
+        #[test]
+        fn typst_to_pdf_property_handles_untrusted_data_path_components(
+            app_name in untrusted_typst_component(),
+            template_name in untrusted_typst_component()
+        ) {
+            let source = r#"#set document(title: "Boundary", date: auto)
+#set page(margin: 1cm)
+Boundary coverage
+"#;
+            let data = serde_json::json!({"boundary": true});
+            let result = typst_to_pdf(CompileRequest {
+                template_source: source,
+                json_data: &data,
+                fonts: test_fonts().map_err(|e| TestCaseError::fail(e.to_string()))?,
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                app_name: &app_name,
+                template_name: &template_name,
+                library: pdf_library(),
+                comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            });
+
+            match result {
+                Ok(bytes) => prop_assert!(is_pdf(&bytes)),
+                Err(PdfRenderError::TypstWorld { source: typst_world::TypstWorldError::InvalidVirtualPath { path, .. } }) => {
+                    prop_assert_eq!(path, format!("/data/{app_name}/{template_name}.json"));
+                }
+                Err(PdfRenderError::TypstWorld { source: typst_world::TypstWorldError::CompilationFailed { .. } }) => {}
+                Err(other) => prop_assert!(
+                    false,
+                    "unexpected error variant for untrusted Typst input boundary: {other:?}"
+                ),
+            }
+        }
     }
 
     // --- css_font_name tests ---
