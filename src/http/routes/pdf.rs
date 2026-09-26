@@ -147,14 +147,16 @@ pub(crate) async fn post_pdf_from_image(
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
         gen_pdf::image_to_pdf_with_validated_dimensions(
             image_bytes,
-            image_path,
-            width,
-            height,
-            fonts,
-            &root,
-            &resources_dir,
-            library,
-            eviction_threshold,
+            gen_pdf::ValidatedImageRenderRequest {
+                image_path,
+                width,
+                height,
+                fonts,
+                root: &root,
+                resources_dir: &resources_dir,
+                library,
+                comemo_eviction_threshold: eviction_threshold,
+            },
         )
         .map_err(anyhow::Error::new)
     })

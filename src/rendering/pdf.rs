@@ -317,36 +317,39 @@ where
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+pub(crate) struct ValidatedImageRenderRequest<'a> {
+    pub image_path: &'a str,
+    pub width: u32,
+    pub height: u32,
+    pub fonts: Arc<Fonts>,
+    pub root: &'a Path,
+    pub resources_dir: &'a Path,
+    pub library: Arc<LazyHash<Library>>,
+    pub comemo_eviction_threshold: usize,
+}
+
 pub(crate) fn image_to_pdf_with_validated_dimensions<B>(
     image_bytes: B,
-    image_path: &str,
-    width: u32,
-    height: u32,
-    fonts: Arc<Fonts>,
-    root: &Path,
-    resources_dir: &Path,
-    library: Arc<LazyHash<Library>>,
-    comemo_eviction_threshold: usize,
+    req: ValidatedImageRenderRequest<'_>,
 ) -> StdResult<Vec<u8>, PdfRenderError>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
     let mut vfiles = HashMap::new();
-    vfiles.insert(image_path.to_string(), Bytes::new(image_bytes));
+    vfiles.insert(req.image_path.to_string(), Bytes::new(image_bytes));
 
-    let source = image_typst_source(image_path, width, height);
+    let source = image_typst_source(req.image_path, req.width, req.height);
 
     let result = typst_world::compile_to_pdf(
-        fonts,
-        root,
-        resources_dir,
+        req.fonts,
+        req.root,
+        req.resources_dir,
         "/main.typ",
         &source,
         vfiles,
-        library,
+        req.library,
     );
-    comemo::evict(comemo_eviction_threshold);
+    comemo::evict(req.comemo_eviction_threshold);
     counter!("comemo_evictions_total", &[("output", "image")]).increment(1);
     result.map_err(PdfRenderError::from)
 }
@@ -542,14 +545,16 @@ where
     .map_err(|source| PdfRenderError::InvalidImage { source })?;
     image_to_pdf_with_validated_dimensions(
         image_bytes,
-        image_path,
-        width,
-        height,
-        fonts,
-        root,
-        resources_dir,
-        library,
-        comemo_eviction_threshold,
+        ValidatedImageRenderRequest {
+            image_path,
+            width,
+            height,
+            fonts,
+            root,
+            resources_dir,
+            library,
+            comemo_eviction_threshold,
+        },
     )
 }
 
@@ -1162,14 +1167,16 @@ Hello, world!
         )?;
         let bytes = image_to_pdf_with_validated_dimensions(
             image_bytes,
-            "/image.png",
-            width,
-            height,
-            test_fonts()?,
-            &root_dir(),
-            &resources_dir(),
-            pdf_library(),
-            crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            ValidatedImageRenderRequest {
+                image_path: "/image.png",
+                width,
+                height,
+                fonts: test_fonts()?,
+                root: &root_dir(),
+                resources_dir: &resources_dir(),
+                library: pdf_library(),
+                comemo_eviction_threshold: crate::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            },
         )?;
         assert!(is_pdf(&bytes));
         Ok(())
