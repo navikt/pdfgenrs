@@ -5,9 +5,9 @@
 [![Build main](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml)
 ![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
-`pdfgenrs` is a Rust application for generating PDFs through an API. It supports PDF/A-2a and PDF/UA-1 standards at once.
+`pdfgenrs` is a Rust application for generating PDFs through an API. It supports PDF/A-2a and PDF/UA-1 simultaneously.
 
-> **Note:** This project is tailored to Nav's [NAIS platform](https://doc.nais.io/), but it can be adapted to suit other environments and needs with small changes (e.g., adjusting health-check paths, removing OpenTelemetry/NAIS-specific configuration).
+> **Note:** This project is tailored to NAV's [NAIS platform](https://doc.nais.io/), but it can be adapted to other environments with small changes (for example, health-check paths or OpenTelemetry/NAIS-specific configuration).
 
 ## Table of contents
 
@@ -35,7 +35,7 @@ FROM ghcr.io/navikt/pdfgenrs:<release>
 COPY templates /app/templates
 ```
 
-Find the latest `<release>` in [GitHub releases](https://github.com/navikt/pdfgenrs/releases).
+Find the latest `<release>` in [GitHub Releases](https://github.com/navikt/pdfgenrs/releases).
 
 2. Create the basic folder structure:
 
@@ -43,7 +43,7 @@ Find the latest `<release>` in [GitHub releases](https://github.com/navikt/pdfge
 mkdir -p templates/your_appname
 ```
 
-3. Add a Typst template (e.g., `templates/your_appname/your_template.typ`), then run a request:
+3. Add a Typst template (for example, `templates/your_appname/your_template.typ`), then run a request:
 
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
@@ -71,7 +71,8 @@ mkdir -p fonts resources
 ```
 
 ### Example implementation
-see https://github.com/navikt/pdfgenrs-test
+
+See the example project: https://github.com/navikt/pdfgenrs-test
 
 ## Technologies and tools
 
@@ -99,7 +100,7 @@ For template examples, see [templates](templates).
 
 ## API
 
-Base URL (local): `http://localhost:8080`
+Local base URL: `http://localhost:8080`
 
 `<your_appname>` maps to a folder under `templates/`, and `<template>` maps to a `.typ` file in that folder.
 
@@ -139,8 +140,7 @@ ENV REQUEST_BODY_LIMIT_BYTES=3145728
 
 ```
 
-A request body larger than the limit is rejected with `413 Payload Too Large` before
-the handler runs.
+A request body larger than the limit is rejected with `413 Payload Too Large` before the handler runs.
 
 ### Error responses
 
@@ -159,8 +159,7 @@ Application errors returned by generation handlers use
 }
 ```
 
-The `type` member is a stable, machine-readable identifier. Clients should branch on
-`type` (or the HTTP status), not on `detail` text. Known values:
+The `type` member is a stable, machine-readable identifier. Clients should branch on `type` (or the HTTP status), not `detail` text. Known values:
 
 | `type`                                   | Status | Meaning                                              |
 |------------------------------------------|--------|------------------------------------------------------|
@@ -282,7 +281,7 @@ curl -s -X POST http://localhost:8080/api/v1/genhtml/<your_appname>/<template> \
 
 ### Dev mode only endpoints (`DEV_MODE=true`)
 
-When `DEV_MODE=true`, valid test data from `data/{your_appname}/{template}.json` is loaded and GET endpoints are enabled:
+When `DEV_MODE=true`, valid test data from `data/{your_appname}/{template}.json` is loaded and these GET endpoints are enabled:
 
 - `GET /api/v1/genpdf/{your_appname}/{template}` → returns `application/pdf`
 - `GET /api/v1/genhtml/{your_appname}/{template}` → returns `text/html; charset=utf-8`
@@ -315,7 +314,7 @@ Exposes Prometheus metrics for operational monitoring.
 - Response Content-Type: `text/plain`
 - Success: `200 OK`
 
-**Metrics exposed:**
+Metrics exposed:
 
 | Metric                                          | Type      | Labels                  | Description                                               |
 |-------------------------------------------------|-----------|-------------------------|-----------------------------------------------------------|
@@ -338,7 +337,7 @@ The `reason` label on `image_rejections_total` is one of a fixed set:
 `undetectable_format`, `format_mismatch`, `unreadable_dimensions`, `zero_dimension`,
 `dimension_too_large`, `too_many_pixels`.
 
-Pdfgenrs loads templates into memory on startup and, when `DEV_MODE=true`, loads valid test-data files. Changes to files in these folders require an application restart.
+`pdfgenrs` loads templates into memory on startup and, when `DEV_MODE=true`, also loads valid test-data files. Changes to files in these folders require an application restart.
 
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 
@@ -413,7 +412,7 @@ When deployed on [NAIS](https://doc.nais.io/), OpenTelemetry tracing is configur
 
 ### Prerequisites
 
-Make sure Rust and Cargo are installed:
+Confirm Rust and Cargo are installed:
 
 ```bash
 rustc --version
@@ -438,12 +437,13 @@ DEV_MODE=true cargo run
 ```
 
 ## Benchmark reports
-https://navikt.github.io/pdfgenrs/dev/criterion-report/report/
-https://navikt.github.io/pdfgenrs/dev/bench/
+
+- https://navikt.github.io/pdfgenrs/dev/criterion-report/report/
+- https://navikt.github.io/pdfgenrs/dev/bench/
 
 ## Release
 
-We use default GitHub releases.
+We use standard GitHub Releases.
 
 This project follows [semantic versioning](https://semver.org/) and does **not** prefix tags or release titles with `v` (use `1.2.3`, not `v1.2.3`).
 
@@ -461,4 +461,4 @@ For contact requests within the [@navikt](https://github.com/navikt) org, use th
 
 To get started, fork the repository and create a new branch.
 
-See more info in [CONTRIBUTING.md](CONTRIBUTING.md)
+See details in [CONTRIBUTING.md](CONTRIBUTING.md)
