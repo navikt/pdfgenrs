@@ -209,7 +209,8 @@ where
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state, operation, &app_name, template_name.as_deref()).await?;
+    let permit =
+        acquire_compile_permit(state, operation, &app_name, template_name.as_deref()).await?;
 
     let start = Instant::now();
     let request_id = current_request_id().unwrap_or_default();
@@ -329,11 +330,17 @@ mod tests {
         let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
         let timed_out_state = state.clone();
         let timed_out_task = tokio::spawn(async move {
-            compile_blocking(&timed_out_state, "test", "app".to_string(), None, move || {
-                started_tx.send(()).ok();
-                release_rx.blocking_recv().ok();
-                Ok(())
-            })
+            compile_blocking(
+                &timed_out_state,
+                "test",
+                "app".to_string(),
+                None,
+                move || {
+                    started_tx.send(()).ok();
+                    release_rx.blocking_recv().ok();
+                    Ok(())
+                },
+            )
             .await
         });
 
@@ -789,9 +796,8 @@ mod tests {
             rt.block_on(async {
                 let state = make_state(HashMap::new(), HashMap::new(), false)?;
 
-                let _ =
-                    compile_blocking(&state, "html_pdf", "myapp".to_string(), None, || Ok(42))
-                        .await;
+                let _ = compile_blocking(&state, "html_pdf", "myapp".to_string(), None, || Ok(42))
+                    .await;
 
                 let output = handle.render();
                 assert!(
