@@ -49,7 +49,9 @@ pub(crate) async fn request_id_middleware(request: Request, next: Next) -> Respo
 mod tests {
     use super::*;
     use anyhow::anyhow;
+    use axum::body::Body;
     use axum::http::StatusCode;
+    use axum::response::IntoResponse;
     use axum::{Router, middleware, routing::get};
     use axum_test::TestServer;
 
@@ -60,6 +62,19 @@ mod tests {
     fn test_app() -> Router {
         Router::new()
             .route("/", get(handler))
+            .layer(middleware::from_fn(request_id_middleware))
+    }
+
+    async fn handler_with_conflicting_request_id_header() -> impl IntoResponse {
+        (
+            [(X_REQUEST_ID.clone(), HeaderValue::from_static("handler-request-id"))],
+            Body::empty(),
+        )
+    }
+
+    fn test_app_with_conflicting_request_id_handler() -> Router {
+        Router::new()
+            .route("/", get(handler_with_conflicting_request_id_header))
             .layer(middleware::from_fn(request_id_middleware))
     }
 
@@ -113,6 +128,48 @@ mod tests {
             .get("x-request-id")
             .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
         let value = header.to_str()?;
+        assert!(
+            Uuid::parse_str(value).is_ok(),
+            "expected valid UUID, got: {value}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn middleware_overrides_conflicting_handler_request_id_with_incoming_value(
+    ) -> anyhow::Result<()> {
+        let server = TestServer::new(test_app_with_conflicting_request_id_handler());
+        let response = server
+            .get("/")
+            .add_header(X_REQUEST_ID.clone(), HeaderValue::from_static("my-custom-id"))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        let header = response
+            .headers()
+            .get("x-request-id")
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
+        assert_eq!(value, "my-custom-id");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn middleware_overrides_conflicting_handler_request_id_with_generated_value(
+    ) -> anyhow::Result<()> {
+        let server = TestServer::new(test_app_with_conflicting_request_id_handler());
+        let response = server.get("/").await;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        let header = response
+            .headers()
+            .get("x-request-id")
+            .ok_or_else(|| anyhow!("expected x-request-id header in response"))?;
+        let value = header.to_str()?;
+        assert_ne!(
+            value, "handler-request-id",
+            "middleware should not leak handler-provided request id",
+        );
         assert!(
             Uuid::parse_str(value).is_ok(),
             "expected valid UUID, got: {value}"
