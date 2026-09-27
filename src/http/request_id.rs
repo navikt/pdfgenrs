@@ -67,7 +67,10 @@ mod tests {
 
     async fn handler_with_conflicting_request_id_header() -> impl IntoResponse {
         (
-            [(X_REQUEST_ID.clone(), HeaderValue::from_static("handler-request-id"))],
+            [(
+                X_REQUEST_ID.clone(),
+                HeaderValue::from_static("handler-request-id"),
+            )],
             Body::empty(),
         )
     }
@@ -136,12 +139,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn middleware_overrides_conflicting_handler_request_id_with_incoming_value(
-    ) -> anyhow::Result<()> {
+    async fn middleware_overrides_conflicting_handler_request_id_with_incoming_value()
+    -> anyhow::Result<()> {
         let server = TestServer::new(test_app_with_conflicting_request_id_handler());
         let response = server
             .get("/")
-            .add_header(X_REQUEST_ID.clone(), HeaderValue::from_static("my-custom-id"))
+            .add_header(
+                X_REQUEST_ID.clone(),
+                HeaderValue::from_static("my-custom-id"),
+            )
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
@@ -155,8 +161,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn middleware_overrides_conflicting_handler_request_id_with_generated_value(
-    ) -> anyhow::Result<()> {
+    async fn middleware_overrides_conflicting_handler_request_id_with_generated_value()
+    -> anyhow::Result<()> {
         let server = TestServer::new(test_app_with_conflicting_request_id_handler());
         let response = server.get("/").await;
 
