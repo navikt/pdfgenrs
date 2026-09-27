@@ -27,7 +27,7 @@ const IN_FLIGHT_AFTER_TIMEOUT_METRIC: &str = "template_compilations_in_flight_af
 struct GaugeGuard(Gauge);
 
 impl GaugeGuard {
-    fn new(metric_name: &'static str, labels: &[(&'static str, String)]) -> Self {
+    fn new(metric_name: &'static str, labels: &[(&'static str, &'static str)]) -> Self {
         let gauge = gauge!(metric_name, labels);
         gauge.increment(1.0);
         Self(gauge)
@@ -85,14 +85,8 @@ impl Drop for TaskContinuationGuard {
     }
 }
 
-fn compilation_labels(app_name: &str, template_name: Option<&str>) -> [(&'static str, String); 2] {
-    [
-        ("app_name", app_name.to_owned()),
-        (
-            "template_name",
-            template_name.unwrap_or("unknown").to_owned(),
-        ),
-    ]
+fn compilation_labels(operation: &'static str) -> [(&'static str, &'static str); 1] {
+    [("operation", operation)]
 }
 
 /// Common parameters extracted from state for template compilation.
@@ -165,11 +159,12 @@ pub(crate) fn lookup_template_with_data(
 /// semaphore was unexpectedly closed.
 pub(crate) async fn acquire_compile_permit(
     state: &AppState,
+    operation: &'static str,
     app_name: &str,
     template_name: Option<&str>,
 ) -> Result<Option<OwnedSemaphorePermit>, ApiError> {
     if let Some(ref semaphore) = state.compile_semaphore {
-        let labels = compilation_labels(app_name, template_name);
+        let labels = compilation_labels(operation);
         let _waiting = GaugeGuard::new(SEMAPHORE_WAITING_METRIC, &labels);
         let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
         match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
@@ -204,6 +199,7 @@ pub(crate) async fn acquire_compile_permit(
 /// the configured timeout. Returns the task result or an appropriate `ApiError`.
 pub(crate) async fn compile_blocking<T, F>(
     state: &AppState,
+    operation: &'static str,
     app_name: String,
     template_name: Option<String>,
     task: F,
@@ -213,12 +209,12 @@ where
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state, &app_name, template_name.as_deref()).await?;
+    let permit = acquire_compile_permit(state, operation, &app_name, template_name.as_deref()).await?;
 
     let start = Instant::now();
     let request_id = current_request_id().unwrap_or_default();
     let span = info_span!("typst_compilation", request_id = %request_id);
-    let labels = compilation_labels(&app_name, template_name.as_deref());
+    let labels = compilation_labels(operation);
     let started = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let completed = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let continuing_after_timeout = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -247,15 +243,7 @@ where
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
     let duration = start.elapsed().as_secs_f64();
-    let labels = [
-        ("app_name", app_name.clone()),
-        (
-            "template_name",
-            template_name
-                .clone()
-                .unwrap_or_else(|| "unknown".to_owned()),
-        ),
-    ];
+    let labels = compilation_labels(operation);
     histogram!("template_compilation_duration_seconds", &labels).record(duration);
 
     match result {
@@ -310,6 +298,7 @@ mod tests {
 
         let result: Result<(), _> = compile_blocking(
             &state,
+            "test",
             "myapp".to_string(),
             Some("mytemplate".to_string()),
             || {
@@ -340,7 +329,7 @@ mod tests {
         let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
         let timed_out_state = state.clone();
         let timed_out_task = tokio::spawn(async move {
-            compile_blocking(&timed_out_state, "app".to_string(), None, move || {
+            compile_blocking(&timed_out_state, "test", "app".to_string(), None, move || {
                 started_tx.send(()).ok();
                 release_rx.blocking_recv().ok();
                 Ok(())
@@ -363,7 +352,7 @@ mod tests {
         );
 
         let blocked_result: Result<(), _> =
-            compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
+            compile_blocking(&state, "test", "app".to_string(), None, || Ok(())).await;
         let blocked_error = match blocked_result {
             Ok(()) => anyhow::bail!("expected permit to remain held"),
             Err(error) => error,
@@ -404,7 +393,7 @@ mod tests {
         let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
 
         let task1 = tokio::spawn(async move {
-            compile_blocking(&state1, "app".to_string(), None, move || {
+            compile_blocking(&state1, "test", "app".to_string(), None, move || {
                 started_tx.send(()).ok();
                 rx.blocking_recv().ok();
                 Ok(42)
@@ -419,7 +408,7 @@ mod tests {
         let task2 = tokio::spawn(async move {
             tokio::time::timeout(
                 Duration::from_millis(100),
-                compile_blocking(&state2, "app".to_string(), None, || Ok(99)),
+                compile_blocking(&state2, "test", "app".to_string(), None, || Ok(99)),
             )
             .await
         });
@@ -453,7 +442,7 @@ mod tests {
 
         let state1 = state.clone();
         let task1 = tokio::spawn(async move {
-            compile_blocking(&state1, "app".to_string(), None, move || {
+            compile_blocking(&state1, "test", "app".to_string(), None, move || {
                 started_tx.send(()).ok();
                 rx.blocking_recv().ok();
                 Ok(42)
@@ -466,7 +455,7 @@ mod tests {
             .context("failed to receive task1 start signal")?;
 
         let result: Result<(), _> =
-            compile_blocking(&state, "app".to_string(), None, || Ok(())).await;
+            compile_blocking(&state, "test", "app".to_string(), None, || Ok(())).await;
 
         assert!(result.is_err());
         let err = match result {
@@ -492,6 +481,7 @@ mod tests {
 
         let result: Result<(), _> = compile_blocking(
             &state,
+            "test",
             "myapp".to_string(),
             Some("mytemplate".to_string()),
             || {
@@ -516,6 +506,7 @@ mod tests {
 
         let result: Result<(), _> = compile_blocking(
             &state,
+            "test",
             "myapp".to_string(),
             Some("mytemplate".to_string()),
             || Err(anyhow::anyhow!("compilation failed")),
@@ -538,7 +529,7 @@ mod tests {
     async fn compile_blocking_succeeds_without_semaphore() -> anyhow::Result<()> {
         let state = make_state(HashMap::new(), HashMap::new(), false)?;
 
-        let result = compile_blocking(&state, "app".to_string(), None, || Ok(42)).await;
+        let result = compile_blocking(&state, "test", "app".to_string(), None, || Ok(42)).await;
 
         let value = match result {
             Ok(v) => v,
@@ -553,7 +544,7 @@ mod tests {
         let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
         state.compile_semaphore = Some(Arc::new(Semaphore::new(2)));
 
-        let result = compile_blocking(&state, "app".to_string(), None, || Ok("ok")).await;
+        let result = compile_blocking(&state, "test", "app".to_string(), None, || Ok("ok")).await;
 
         let value = match result {
             Ok(v) => v,
@@ -579,7 +570,7 @@ mod tests {
         let (started2_tx, started2_rx) = tokio::sync::oneshot::channel::<()>();
 
         let task1 = tokio::spawn(async move {
-            compile_blocking(&state1, "app".to_string(), None, move || {
+            compile_blocking(&state1, "test", "app".to_string(), None, move || {
                 started1_tx.send(()).ok();
                 rx1.blocking_recv().ok();
                 Ok(1)
@@ -588,7 +579,7 @@ mod tests {
         });
 
         let task2 = tokio::spawn(async move {
-            compile_blocking(&state2, "app".to_string(), None, move || {
+            compile_blocking(&state2, "test", "app".to_string(), None, move || {
                 started2_tx.send(()).ok();
                 rx2.blocking_recv().ok();
                 Ok(2)
@@ -632,7 +623,7 @@ mod tests {
         semaphore.close();
         state.compile_semaphore = Some(semaphore);
 
-        let result = acquire_compile_permit(&state, "myapp", Some("mytemplate")).await;
+        let result = acquire_compile_permit(&state, "test", "myapp", Some("mytemplate")).await;
 
         let err = match result {
             Ok(_) => anyhow::bail!("expected error when semaphore is closed"),
@@ -759,6 +750,7 @@ mod tests {
 
                 let _ = compile_blocking(
                     &state,
+                    "typst_pdf",
                     "myapp".to_string(),
                     Some("report".to_string()),
                     || Ok(42),
@@ -771,12 +763,12 @@ mod tests {
                     "expected template_compilation_duration_seconds in output: {output}"
                 );
                 assert!(
-                    output.contains(r#"app_name="myapp""#),
-                    "expected app_name=myapp label: {output}"
+                    output.contains(r#"operation="typst_pdf""#),
+                    "expected operation=typst_pdf label: {output}"
                 );
                 assert!(
-                    output.contains(r#"template_name="report""#),
-                    "expected template_name=report label: {output}"
+                    !output.contains("app_name="),
+                    "expected no app_name label on compilation metrics: {output}"
                 );
                 Ok::<(), anyhow::Error>(())
             })?;
@@ -786,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_blocking_records_unknown_template_name_when_none() -> anyhow::Result<()> {
+    fn compile_blocking_records_operation_label_when_template_name_is_none() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
@@ -797,12 +789,14 @@ mod tests {
             rt.block_on(async {
                 let state = make_state(HashMap::new(), HashMap::new(), false)?;
 
-                let _ = compile_blocking(&state, "myapp".to_string(), None, || Ok(42)).await;
+                let _ =
+                    compile_blocking(&state, "html_pdf", "myapp".to_string(), None, || Ok(42))
+                        .await;
 
                 let output = handle.render();
                 assert!(
-                    output.contains(r#"template_name="unknown""#),
-                    "expected template_name=unknown label when None: {output}"
+                    output.contains(r#"operation="html_pdf""#),
+                    "expected operation=html_pdf label when template is None: {output}"
                 );
                 Ok::<(), anyhow::Error>(())
             })?;
@@ -825,7 +819,7 @@ mod tests {
                 state.config.semaphore_acquire_timeout_seconds = 0;
                 state.compile_semaphore = Some(Arc::new(Semaphore::new(0)));
 
-                let _ = acquire_compile_permit(&state, "myapp", Some("report")).await;
+                let _ = acquire_compile_permit(&state, "typst_pdf", "myapp", Some("report")).await;
 
                 let output = handle.render();
                 assert!(

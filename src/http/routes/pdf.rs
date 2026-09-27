@@ -30,6 +30,7 @@ pub(crate) async fn get_pdf(
 
     let pdf_bytes = compile_blocking(
         &state,
+        "typst_pdf",
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
@@ -70,6 +71,7 @@ pub(crate) async fn post_pdf(
 
     let pdf_bytes = compile_blocking(
         &state,
+        "typst_pdf",
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
@@ -104,7 +106,7 @@ pub(crate) async fn post_pdf_from_html(
     let start = std::time::Instant::now();
     let html_converter = Arc::clone(&state.html_converter);
 
-    let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
+    let pdf_bytes = compile_blocking(&state, "html_pdf", app_name.clone(), None, move || {
         gen_pdf::html_to_pdf(&html, &html_converter).map_err(anyhow::Error::new)
     })
     .await?;
@@ -144,7 +146,7 @@ pub(crate) async fn post_pdf_from_image(
     let library = Arc::clone(&state.pdf_library);
     let eviction_threshold = state.config.comemo_eviction_threshold;
 
-    let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
+    let pdf_bytes = compile_blocking(&state, "image_pdf", app_name.clone(), None, move || {
         gen_pdf::image_to_pdf_with_validated_dimensions(
             image_bytes,
             gen_pdf::ValidatedImageRenderRequest {

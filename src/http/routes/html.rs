@@ -29,6 +29,7 @@ pub(crate) async fn get_html(
 
     let html_string = compile_blocking(
         &state,
+        "typst_html",
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
@@ -69,6 +70,7 @@ pub(crate) async fn post_html(
 
     let html_string = compile_blocking(
         &state,
+        "typst_html",
         template_key.0.clone(),
         Some(template_key.1.clone()),
         move || {
