@@ -131,7 +131,7 @@ pub(crate) async fn post_pdf_from_image(
     // so an invalid upload is rejected in microseconds without occupying a permit or
     // a blocking thread. Returning 4xx here also stops well-behaved clients from
     // retrying, which would otherwise re-buffer the body on every attempt.
-    let (_width, _height) = gen_pdf::validate_image(
+    let (width, height) = gen_pdf::validate_image(
         &image_bytes,
         image_path,
         state.config.max_image_dimension_pixels,
@@ -143,20 +143,20 @@ pub(crate) async fn post_pdf_from_image(
     let resources_dir = Arc::clone(&state.resources_dir);
     let library = Arc::clone(&state.pdf_library);
     let eviction_threshold = state.config.comemo_eviction_threshold;
-    let max_image_dimension_pixels = state.config.max_image_dimension_pixels;
-    let max_image_pixels = state.config.max_image_pixels;
 
     let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::image_to_pdf_with_limits(
+        gen_pdf::image_to_pdf_with_validated_dimensions(
             image_bytes,
-            image_path,
-            fonts,
-            &root,
-            &resources_dir,
-            library,
-            eviction_threshold,
-            max_image_dimension_pixels,
-            max_image_pixels,
+            gen_pdf::ValidatedImageRenderRequest {
+                image_path,
+                width,
+                height,
+                fonts,
+                root: &root,
+                resources_dir: &resources_dir,
+                library,
+                comemo_eviction_threshold: eviction_threshold,
+            },
         )
         .map_err(anyhow::Error::new)
     })
