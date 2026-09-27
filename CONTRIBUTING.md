@@ -1,78 +1,49 @@
 # Contributing
 
-This project is open to accept feature requests and contributions from the open source community. Please fork the repo
-and start a new branch to work on.
+This project accepts feature requests and contributions from the open source community. Fork the repository and create a branch for your change.
 
-## How to set up a development environment
+## Development environment
 
-### Rust
+### Rust and Cargo
 
-Make sure you have the rust installed using this command:
+`pdfgenrs` is pinned to Rust `1.98.1` (`Cargo.toml` and CI workflows). Verify your setup:
 
-```bash script
+```bash
 rustc --version
-```
-
-else install it https://rust-lang.org/tools/install/
-
-### Cargo
-
-Make sure you have cargo installed using this command:
-
-```bash script
 cargo --version
 ```
 
-else install it https://doc.rust-lang.org/cargo/getting-started/installation.html
+Install Rust/Cargo with [rustup](https://rust-lang.org/tools/install/) if needed.
 
 ### Docker
 
-Make sure you have the Docker installed You can check which version you have installed using this command:
+Docker is optional for normal development, but useful when validating Docker image behavior:
 
-```bash script
+```bash
 docker --version
 ```
 
-else install it https://docs.docker.com/engine/install/
+Install Docker if needed: https://docs.docker.com/engine/install/
 
-## Building locally
+## CI-equivalent local checks
 
-To run a build simply execute the following:
+Run the same commands used by pull request CI before opening or updating a PR:
 
-```shell script
-cargo build
-```
-
-also run check formatting
-
-```shell script
+```bash
 cargo fmt -- --check
+cargo clippy --locked --release --all-targets -- -D warnings
+cargo test --locked -- --nocapture
+cargo bench --locked --bench performance
+cargo build --locked --release
 ```
 
-and also run the linter
+## Additional development commands
 
-```shell script
-cargo clippy --all-targets -- -D warnings
+```bash
+cargo bench --bench criterion_bench
+DEV_MODE=true cargo run
 ```
 
-If this change can affect performance, you have run this command
+## Pull requests
 
-```shell script
-RUST_LOG=info GITHUB_STEP_SUMMARY=/tmp/bench-summary.md cargo bench --bench performance
-cat /tmp/bench-summary.md
-```
-
-## Testing
-
-If you are adding a new feature or bug fix please ensure there is proper test coverage. execute the following to run
-test:
-
-```shell script
-cargo test
-```
-
-## Pull Request Review
-
-If you have a branch on your fork that is ready to be merged, please create a new pull request. The maintainers will
-review to make sure the above guidelines have been followed and if the changes are helpful to all library users, they
-will be merged.
+When your branch is ready, open a pull request. Maintainers will review the change and merge it when it is ready.
