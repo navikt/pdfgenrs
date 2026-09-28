@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use metrics::{Gauge, counter, gauge, histogram};
 use serde_json::Value;
-use tokio::sync::OwnedSemaphorePermit;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tracing::{error, info_span, warn};
 
 use self::error::ApiError;
@@ -167,12 +167,13 @@ pub(crate) async fn acquire_compile_permit(
     state: &AppState,
     app_name: &str,
     template_name: Option<&str>,
+    semaphore: Option<Arc<Semaphore>>,
 ) -> Result<Option<OwnedSemaphorePermit>, ApiError> {
-    if let Some(ref semaphore) = state.compile_semaphore {
+    if let Some(semaphore) = semaphore {
         let labels = compilation_labels(app_name, template_name);
         let _waiting = GaugeGuard::new(SEMAPHORE_WAITING_METRIC, &labels);
         let timeout_duration = Duration::from_secs(state.config.semaphore_acquire_timeout_seconds);
-        match tokio::time::timeout(timeout_duration, Arc::clone(semaphore).acquire_owned()).await {
+        match tokio::time::timeout(timeout_duration, semaphore.acquire_owned()).await {
             Ok(Ok(permit)) => Ok(Some(permit)),
             // The semaphore lives inside an Arc in AppState for the entire application
             // lifetime and is never explicitly closed. Treat a closed semaphore as an
@@ -212,8 +213,29 @@ where
     T: Send + 'static,
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
+    compile_blocking_with_semaphore(
+        state,
+        app_name,
+        template_name,
+        state.compile_semaphore.clone(),
+        task,
+    )
+    .await
+}
+
+pub(crate) async fn compile_blocking_with_semaphore<T, F>(
+    state: &AppState,
+    app_name: String,
+    template_name: Option<String>,
+    semaphore: Option<Arc<Semaphore>>,
+    task: F,
+) -> Result<T, ApiError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
+{
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state, &app_name, template_name.as_deref()).await?;
+    let permit = acquire_compile_permit(state, &app_name, template_name.as_deref(), semaphore).await?;
 
     let start = Instant::now();
     let request_id = current_request_id().unwrap_or_default();
@@ -632,7 +654,13 @@ mod tests {
         semaphore.close();
         state.compile_semaphore = Some(semaphore);
 
-        let result = acquire_compile_permit(&state, "myapp", Some("mytemplate")).await;
+        let result = acquire_compile_permit(
+            &state,
+            "myapp",
+            Some("mytemplate"),
+            state.compile_semaphore.clone(),
+        )
+        .await;
 
         let err = match result {
             Ok(_) => anyhow::bail!("expected error when semaphore is closed"),
@@ -825,7 +853,13 @@ mod tests {
                 state.config.semaphore_acquire_timeout_seconds = 0;
                 state.compile_semaphore = Some(Arc::new(Semaphore::new(0)));
 
-                let _ = acquire_compile_permit(&state, "myapp", Some("report")).await;
+                let _ = acquire_compile_permit(
+                    &state,
+                    "myapp",
+                    Some("report"),
+                    state.compile_semaphore.clone(),
+                )
+                .await;
 
                 let output = handle.render();
                 assert!(

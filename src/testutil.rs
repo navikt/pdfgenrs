@@ -36,8 +36,10 @@ pub(crate) fn make_state_with_body_limit(
         compile_timeout_seconds: 30,
         shutdown_drain_seconds: 5,
         max_concurrent_compilations: 0,
+        max_concurrent_html_pdf_conversions: 0,
         semaphore_acquire_timeout_seconds: 10,
         comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        html_pdf_cache_entries: 0,
         max_image_dimension_pixels: config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
         max_image_pixels: config::DEFAULT_MAX_IMAGE_PIXELS,
     };
@@ -56,6 +58,7 @@ pub(crate) fn make_state_with_body_limit(
             [Feature::Html].into_iter().collect(),
         )),
         compile_semaphore: None,
+        html_pdf_semaphore: None,
         html_converter: Arc::new(
             build_html_converter(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
@@ -63,6 +66,7 @@ pub(crate) fn make_state_with_body_limit(
             )
             .0,
         ),
+        html_pdf_cache: None,
     })
 }
 

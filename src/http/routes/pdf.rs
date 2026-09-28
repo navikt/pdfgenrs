@@ -5,14 +5,21 @@ use axum::{
     http::{HeaderMap, HeaderValue, header},
     response::{IntoResponse, Response},
 };
+use metrics::counter;
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::info;
 
 use super::error::ApiError;
-use super::{compile_blocking, lookup_template_and_data, lookup_template_with_data};
+use super::{
+    compile_blocking, compile_blocking_with_semaphore, lookup_template_and_data,
+    lookup_template_with_data,
+};
 use crate::pdf as gen_pdf;
 use crate::state::AppState;
+
+const HTML_PDF_CACHE_HITS_TOTAL: &str = "html_pdf_cache_hits_total";
+const HTML_PDF_CACHE_MISSES_TOTAL: &str = "html_pdf_cache_misses_total";
 
 /// Handles `GET /api/v1/genpdf/{app_name}/{template}` (dev mode only).
 ///
@@ -102,14 +109,48 @@ pub(crate) async fn post_pdf_from_html(
     html: String,
 ) -> Result<Response, ApiError> {
     let start = std::time::Instant::now();
-    let html_converter = Arc::clone(&state.html_converter);
+    if let Some(cache) = state.html_pdf_cache.as_ref()
+        && let Some(cached_pdf) = cache.get(&html)
+    {
+        counter!(HTML_PDF_CACHE_HITS_TOTAL).increment(1);
+        info!(
+            app_name = %app_name,
+            duration_ms = start.elapsed().as_millis(),
+            cache_hit = true,
+            "Done generating PDF from HTML"
+        );
+        return Ok(pdf_response(cached_pdf));
+    }
+    counter!(HTML_PDF_CACHE_MISSES_TOTAL).increment(1);
 
-    let pdf_bytes = compile_blocking(&state, app_name.clone(), None, move || {
-        gen_pdf::html_to_pdf(&html, &html_converter).map_err(anyhow::Error::new)
-    })
+    let html_for_conversion = html.clone();
+    let html_converter = Arc::clone(&state.html_converter);
+    let semaphore = state
+        .html_pdf_semaphore
+        .clone()
+        .or_else(|| state.compile_semaphore.clone());
+
+    let pdf_bytes = compile_blocking_with_semaphore(
+        &state,
+        app_name.clone(),
+        None,
+        semaphore,
+        move || {
+            gen_pdf::html_to_pdf(&html_for_conversion, &html_converter).map_err(anyhow::Error::new)
+        },
+    )
     .await?;
 
-    info!(app_name = %app_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF from HTML");
+    if let Some(cache) = state.html_pdf_cache.as_ref() {
+        cache.insert(&html, pdf_bytes.clone());
+    }
+
+    info!(
+        app_name = %app_name,
+        duration_ms = start.elapsed().as_millis(),
+        cache_hit = false,
+        "Done generating PDF from HTML"
+    );
     Ok(pdf_response(pdf_bytes))
 }
 
@@ -527,6 +568,66 @@ mod tests {
             "application/pdf"
         );
         assert!(is_pdf(response.as_bytes()));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_html_uses_dedicated_semaphore_when_configured() -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.compile_semaphore = Some(Arc::new(tokio::sync::Semaphore::new(1)));
+        state.html_pdf_semaphore = Some(Arc::new(tokio::sync::Semaphore::new(1)));
+        state.config.semaphore_acquire_timeout_seconds = 1;
+
+        let shared = state
+            .compile_semaphore
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("compile semaphore should be configured"))?;
+        let held = shared.acquire_owned().await?;
+        let server = TestServer::new(make_router(state, false));
+
+        let response = timeout(
+            Duration::from_secs(2),
+            server.post("/html/myapp").text("<p>Hello</p>"),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("html request timed out"))?;
+
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(is_pdf(response.as_bytes()));
+        drop(held);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn post_pdf_from_html_serves_cached_result_without_waiting_for_semaphore()
+    -> anyhow::Result<()> {
+        let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+        state.compile_semaphore = Some(Arc::new(tokio::sync::Semaphore::new(1)));
+        state.config.semaphore_acquire_timeout_seconds = 10;
+        state.html_pdf_cache = Some(Arc::new(crate::state::HtmlPdfCache::new(1, 8)));
+
+        let shared = state
+            .compile_semaphore
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("compile semaphore should be configured"))?;
+        let server = TestServer::new(make_router(state, false));
+
+        let first = server.post("/html/myapp").text("<p>Hello cache</p>").await;
+        assert_eq!(first.status_code(), StatusCode::OK);
+        assert!(is_pdf(first.as_bytes()));
+
+        let held = shared.acquire_owned().await?;
+        let second = timeout(
+            Duration::from_millis(200),
+            server.post("/html/myapp").text("<p>Hello cache</p>"),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("cached html request unexpectedly waited on semaphore"))?;
+        assert_eq!(second.status_code(), StatusCode::OK);
+        assert!(is_pdf(second.as_bytes()));
+        drop(held);
         Ok(())
     }
 

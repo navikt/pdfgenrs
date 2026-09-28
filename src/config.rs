@@ -16,8 +16,10 @@ const REQUEST_BODY_LIMIT_BYTES_ENV: &str = "REQUEST_BODY_LIMIT_BYTES";
 const COMPILE_TIMEOUT_SECONDS_ENV: &str = "COMPILE_TIMEOUT_SECONDS";
 const SHUTDOWN_DRAIN_SECONDS_ENV: &str = "SHUTDOWN_DRAIN_SECONDS";
 const MAX_CONCURRENT_COMPILATIONS_ENV: &str = "MAX_CONCURRENT_COMPILATIONS";
+const MAX_CONCURRENT_HTML_PDF_CONVERSIONS_ENV: &str = "MAX_CONCURRENT_HTML_PDF_CONVERSIONS";
 const SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV: &str = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS";
 const COMEMO_EVICTION_THRESHOLD_ENV: &str = "COMEMO_EVICTION_THRESHOLD";
+const HTML_PDF_CACHE_ENTRIES_ENV: &str = "HTML_PDF_CACHE_ENTRIES";
 const MAX_IMAGE_DIMENSION_PIXELS_ENV: &str = "MAX_IMAGE_DIMENSION_PIXELS";
 const MAX_IMAGE_PIXELS_ENV: &str = "MAX_IMAGE_PIXELS";
 
@@ -31,8 +33,10 @@ pub(crate) const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
+const DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS: usize = 0;
 const DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS: u64 = 10;
 pub const DEFAULT_COMEMO_EVICTION_THRESHOLD: usize = 15;
+pub const DEFAULT_HTML_PDF_CACHE_ENTRIES: usize = 128;
 pub const DEFAULT_MAX_IMAGE_DIMENSION_PIXELS: u32 = 8_192;
 pub const DEFAULT_MAX_IMAGE_PIXELS: u64 = 25_000_000;
 
@@ -89,6 +93,10 @@ pub struct Config {
     /// Maximum number of concurrent compilation tasks allowed. Defaults to `4`; set to `0`
     /// to disable the limit. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
     pub max_concurrent_compilations: usize,
+    /// Maximum number of concurrent HTML-to-PDF conversions allowed. Defaults to `0`;
+    /// set to `0` to reuse the shared `max_concurrent_compilations` semaphore.
+    /// Configurable via `MAX_CONCURRENT_HTML_PDF_CONVERSIONS`.
+    pub max_concurrent_html_pdf_conversions: usize,
     /// Maximum time in seconds to wait for a compilation semaphore permit.
     /// When the timeout is exceeded, the server responds with `503 Service Unavailable`.
     /// Defaults to `10` (`SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS`).
@@ -97,6 +105,9 @@ pub struct Config {
     /// each compilation. Higher values free more memory at the cost of cache hit rate.
     /// Set to `0` to evict the entire cache. Defaults to `15` (`COMEMO_EVICTION_THRESHOLD`).
     pub comemo_eviction_threshold: usize,
+    /// Maximum number of in-memory cached HTML-to-PDF results. Defaults to `128`.
+    /// Set to `0` to disable HTML-to-PDF output caching.
+    pub html_pdf_cache_entries: usize,
     /// Maximum width or height for an uploaded image. Defaults to `8192`
     /// (`MAX_IMAGE_DIMENSION_PIXELS`).
     pub max_image_dimension_pixels: u32,
@@ -142,6 +153,11 @@ impl Config {
                 .unwrap_or(DEFAULT_SHUTDOWN_DRAIN_SECONDS),
             max_concurrent_compilations: parse_env(&env_var, MAX_CONCURRENT_COMPILATIONS_ENV)
                 .unwrap_or(DEFAULT_MAX_CONCURRENT_COMPILATIONS),
+            max_concurrent_html_pdf_conversions: parse_env(
+                &env_var,
+                MAX_CONCURRENT_HTML_PDF_CONVERSIONS_ENV,
+            )
+            .unwrap_or(DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS),
             semaphore_acquire_timeout_seconds: parse_env(
                 &env_var,
                 SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV,
@@ -149,6 +165,8 @@ impl Config {
             .unwrap_or(DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS),
             comemo_eviction_threshold: parse_env(&env_var, COMEMO_EVICTION_THRESHOLD_ENV)
                 .unwrap_or(DEFAULT_COMEMO_EVICTION_THRESHOLD),
+            html_pdf_cache_entries: parse_env(&env_var, HTML_PDF_CACHE_ENTRIES_ENV)
+                .unwrap_or(DEFAULT_HTML_PDF_CACHE_ENTRIES),
             max_image_dimension_pixels: parse_env(&env_var, MAX_IMAGE_DIMENSION_PIXELS_ENV)
                 .unwrap_or(DEFAULT_MAX_IMAGE_DIMENSION_PIXELS),
             max_image_pixels: parse_env(&env_var, MAX_IMAGE_PIXELS_ENV)
@@ -263,6 +281,10 @@ mod tests {
         );
         assert_ne!(config.max_concurrent_compilations, 0);
         assert_eq!(
+            config.max_concurrent_html_pdf_conversions,
+            DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS
+        );
+        assert_eq!(
             config.semaphore_acquire_timeout_seconds,
             DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS
         );
@@ -270,6 +292,7 @@ mod tests {
             config.comemo_eviction_threshold,
             DEFAULT_COMEMO_EVICTION_THRESHOLD
         );
+        assert_eq!(config.html_pdf_cache_entries, DEFAULT_HTML_PDF_CACHE_ENTRIES);
         assert_eq!(
             config.max_image_dimension_pixels,
             DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
@@ -291,8 +314,10 @@ mod tests {
             (COMPILE_TIMEOUT_SECONDS_ENV, "60"),
             (SHUTDOWN_DRAIN_SECONDS_ENV, "10"),
             (MAX_CONCURRENT_COMPILATIONS_ENV, "4"),
+            (MAX_CONCURRENT_HTML_PDF_CONVERSIONS_ENV, "2"),
             (SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, "15"),
             (COMEMO_EVICTION_THRESHOLD_ENV, "30"),
+            (HTML_PDF_CACHE_ENTRIES_ENV, "64"),
             (MAX_IMAGE_DIMENSION_PIXELS_ENV, "4096"),
             (MAX_IMAGE_PIXELS_ENV, "10000000"),
         ]));
@@ -308,8 +333,10 @@ mod tests {
         assert_eq!(config.compile_timeout_seconds, 60);
         assert_eq!(config.shutdown_drain_seconds, 10);
         assert_eq!(config.max_concurrent_compilations, 4);
+        assert_eq!(config.max_concurrent_html_pdf_conversions, 2);
         assert_eq!(config.semaphore_acquire_timeout_seconds, 15);
         assert_eq!(config.comemo_eviction_threshold, 30);
+        assert_eq!(config.html_pdf_cache_entries, 64);
         assert_eq!(config.max_image_dimension_pixels, 4_096);
         assert_eq!(config.max_image_pixels, 10_000_000);
     }
@@ -374,6 +401,19 @@ mod tests {
     }
 
     #[test]
+    fn default_falls_back_to_default_max_concurrent_html_pdf_for_invalid_env_value() {
+        let config = Config::from_env_fn(env_from(&[(
+            MAX_CONCURRENT_HTML_PDF_CONVERSIONS_ENV,
+            "not-a-number",
+        )]));
+
+        assert_eq!(
+            config.max_concurrent_html_pdf_conversions,
+            DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS
+        );
+    }
+
+    #[test]
     fn default_falls_back_to_default_semaphore_acquire_timeout_for_invalid_env_value() {
         let config = Config::from_env_fn(env_from(&[(
             SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV,
@@ -405,6 +445,13 @@ mod tests {
     }
 
     #[test]
+    fn html_pdf_cache_entries_falls_back_to_default_for_invalid_env_value() {
+        let config = Config::from_env_fn(env_from(&[(HTML_PDF_CACHE_ENTRIES_ENV, "not-a-number")]));
+
+        assert_eq!(config.html_pdf_cache_entries, DEFAULT_HTML_PDF_CACHE_ENTRIES);
+    }
+
+    #[test]
     fn image_limits_fall_back_to_defaults_for_invalid_env_values() {
         let config = Config::from_env_fn(env_from(&[
             (MAX_IMAGE_DIMENSION_PIXELS_ENV, "not-a-number"),
@@ -426,6 +473,13 @@ mod tests {
     }
 
     #[test]
+    fn zero_html_pdf_cache_entries_is_accepted() {
+        let config = Config::from_env_fn(env_from(&[(HTML_PDF_CACHE_ENTRIES_ENV, "0")]));
+
+        assert_eq!(config.html_pdf_cache_entries, 0);
+    }
+
+    #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
         let config = Config {
             port: DEFAULT_PORT,
@@ -439,8 +493,10 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            max_concurrent_html_pdf_conversions: DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            html_pdf_cache_entries: DEFAULT_HTML_PDF_CACHE_ENTRIES,
             max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
             max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
@@ -462,8 +518,10 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            max_concurrent_html_pdf_conversions: DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            html_pdf_cache_entries: DEFAULT_HTML_PDF_CACHE_ENTRIES,
             max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
             max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
@@ -485,8 +543,10 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            max_concurrent_html_pdf_conversions: DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            html_pdf_cache_entries: DEFAULT_HTML_PDF_CACHE_ENTRIES,
             max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
             max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };
@@ -508,8 +568,10 @@ mod tests {
             compile_timeout_seconds: DEFAULT_COMPILE_TIMEOUT_SECONDS,
             shutdown_drain_seconds: DEFAULT_SHUTDOWN_DRAIN_SECONDS,
             max_concurrent_compilations: DEFAULT_MAX_CONCURRENT_COMPILATIONS,
+            max_concurrent_html_pdf_conversions: DEFAULT_MAX_CONCURRENT_HTML_PDF_CONVERSIONS,
             semaphore_acquire_timeout_seconds: DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS,
             comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            html_pdf_cache_entries: DEFAULT_HTML_PDF_CACHE_ENTRIES,
             max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
             max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
         };

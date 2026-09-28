@@ -2,7 +2,7 @@ mod tracing_setup;
 
 use anyhow::{Context, Result};
 use pdfgenrs::metrics;
-use pdfgenrs::state::{AppAliveness, AppState};
+use pdfgenrs::state::{AppAliveness, AppState, HtmlPdfCache};
 use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::{RwLock, Semaphore};
@@ -80,6 +80,27 @@ async fn main() -> Result<()> {
     } else {
         None
     };
+    let html_pdf_semaphore = if cfg.max_concurrent_html_pdf_conversions > 0 {
+        Some(Arc::new(Semaphore::new(
+            cfg.max_concurrent_html_pdf_conversions,
+        )))
+    } else {
+        None
+    };
+    let html_pdf_cache = if cfg.html_pdf_cache_entries > 0 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        use std::hash::{Hash, Hasher};
+        cfg.root_dir.hash(&mut hasher);
+        cfg.font_dir().hash(&mut hasher);
+        html_font_count.hash(&mut hasher);
+        let converter_cache_key = hasher.finish();
+        Some(Arc::new(HtmlPdfCache::new(
+            converter_cache_key,
+            cfg.html_pdf_cache_entries,
+        )))
+    } else {
+        None
+    };
 
     let state = AppState {
         templates,
@@ -94,7 +115,9 @@ async fn main() -> Result<()> {
             [Feature::Html].into_iter().collect(),
         )),
         html_converter,
+        html_pdf_cache,
         compile_semaphore,
+        html_pdf_semaphore,
     };
 
     let template_count = state.templates.len();
@@ -112,9 +135,11 @@ async fn main() -> Result<()> {
         font_count,
         dev_mode = cfg.dev_mode,
         max_concurrent_compilations = cfg.max_concurrent_compilations,
+        max_concurrent_html_pdf_conversions = cfg.max_concurrent_html_pdf_conversions,
         compile_timeout_seconds = cfg.compile_timeout_seconds,
         request_body_limit_bytes = cfg.request_body_limit_bytes,
         comemo_eviction_threshold = cfg.comemo_eviction_threshold,
+        html_pdf_cache_entries = cfg.html_pdf_cache_entries,
         "Starting pdfgenrs server"
     );
 
@@ -226,8 +251,10 @@ mod tests {
             compile_timeout_seconds: 30,
             shutdown_drain_seconds: 5,
             max_concurrent_compilations: 0,
+            max_concurrent_html_pdf_conversions: 0,
             semaphore_acquire_timeout_seconds: 10,
             comemo_eviction_threshold: config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            html_pdf_cache_entries: 0,
             max_image_dimension_pixels: config::DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
             max_image_pixels: config::DEFAULT_MAX_IMAGE_PIXELS,
         };
@@ -246,6 +273,7 @@ mod tests {
                 [Feature::Html].into_iter().collect(),
             )),
             compile_semaphore: None,
+            html_pdf_semaphore: None,
             html_converter: Arc::new(
                 build_html_converter(
                     &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"),
@@ -253,6 +281,7 @@ mod tests {
                 )
                 .0,
             ),
+            html_pdf_cache: None,
         })
     }
 
