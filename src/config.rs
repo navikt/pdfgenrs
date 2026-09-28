@@ -292,7 +292,10 @@ mod tests {
             config.comemo_eviction_threshold,
             DEFAULT_COMEMO_EVICTION_THRESHOLD
         );
-        assert_eq!(config.html_pdf_cache_entries, DEFAULT_HTML_PDF_CACHE_ENTRIES);
+        assert_eq!(
+            config.html_pdf_cache_entries,
+            DEFAULT_HTML_PDF_CACHE_ENTRIES
+        );
         assert_eq!(
             config.max_image_dimension_pixels,
             DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
@@ -448,7 +451,10 @@ mod tests {
     fn html_pdf_cache_entries_falls_back_to_default_for_invalid_env_value() {
         let config = Config::from_env_fn(env_from(&[(HTML_PDF_CACHE_ENTRIES_ENV, "not-a-number")]));
 
-        assert_eq!(config.html_pdf_cache_entries, DEFAULT_HTML_PDF_CACHE_ENTRIES);
+        assert_eq!(
+            config.html_pdf_cache_entries,
+            DEFAULT_HTML_PDF_CACHE_ENTRIES
+        );
     }
 
     #[test]

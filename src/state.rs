@@ -2,8 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ironpress::HtmlConverter;
 use serde_json::Value;
@@ -58,7 +58,10 @@ impl HtmlPdfCache {
     #[must_use]
     pub fn get(&self, html: &str) -> Option<Vec<u8>> {
         let key = self.hash_html(html);
-        let cache = self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let cache = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let bucket = cache.entries.get(&key)?;
         let entry = bucket.iter().find(|entry| entry.html.as_ref() == html)?;
         Some((*entry.pdf_bytes).clone())
@@ -71,7 +74,10 @@ impl HtmlPdfCache {
         }
 
         let key = self.hash_html(html);
-        let mut cache = self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut cache = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(bucket) = cache.entries.get_mut(&key)
             && let Some(existing) = bucket.iter_mut().find(|entry| entry.html.as_ref() == html)

@@ -130,16 +130,11 @@ pub(crate) async fn post_pdf_from_html(
         .clone()
         .or_else(|| state.compile_semaphore.clone());
 
-    let pdf_bytes = compile_blocking_with_semaphore(
-        &state,
-        app_name.clone(),
-        None,
-        semaphore,
-        move || {
+    let pdf_bytes =
+        compile_blocking_with_semaphore(&state, app_name.clone(), None, semaphore, move || {
             gen_pdf::html_to_pdf(&html_for_conversion, &html_converter).map_err(anyhow::Error::new)
-        },
-    )
-    .await?;
+        })
+        .await?;
 
     if let Some(cache) = state.html_pdf_cache.as_ref() {
         cache.insert(&html, pdf_bytes.clone());

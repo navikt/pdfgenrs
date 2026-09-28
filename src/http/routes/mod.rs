@@ -235,7 +235,8 @@ where
     F: FnOnce() -> anyhow::Result<T> + Send + 'static,
 {
     let timeout_duration = Duration::from_secs(state.config.compile_timeout_seconds);
-    let permit = acquire_compile_permit(state, &app_name, template_name.as_deref(), semaphore).await?;
+    let permit =
+        acquire_compile_permit(state, &app_name, template_name.as_deref(), semaphore).await?;
 
     let start = Instant::now();
     let request_id = current_request_id().unwrap_or_default();
