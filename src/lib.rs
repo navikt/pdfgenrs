@@ -325,9 +325,12 @@ mod tests {
         assert!(canceled.is_err(), "request should wait for the held permit");
 
         drop(held);
-        let permit = timeout(Duration::from_secs(5), Arc::clone(&semaphore).acquire_owned())
-            .await
-            .map_err(|_| anyhow::anyhow!("canceled request retained the compilation permit"))??;
+        let permit = timeout(
+            Duration::from_secs(5),
+            Arc::clone(&semaphore).acquire_owned(),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("canceled request retained the compilation permit"))??;
         drop(permit);
 
         let response = server

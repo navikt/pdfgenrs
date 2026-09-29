@@ -208,9 +208,9 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use axum::middleware::{Next, from_fn};
     use axum::extract::Request;
     use axum::http::StatusCode;
+    use axum::middleware::{Next, from_fn};
     use axum_test::TestServer;
 
     use pdfgenrs::config;
