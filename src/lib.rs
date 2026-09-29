@@ -106,10 +106,14 @@ async fn fallback_handler(State(state): State<AppState>) -> ApiError {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::time::Duration;
 
     use axum::http::{HeaderValue, StatusCode, header};
     use axum_test::TestServer;
     use metrics_exporter_prometheus::PrometheusBuilder;
+    use tokio::sync::Semaphore;
+    use tokio::time::timeout;
 
     use super::*;
     use crate::testutil::make_state;
@@ -294,6 +298,44 @@ mod tests {
                 "urn:pdfgenrs:error:unsupported-media-type",
             )?;
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_timeout_cancels_queued_compilation_without_stealing_permit()
+    -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "document".to_string()),
+            "Hello, world!".to_string(),
+        );
+        let mut state = make_state(templates, HashMap::new(), false)?;
+        let semaphore = Arc::new(Semaphore::new(1));
+        state.compile_semaphore = Some(Arc::clone(&semaphore));
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+        let held = Arc::clone(&semaphore).acquire_owned().await?;
+
+        let canceled = timeout(
+            Duration::from_millis(100),
+            server
+                .post("/api/v1/genpdf/myapp/document")
+                .json(&serde_json::json!({})),
+        )
+        .await;
+        assert!(canceled.is_err(), "request should wait for the held permit");
+
+        drop(held);
+        let permit = timeout(Duration::from_secs(5), Arc::clone(&semaphore).acquire_owned())
+            .await
+            .map_err(|_| anyhow::anyhow!("canceled request retained the compilation permit"))??;
+        drop(permit);
+
+        let response = server
+            .post("/api/v1/genpdf/myapp/document")
+            .json(&serde_json::json!({}))
+            .await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+        assert!(response.as_bytes().starts_with(b"%PDF"));
         Ok(())
     }
 

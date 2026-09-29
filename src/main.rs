@@ -187,14 +187,18 @@ async fn shutdown_signal(aliveness: AppAliveness, drain_seconds: u64) -> Result<
         result = terminate => result?,
     }
 
+    drain_shutdown(&aliveness, Duration::from_secs(drain_seconds)).await;
+    Ok(())
+}
+
+async fn drain_shutdown(aliveness: &AppAliveness, drain_duration: Duration) {
     info!("Shutdown signal received, stopping server...");
     aliveness.set_ready(false);
-    if drain_seconds > 0 {
-        info!(drain_seconds, "Draining existing connections...");
-        tokio::time::sleep(Duration::from_secs(drain_seconds)).await;
+    if !drain_duration.is_zero() {
+        info!(?drain_duration, "Draining existing connections...");
+        tokio::time::sleep(drain_duration).await;
     }
     aliveness.set_alive(false);
-    Ok(())
 }
 
 #[cfg(test)]
@@ -204,15 +208,15 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use axum::Router;
+    use axum::middleware::{Next, from_fn};
+    use axum::extract::Request;
     use axum::http::StatusCode;
-    use axum::routing::post;
     use axum_test::TestServer;
 
     use pdfgenrs::config;
     use pdfgenrs::state::{AppAliveness, AppState};
     use pdfgenrs::{build_html_converter, build_router, metrics, typst_world};
-    use tokio::sync::RwLock;
+    use tokio::sync::{Notify, RwLock};
     use typst::{Feature, Features};
 
     fn make_state_with_body_limit(
@@ -1076,41 +1080,93 @@ Dev mode: #data.at("mode", default: "unknown")
     }
 
     #[tokio::test]
-    async fn graceful_shutdown_waits_for_inflight_compilation_like_request() -> anyhow::Result<()> {
-        let app = Router::new().route(
-            "/compile",
-            post(|| async {
-                tokio::time::sleep(Duration::from_millis(250)).await;
-                StatusCode::OK
-            }),
+    async fn graceful_shutdown_drains_inflight_pdf_and_updates_health() -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "document".to_string()),
+            "Hello, world!".to_string(),
         );
+        let state = make_state(templates, HashMap::new(), false)?;
+        let aliveness = state.aliveness.clone();
+        aliveness.set_alive(true);
+        aliveness.set_ready(true);
+        let started = Arc::new(Notify::new());
+        let release = Arc::new(Notify::new());
+        let started_wait = started.notified();
+        let app = build_router(state, metrics::test_metrics_handle()).layer(from_fn({
+            let started = Arc::clone(&started);
+            let release = Arc::clone(&release);
+            move |request: Request, next: Next| {
+                let started = Arc::clone(&started);
+                let release = Arc::clone(&release);
+                async move {
+                    if request.uri().path() == "/api/v1/genpdf/myapp/document" {
+                        started.notify_one();
+                        release.notified().await;
+                    }
+                    next.run(request).await
+                }
+            }
+        }));
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
         let addr = listener.local_addr()?;
         let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 
+        let shutdown_aliveness = aliveness.clone();
         let server = tokio::spawn(async move {
             axum::serve(listener, app)
-                .with_graceful_shutdown(async {
+                .with_graceful_shutdown(async move {
                     let _ = shutdown_rx.await;
+                    drain_shutdown(&shutdown_aliveness, Duration::from_millis(500)).await;
                 })
                 .await
         });
 
         let client = reqwest::Client::new();
-        let url = format!("http://{addr}/compile");
+        let url = format!("http://{addr}/api/v1/genpdf/myapp/document");
         let in_flight = tokio::spawn({
             let client = client.clone();
             let url = url.clone();
-            async move { client.post(url).send().await }
+            async move { client.post(url).json(&serde_json::json!({})).send().await }
         });
 
-        tokio::time::sleep(Duration::from_millis(50)).await;
-        let _ = shutdown_tx.send(());
+        tokio::time::timeout(Duration::from_secs(5), started_wait).await?;
+        shutdown_tx
+            .send(())
+            .map_err(|_| anyhow::anyhow!("server shutdown receiver closed"))?;
 
-        let response = in_flight.await??;
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while aliveness.is_ready() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await?;
+        assert!(aliveness.is_alive());
+        assert_eq!(
+            client
+                .get(format!("http://{addr}/internal/is_ready"))
+                .send()
+                .await?
+                .status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+        assert_eq!(
+            client
+                .get(format!("http://{addr}/internal/is_alive"))
+                .send()
+                .await?
+                .status(),
+            StatusCode::OK
+        );
+        assert!(!server.is_finished());
+
+        release.notify_one();
+        let response = tokio::time::timeout(Duration::from_secs(5), in_flight).await???;
         assert_eq!(response.status(), StatusCode::OK);
+        assert!(response.bytes().await?.starts_with(b"%PDF"));
 
-        server.await??;
+        tokio::time::timeout(Duration::from_secs(5), server).await???;
+        assert!(!aliveness.is_alive());
 
         let after_shutdown = client.post(url).send().await;
         assert!(after_shutdown.is_err());
