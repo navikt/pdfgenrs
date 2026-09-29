@@ -107,7 +107,7 @@ async fn fallback_handler(State(state): State<AppState>) -> ApiError {
 mod tests {
     use std::collections::HashMap;
 
-    use axum::http::StatusCode;
+    use axum::http::{HeaderValue, StatusCode, header};
     use axum_test::TestServer;
     use metrics_exporter_prometheus::PrometheusBuilder;
 
@@ -223,6 +223,78 @@ mod tests {
             StatusCode::BAD_REQUEST,
             "urn:pdfgenrs:error:invalid-request",
         )
+    }
+
+    #[tokio::test]
+    async fn generation_errors_hide_details_in_production_and_expose_them_in_development()
+    -> anyhow::Result<()> {
+        let mut templates = HashMap::new();
+        templates.insert(
+            ("myapp".to_string(), "broken".to_string()),
+            "#this-is-not-valid-typst-syntax(((".to_string(),
+        );
+        for path in [
+            "/api/v1/genpdf/myapp/broken",
+            "/api/v1/genhtml/myapp/broken",
+        ] {
+            for dev_mode in [false, true] {
+                let state = make_state(templates.clone(), HashMap::new(), dev_mode)?;
+                let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+                let response = server.post(path).json(&serde_json::json!({})).await;
+
+                assert_problem_response(
+                    &response,
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "urn:pdfgenrs:error:generation-failed",
+                )?;
+                let body: serde_json::Value = serde_json::from_slice(response.as_bytes())?;
+                let detail = body["detail"]
+                    .as_str()
+                    .ok_or_else(|| anyhow::anyhow!("missing error detail"))?;
+                if dev_mode {
+                    assert!(!detail.is_empty());
+                    assert_ne!(detail, "Internal server error");
+                } else {
+                    assert_eq!(detail, "Internal server error");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn malformed_content_types_return_problem_details() -> anyhow::Result<()> {
+        let state = make_state(HashMap::new(), HashMap::new(), false)?;
+        let server = TestServer::new(build_router(state, metrics::test_metrics_handle()));
+        let malformed = HeaderValue::from_bytes(b"image/png\xff")?;
+
+        let image = server
+            .post("/api/v1/genpdf/image/myapp")
+            .add_header(header::CONTENT_TYPE, malformed)
+            .bytes(axum::body::Bytes::from_static(b"not an image"))
+            .await;
+        assert_problem_response(
+            &image,
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "urn:pdfgenrs:error:unsupported-media-type",
+        )?;
+
+        for path in [
+            "/api/v1/genpdf/myapp/mytemplate",
+            "/api/v1/genhtml/myapp/mytemplate",
+        ] {
+            let response = server
+                .post(path)
+                .content_type("application/json, text/plain")
+                .bytes(axum::body::Bytes::from_static(b"{}"))
+                .await;
+            assert_problem_response(
+                &response,
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "urn:pdfgenrs:error:unsupported-media-type",
+            )?;
+        }
+        Ok(())
     }
 
     #[tokio::test]
