@@ -307,7 +307,8 @@ mod tests {
         let mut templates = HashMap::new();
         templates.insert(
             ("myapp".to_string(), "document".to_string()),
-            "Hello, world!".to_string(),
+            "#set document(title: \"Test\", date: auto)\n#set page(margin: 1cm)\nHello!"
+                .to_string(),
         );
         let mut state = make_state(templates, HashMap::new(), false)?;
         let semaphore = Arc::new(Semaphore::new(1));
