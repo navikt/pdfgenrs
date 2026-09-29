@@ -49,6 +49,7 @@ tower-http = { version = "0.7.1", features = ["trace", "limit"] }
 ironpress = "1.6.0"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
+metrics-process = "2.4.3"
 uuid = { version = "1.26.1", features = ["v4"] }
 
 [dev-dependencies]

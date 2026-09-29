@@ -337,6 +337,60 @@ The `reason` label on `image_rejections_total` is one of a fixed set:
 `undetectable_format`, `format_mismatch`, `unreadable_dimensions`, `zero_dimension`,
 `dimension_too_large`, `too_many_pixels`.
 
+#### Runtime and process metrics
+
+Compatible with Nais autoinstrumentation SDK mode.
+
+There is no OpenTelemetry runtime semantic convention for Rust. The process metrics follow
+the naming used by the official Prometheus client libraries; the Tokio and saturation
+metrics use a local prefix.
+
+| Metric | Type | Unit | What it tells you |
+|--------|------|------|-------------------|
+| `process_cpu_seconds_total` | Counter | seconds | `rate()` over this gives CPU cores in use. Sitting above the CPU request means the pod slows down when the node is busy. |
+| `process_resident_memory_bytes` | Gauge | bytes | Actual memory in use. Compare against the memory limit in `nais.yaml` to see how close the pod is to an OOM kill. Typst compilation with large images drives this curve. |
+| `process_virtual_memory_bytes` | Gauge | bytes | Reserved address space. Growth here while RSS stays flat is memory mapping, not a leak. |
+| `process_virtual_memory_max_bytes` | Gauge | bytes | The address-space rlimit. Context for the previous metric. |
+| `process_threads` | Gauge | threads | Tokio worker threads plus blocking threads. Steady growth without a rise in traffic means blocking work is piling up. |
+| `process_open_fds` | Gauge | descriptors | Catches leaked files and sockets. Monotonic growth ends in "too many open files". Relevant because templates, fonts and images are read from disk. |
+| `process_max_fds` | Gauge | descriptors | The descriptor rlimit. Alert on `process_open_fds / process_max_fds`. |
+| `process_start_time_seconds` | Gauge | seconds | Process start as a Unix timestamp. A change without a deploy means the pod crashed or was OOM killed. |
+| `tokio_runtime_workers` | Gauge | threads | Worker threads in the runtime. Nearly constant; confirms runtime sizing after a change in pod resources. |
+| `tokio_runtime_alive_tasks` | Gauge | tasks | Tasks alive right now. Should rise and fall with traffic. Steady growth means tasks that never finish. |
+| `tokio_runtime_global_queue_depth` | Gauge | tasks | Tasks waiting for a free worker. Persistently above zero means latency is added before the work even starts. |
+| `pdfgenrs_compile_permits_available` | Gauge | permits | Free compilation slots. Zero over time means requests queue and eventually time out with 503, matching "server is overloaded" in the log. This is the saturation signal. |
+| `pdfgenrs_compile_permits_total` | Gauge | permits | The configured `MAX_CONCURRENT_COMPILATIONS`. |
+| `pdfgenrs_compile_in_flight` | Gauge | compilations | Compilations running now. Divided by the total, this is saturation as a percentage, which is the number to scale pods on. |
+
+The `pdfgenrs_compile_*` metrics are only emitted when `MAX_CONCURRENT_COMPILATIONS` is set.
+`process_open_fds`, `process_max_fds` and `process_threads` are Linux-only and are absent on
+macOS. None of these metrics carry labels, deliberately, to keep cardinality low.
+
+Two things to be aware of on NAIS:
+
+- The prebuilt runtime panels in NAIS APM query language-specific names such as `jvm.*`.
+  They will stay empty for a Rust service regardless of what this application exports. Build
+  a dashboard on the names above instead.
+- NAIS sets CPU requests but not limits, so there is no cgroup quota to divide by. Use
+  `rate(process_cpu_seconds_total[5m])`, which gives cores used directly, rather than a
+  utilization ratio.
+
+Scraping requires Prometheus to be enabled in `nais.yaml`:
+
+```yaml
+spec:
+  prometheus:
+    enabled: true
+    path: /internal/metrics
+  observability:
+    autoInstrumentation:
+      enabled: true
+      runtime: sdk
+```
+
+`runtime: sdk` is the correct value for a Rust binary. Any other value makes the platform
+attempt an agent injection that cannot work.
+
 `pdfgenrs` loads templates into memory on startup and, when `DEV_MODE=true`, also loads valid test-data files. Changes to files in these folders require an application restart.
 
 Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
@@ -407,6 +461,9 @@ When deployed on [NAIS](https://doc.nais.io/), OpenTelemetry tracing is configur
 | `OTEL_SERVICE_NAME`              | Logical service name attached to exported spans                              | `pdfgenrs`   |
 | `OTEL_RESOURCE_ATTRIBUTES`       | Additional resource attributes (key=value pairs)                             | *(unset)*    |
 | `OTEL_EXPORTER_OTLP_INSECURE`   | Use insecure (plaintext) gRPC connection                                     | *(unset)*    |
+
+These variables affect spans only. Metrics are not exported over OTLP; they are scraped from
+`/internal/metrics`. See [Runtime and process metrics](#runtime-and-process-metrics).
 
 ## Developing pdfgenrs
 

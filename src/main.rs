@@ -2,9 +2,10 @@ mod tracing_setup;
 
 use anyhow::{Context, Result};
 use pdfgenrs::metrics;
+use pdfgenrs::runtime_metrics::{self, RuntimeMetricsCollector};
 use pdfgenrs::state::{AppAliveness, AppState};
 use pdfgenrs::{build_html_converter, build_router, config, template, typst_world};
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{info, warn};
 use typst::{Feature, Features};
@@ -103,6 +104,14 @@ async fn main() -> Result<()> {
     let metrics_handle = metrics::setup_metrics_recorder()?;
     ::metrics::gauge!("comemo_eviction_threshold").set(cfg.comemo_eviction_threshold as f64);
 
+    let runtime_metrics = RuntimeMetricsCollector::new(
+        state.compile_semaphore.clone(),
+        cfg.max_concurrent_compilations,
+    )
+    .spawn(Duration::from_secs(
+        runtime_metrics::DEFAULT_COLLECTION_INTERVAL_SECONDS,
+    ));
+
     let app = build_router(state, metrics_handle);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
@@ -149,6 +158,8 @@ async fn main() -> Result<()> {
         warn!(error = %e, "OpenTelemetry tracer provider shutdown error");
     }
 
+    runtime_metrics.shutdown().await;
+
     Ok(())
 }
 
@@ -180,7 +191,7 @@ async fn shutdown_signal(aliveness: AppAliveness, drain_seconds: u64) -> Result<
     aliveness.set_ready(false);
     if drain_seconds > 0 {
         info!(drain_seconds, "Draining existing connections...");
-        tokio::time::sleep(std::time::Duration::from_secs(drain_seconds)).await;
+        tokio::time::sleep(Duration::from_secs(drain_seconds)).await;
     }
     aliveness.set_alive(false);
     Ok(())
