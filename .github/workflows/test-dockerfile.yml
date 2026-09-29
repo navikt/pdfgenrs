@@ -73,6 +73,45 @@ jobs:
 
            test "$content_type" = "text/html; charset=utf-8"
            grep --quiet "HTML Benchmark Document" "$output"
+      - name: Verify runtime metrics
+        run: |
+          set -euo pipefail
+          metrics="$(mktemp)"
+          curl --fail --silent --show-error --output "$metrics" \
+            http://localhost:8080/internal/metrics
+
+          for name in \
+            process_cpu_seconds_total \
+            process_resident_memory_bytes \
+            process_virtual_memory_bytes \
+            process_threads \
+            process_open_fds \
+            process_max_fds \
+            process_start_time_seconds \
+            tokio_runtime_workers \
+            tokio_runtime_alive_tasks \
+            tokio_runtime_global_queue_depth \
+            pdfgenrs_compile_permits_available \
+            pdfgenrs_compile_permits_total \
+            pdfgenrs_compile_in_flight; do
+            grep --quiet "^# TYPE $name " "$metrics" \
+              || { echo "missing TYPE line for $name"; cat "$metrics"; exit 1; }
+          done
+
+          # Values that must be greater than zero in a running container. A name that is
+          # present but always zero means the collector never read the process.
+          for name in \
+            process_resident_memory_bytes \
+            process_threads \
+            process_open_fds \
+            process_start_time_seconds \
+            tokio_runtime_workers; do
+            value="$(awk -v n="$name" '$1 == n { print $2 }' "$metrics")"
+            awk -v v="$value" -v n="$name" \
+              'BEGIN { if (v + 0 <= 0) { print n " is not greater than zero: " v; exit 1 } }'
+          done
+
+          test "$(awk '$1 == "pdfgenrs_compile_permits_total" { print $2 }' "$metrics")" = "4"
       - name: Show container logs
         if: always()
         run: |

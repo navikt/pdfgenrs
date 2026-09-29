@@ -9,6 +9,8 @@ mod http;
 /// Prometheus metrics middleware and recorder setup.
 pub mod metrics;
 mod rendering;
+/// Process, Tokio runtime, and compilation saturation metrics.
+pub mod runtime_metrics;
 /// Shared application state and liveness/readiness primitives.
 pub mod state;
 #[cfg(test)]

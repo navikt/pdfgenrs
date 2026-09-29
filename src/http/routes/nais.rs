@@ -177,4 +177,39 @@ mod tests {
         );
         Ok(())
     }
+
+    #[tokio::test]
+    async fn metrics_endpoint_exposes_runtime_metrics() -> anyhow::Result<()> {
+        let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        let collector = crate::runtime_metrics::RuntimeMetricsCollector::new(
+            Some(Arc::new(tokio::sync::Semaphore::new(4))),
+            4,
+        );
+        ::metrics::with_local_recorder(&recorder, || {
+            collector.describe();
+            collector.collect();
+        });
+
+        let server = TestServer::new(nais_router(handle).with_state(test_state(true, true)?));
+        let body = server.get("/internal/metrics").await.text();
+
+        for name in [
+            "process_cpu_seconds_total",
+            "process_resident_memory_bytes",
+            "process_start_time_seconds",
+            "tokio_runtime_workers",
+            "tokio_runtime_alive_tasks",
+            "tokio_runtime_global_queue_depth",
+            "pdfgenrs_compile_permits_available",
+            "pdfgenrs_compile_permits_total",
+            "pdfgenrs_compile_in_flight",
+        ] {
+            assert!(
+                body.contains(name),
+                "expected {name} on /internal/metrics: {body}"
+            );
+        }
+        Ok(())
+    }
 }
