@@ -203,6 +203,7 @@ async fn drain_shutdown(aliveness: &AppAliveness, drain_duration: Duration) {
 
 #[cfg(test)]
 mod tests {
+    use super::drain_shutdown;
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::Arc;
