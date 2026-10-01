@@ -605,7 +605,7 @@ fn image_typst_source(image_path: &str, width: u32, height: u32) -> String {
     format!(
         r#"#set document(title: "Image", date: auto)
 #set page({flipped}margin: 0pt)
-#place(center + horizon, image("{image_path}", width: {render_width:.4}mm, height: {render_height:.4}mm, alt: "Uploaded image"))
+#place(center + horizon, image("{image_path}", width: {render_width:.4}mm, height: {render_height:.4}mm, fit: "contain", alt: "Uploaded image"))
 "#
     )
 }
