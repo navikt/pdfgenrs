@@ -1,5 +1,7 @@
 use std::future::IntoFuture;
+use std::io::Write;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum_test::TestServer;
 use pdfgenrs::{build_html_converter, build_router, config, metrics, state, template, typst_world};
@@ -9,12 +11,69 @@ use tokio::task::JoinSet;
 use tracing::info;
 use typst::{Feature, Features};
 
+#[path = "support/pressure.rs"]
+mod pressure;
+mod support;
+
+fn append_summary(markdown: &str) -> anyhow::Result<()> {
+    if let Some(path) = std::env::var_os("GITHUB_STEP_SUMMARY") {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)?
+            .write_all(markdown.as_bytes())?;
+    }
+    Ok(())
+}
+
 const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD: u128 = 600;
 const BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD: u128 = 800;
 const BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD: u128 = 800;
+const BENCH_RUNTIME_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(1);
+
+fn with_bounded_shutdown<T>(
+    runtime: tokio::runtime::Runtime,
+    operation: impl FnOnce(&tokio::runtime::Runtime) -> anyhow::Result<T>,
+) -> anyhow::Result<T> {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| operation(&runtime)));
+    runtime.shutdown_timeout(BENCH_RUNTIME_SHUTDOWN_TIMEOUT);
+    match result {
+        Ok(result) => result,
+        Err(payload) => std::panic::resume_unwind(payload),
+    }
+}
+
+fn check_bounded_shutdown() -> anyhow::Result<()> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .build()?;
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let (finished_tx, finished_rx) = std::sync::mpsc::channel();
+    let start = std::time::Instant::now();
+    let result: anyhow::Result<()> = with_bounded_shutdown(runtime, |runtime| {
+        runtime.spawn_blocking(move || {
+            let _ = started_tx.send(());
+            let _ = release_rx.recv();
+            let _ = finished_tx.send(());
+        });
+        started_rx.recv_timeout(Duration::from_secs(2))?;
+        anyhow::bail!("expected held-worker failure")
+    });
+    let elapsed = start.elapsed();
+    release_tx.send(())?;
+    finished_rx.recv_timeout(Duration::from_secs(2))?;
+    anyhow::ensure!(result.is_err(), "held-worker error was not propagated");
+    anyhow::ensure!(
+        elapsed >= BENCH_RUNTIME_SHUTDOWN_TIMEOUT
+            && elapsed < BENCH_RUNTIME_SHUTDOWN_TIMEOUT + Duration::from_secs(2),
+        "held-worker runtime shutdown was not bounded: {elapsed:?}"
+    );
+    Ok(())
+}
 
 const BENCH_HTML_BODY: &str = r#"<!DOCTYPE html>
 <html>
@@ -54,11 +113,6 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
 }
 
 fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) {
-    let summary_file = match std::env::var("GITHUB_STEP_SUMMARY") {
-        Ok(path) => path,
-        Err(_) => return,
-    };
-
     let mut md = String::new();
     md.push_str("## Performance benchmark results\n\n");
 
@@ -93,9 +147,8 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
         ));
     }
 
-    if let Err(e) = std::fs::write(&summary_file, &md) {
+    if let Err(e) = append_summary(&md) {
         tracing::warn!(
-            path = %summary_file,
             error = %e,
             "Failed to write GitHub step summary"
         );
@@ -156,36 +209,50 @@ fn fail_if_total_too_long(
 }
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                tracing_subscriber::EnvFilter::new("performance=info,pdfgenrs=error")
+            }),
+        )
+        .init();
+    let pressure_config = pressure::PressureConfig::from_env()?;
+    support::check_fixtures()?;
+    pressure::check_helpers()?;
+    check_bounded_shutdown()?;
 
     let mt_runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(8)
         .enable_all()
         .build()?;
-    let mt_results = mt_runtime.block_on(performance_multi_thread())?;
+    with_bounded_shutdown(mt_runtime, |mt_runtime| {
+        let mt_results = mt_runtime.block_on(performance_multi_thread())?;
+        let st_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        let st_results = with_bounded_shutdown(st_runtime, |runtime| {
+            runtime.block_on(performance_single_thread())
+        })?;
 
-    let st_runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    let st_results = st_runtime.block_on(performance_single_thread())?;
+        write_github_summary(&mt_results, &st_results);
+        mt_runtime.block_on(pressure::run(&pressure_config))?;
+        fail_if_total_too_long(
+            &mt_results,
+            "Multi-thread",
+            BENCH_MAX_TOTAL_MS_MULTI_THREAD,
+            BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD,
+            BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD,
+        )?;
+        fail_if_total_too_long(
+            &st_results,
+            "Single-thread",
+            BENCH_MAX_TOTAL_MS_SINGLE_THREAD,
+            BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD,
+            BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD,
+        )?;
 
-    write_github_summary(&mt_results, &st_results);
-    fail_if_total_too_long(
-        &mt_results,
-        "Multi-thread",
-        BENCH_MAX_TOTAL_MS_MULTI_THREAD,
-        BENCH_MAX_TOTAL_MS_IMAGE_MULTI_THREAD,
-        BENCH_MAX_TOTAL_MS_HTML_MULTI_THREAD,
-    )?;
-    fail_if_total_too_long(
-        &st_results,
-        "Single-thread",
-        BENCH_MAX_TOTAL_MS_SINGLE_THREAD,
-        BENCH_MAX_TOTAL_MS_IMAGE_SINGLE_THREAD,
-        BENCH_MAX_TOTAL_MS_HTML_SINGLE_THREAD,
-    )?;
-
-    Ok(())
+        Ok(())
+    })
 }
 
 async fn performance_multi_thread() -> anyhow::Result<Vec<BenchResult>> {
