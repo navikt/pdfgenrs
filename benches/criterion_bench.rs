@@ -12,6 +12,20 @@ use typst::Library;
 use typst::utils::LazyHash;
 use typst::{Feature, Features};
 
+mod support;
+
+fn checked_pdf<E: std::fmt::Debug>(result: Result<Vec<u8>, E>) {
+    assert!(
+        result.is_ok(),
+        "PDF conversion failed: {:?}",
+        result.as_ref().err()
+    );
+    if let Ok(bytes) = result {
+        assert!(support::validate_pdf(&bytes).is_ok(), "invalid PDF output");
+        std::hint::black_box(bytes);
+    }
+}
+
 fn root_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
@@ -351,6 +365,54 @@ fn bench_typst_to_html_with_data(c: &mut Criterion) {
     });
 }
 
+fn bench_large_raster_to_pdf(c: &mut Criterion) {
+    assert!(support::check_fixtures().is_ok(), "fixture checks failed");
+    let fonts = typst_world::load_fonts(&fonts_dir());
+    assert!(fonts.is_ok(), "benchmark fonts unavailable");
+    let Ok(fonts) = fonts else { return };
+    let fonts = Arc::new(fonts);
+    let library = pdf_library();
+    let root = root_dir();
+    let resources = resources_dir();
+    let fixtures: Vec<_> = [2048, 4096]
+        .into_iter()
+        .map(|side| (side, support::raster_png(side, 0)))
+        .collect();
+    let mut group = c.benchmark_group("image_to_pdf_large_raster");
+    for (side, image) in fixtures {
+        checked_pdf(image_to_pdf(
+            image.clone(),
+            "/large.png",
+            Arc::clone(&fonts),
+            &root,
+            &resources,
+            Arc::clone(&library),
+            pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+        ));
+        group.throughput(criterion::Throughput::Elements(
+            u64::from(side) * u64::from(side),
+        ));
+        group.bench_with_input(
+            criterion::BenchmarkId::new("png", side),
+            &image,
+            |b, image| {
+                b.iter(|| {
+                    checked_pdf(image_to_pdf(
+                        std::hint::black_box(image.clone()),
+                        "/large.png",
+                        Arc::clone(&fonts),
+                        &root,
+                        &resources,
+                        Arc::clone(&library),
+                        pdfgenrs::config::DEFAULT_COMEMO_EVICTION_THRESHOLD,
+                    ))
+                });
+            },
+        );
+    }
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_typst_to_pdf,
@@ -361,6 +423,7 @@ criterion_group!(
     bench_image_to_pdf,
     bench_image_to_pdf_jpeg,
     bench_image_to_pdf_svg,
+    bench_large_raster_to_pdf,
     bench_typst_to_html,
     bench_typst_to_html_with_data,
 );

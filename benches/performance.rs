@@ -1,4 +1,5 @@
 use std::future::IntoFuture;
+use std::io::Write;
 use std::sync::Arc;
 
 use axum_test::TestServer;
@@ -8,6 +9,21 @@ use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::info;
 use typst::{Feature, Features};
+
+#[path = "support/pressure.rs"]
+mod pressure;
+mod support;
+
+fn append_summary(markdown: &str) -> anyhow::Result<()> {
+    if let Some(path) = std::env::var_os("GITHUB_STEP_SUMMARY") {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)?
+            .write_all(markdown.as_bytes())?;
+    }
+    Ok(())
+}
 
 const BENCH_MAX_TOTAL_MS_MULTI_THREAD: u128 = 700;
 const BENCH_MAX_TOTAL_MS_SINGLE_THREAD: u128 = 700;
@@ -54,11 +70,6 @@ fn create_bench_state() -> anyhow::Result<state::AppState> {
 }
 
 fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) {
-    let summary_file = match std::env::var("GITHUB_STEP_SUMMARY") {
-        Ok(path) => path,
-        Err(_) => return,
-    };
-
     let mut md = String::new();
     md.push_str("## Performance benchmark results\n\n");
 
@@ -93,9 +104,8 @@ fn write_github_summary(mt_results: &[BenchResult], st_results: &[BenchResult]) 
         ));
     }
 
-    if let Err(e) = std::fs::write(&summary_file, &md) {
+    if let Err(e) = append_summary(&md) {
         tracing::warn!(
-            path = %summary_file,
             error = %e,
             "Failed to write GitHub step summary"
         );
@@ -156,7 +166,16 @@ fn fail_if_total_too_long(
 }
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                tracing_subscriber::EnvFilter::new("performance=info,pdfgenrs=error")
+            }),
+        )
+        .init();
+    let pressure_config = pressure::PressureConfig::from_env()?;
+    support::check_fixtures()?;
+    pressure::check_helpers()?;
 
     let mt_runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(8)
@@ -170,6 +189,7 @@ fn main() -> anyhow::Result<()> {
     let st_results = st_runtime.block_on(performance_single_thread())?;
 
     write_github_summary(&mt_results, &st_results);
+    mt_runtime.block_on(pressure::run(&pressure_config))?;
     fail_if_total_too_long(
         &mt_results,
         "Multi-thread",
