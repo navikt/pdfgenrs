@@ -12,9 +12,10 @@ use typst::{Feature, Features};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let cfg = config::Config::default();
+
     let tracer_provider = tracing_setup::setup_tracing().context("Failed to initialise tracing")?;
 
-    let cfg = config::Config::default();
     cfg.warn_degenerate_values();
 
     info!(path = %cfg.templates_dir.display(), "Loading templates");

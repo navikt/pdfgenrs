@@ -1,8 +1,7 @@
-use std::env;
+use clap::Parser;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
 use tracing::warn;
 
 const SERVER_PORT_ENV: &str = "SERVER_PORT";
@@ -27,7 +26,7 @@ const DEFAULT_TEMPLATES_DIR: &str = "templates";
 const DEFAULT_RESOURCES_DIR: &str = "resources";
 const DEFAULT_DATA_DIR: &str = "data";
 const DEFAULT_FONTS_DIR: &str = "fonts";
-pub(crate) const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
+pub(crate) const DEFAULT_REQUEST_BODY_LIMIT_BYTES: usize = 2_097_152;
 const DEFAULT_COMPILE_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_SHUTDOWN_DRAIN_SECONDS: u64 = 5;
 const DEFAULT_MAX_CONCURRENT_COMPILATIONS: usize = 4;
@@ -51,63 +50,67 @@ where
     }
 }
 
-/// Runtime configuration for the pdfgenrs server.
-///
-/// All fields are populated from environment variables when `Config::default()` is
-/// called, falling back to sensible defaults when the variables are absent.
-#[derive(Clone, Debug)]
+/// pdfgenrs: a PDF generation API server. It supports PDF/A-2a and PDF/UA-1 simultaneously.
+#[derive(Clone, Debug, Parser)]
 pub struct Config {
-    /// TCP port the server listens on. Defaults to `8080` (`SERVER_PORT`).
+    /// TCP port the server listens on.
+    #[arg(long, env = "SERVER_PORT", default_value_t = 8080)]
     pub port: u16,
     /// Root directory used as the Typst filesystem root. Templates can reference
-    /// resources with absolute paths such as `/resources/logo.png`. Defaults to
-    /// `"."` (`ROOT_DIR`).
+    /// resources with absolute paths such as `/resources/logo.png`.
+    #[arg(long, env = "ROOT_DIR", default_value_os_t = PathBuf::from("."))]
     pub root_dir: PathBuf,
-    /// Directory containing Typst template files. Defaults to `"templates"` (`TEMPLATES_DIR`).
+    /// Directory containing Typst template files.
+    #[arg(long, env = "TEMPLATES_DIR", default_value_os_t = PathBuf::from("templates"))]
     pub templates_dir: PathBuf,
-    /// Directory containing static resource files. Defaults to `"resources"` (`RESOURCES_DIR`).
+    /// Directory containing static resource files.
+    #[arg(long, env = "RESOURCES_DIR", default_value_os_t = PathBuf::from("resources"))]
     pub resources_dir: PathBuf,
-    /// Directory containing test JSON data used in dev mode. Defaults to `"data"` (`DATA_DIR`).
+    /// Directory containing test JSON data used in dev mode.
+    #[arg(long, env = "DATA_DIR", default_value_os_t = PathBuf::from("data"))]
     pub data_dir: PathBuf,
-    /// Directory containing font files used by Typst. Defaults to `"fonts"` (`FONTS_DIR`).
+    /// Directory containing font files used by Typst.
+    #[arg(long, env = "FONTS_DIR", default_value_os_t = PathBuf::from("fonts"))]
     pub fonts_dir: PathBuf,
     /// When `true`, the GET PDF endpoint is enabled and test data is pre-loaded.
-    /// Defaults to `false` (`DEV_MODE`).
+    #[arg(long, env = "DEV_MODE")]
     pub dev_mode: bool,
-    /// Maximum accepted request body size in bytes. Defaults to `2097152` (2 MiB)
-    /// (`REQUEST_BODY_LIMIT_BYTES`).
+    /// Maximum accepted request body size in bytes.
+    #[arg(long, env = "REQUEST_BODY_LIMIT_BYTES", default_value_t = 2 * 1024 * 1024)]
     pub request_body_limit_bytes: usize,
     /// Maximum time in seconds allowed for a single compilation task (Typst to PDF/HTML).
     /// Requests exceeding this timeout will be aborted with a `408 Request Timeout`.
-    /// Defaults to `30` (`COMPILE_TIMEOUT_SECONDS`).
+    #[arg(long, env = "COMPILE_TIMEOUT_SECONDS", default_value_t = 30)]
     pub compile_timeout_seconds: u64,
     /// Duration in seconds to wait between marking the application as not ready and
     /// marking it as not alive during shutdown. This allows Kubernetes to stop routing
-    /// new traffic before existing connections are drained. Defaults to `5`
-    /// (`SHUTDOWN_DRAIN_SECONDS`).
+    /// new traffic before existing connections are drained.
+    #[arg(long, env = "SHUTDOWN_DRAIN_SECONDS", default_value_t = 5)]
     pub shutdown_drain_seconds: u64,
     /// Maximum number of concurrent compilation tasks allowed. Defaults to `4`; set to `0`
-    /// to disable the limit. Configurable via `MAX_CONCURRENT_COMPILATIONS`.
+    /// to disable the limit.
+    #[arg(long, env = "MAX_CONCURRENT_COMPILATIONS", default_value_t = 4)]
     pub max_concurrent_compilations: usize,
     /// Maximum time in seconds to wait for a compilation semaphore permit.
     /// When the timeout is exceeded, the server responds with `503 Service Unavailable`.
-    /// Defaults to `10` (`SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS`).
+    #[arg(long, env = "SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS", default_value_t = 10)]
     pub semaphore_acquire_timeout_seconds: u64,
     /// Maximum number of cache entries to evict from the comemo memoization cache after
     /// each compilation. Higher values free more memory at the cost of cache hit rate.
-    /// Set to `0` to evict the entire cache. Defaults to `15` (`COMEMO_EVICTION_THRESHOLD`).
+    /// Set to `0` to evict the entire cache.
+    #[arg(long, env = "COMEMO_EVICTION_THRESHOLD", default_value_t = 15)]
     pub comemo_eviction_threshold: usize,
-    /// Maximum width or height for an uploaded image. Defaults to `8192`
-    /// (`MAX_IMAGE_DIMENSION_PIXELS`).
+    /// Maximum width or height for an uploaded image.
+    #[arg(long, env = "MAX_IMAGE_DIMENSION_PIXELS", default_value_t = 8192)]
     pub max_image_dimension_pixels: u32,
-    /// Maximum total number of pixels for an uploaded image. Defaults to `25000000`
-    /// (`MAX_IMAGE_PIXELS`).
+    /// Maximum total number of pixels for an uploaded image.
+    #[arg(long, env = "MAX_IMAGE_PIXELS", default_value_t = 25_000_000)]
     pub max_image_pixels: u64,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self::from_env_fn(|key| env::var(key).ok())
+        Self::parse()
     }
 }
 
