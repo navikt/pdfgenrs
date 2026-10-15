@@ -148,31 +148,39 @@ mod tests {
 
     #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
-        let mut config = Config::default();
-        config.root_dir = PathBuf::from("/tmp/root");
+        let config = Config {
+            root_dir: PathBuf::from("/tmp/root"),
+            ..Default::default()
+        };
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/root/fonts"));
     }
 
     #[test]
     fn font_dir_keeps_absolute_fonts_dir() {
-        let mut config = Config::default();
-        config.root_dir = PathBuf::from("/tmp/root");
-        config.fonts_dir = PathBuf::from("/tmp/shared/fonts");
+        let config = Config {
+            root_dir: PathBuf::from("/tmp/root"),
+            fonts_dir: PathBuf::from("/tmp/shared/fonts"),
+            ..Default::default()
+        };
         assert_eq!(config.font_dir(), PathBuf::from("/tmp/shared/fonts"));
     }
 
     #[test]
     fn resource_root_joins_relative_resources_dir_to_root_dir() {
-        let mut config = Config::default();
-        config.root_dir = PathBuf::from("/tmp/root");
+        let config = Config {
+            root_dir: PathBuf::from("/tmp/root"),
+            ..Default::default()
+        };
         assert_eq!(config.resource_root(), PathBuf::from("/tmp/root/resources"));
     }
 
     #[test]
     fn resource_root_keeps_absolute_resources_dir() {
-        let mut config = Config::default();
-        config.root_dir = PathBuf::from("/tmp/root");
-        config.resources_dir = PathBuf::from("/tmp/shared/resources");
+        let config = Config {
+            root_dir: PathBuf::from("/tmp/root"),
+            resources_dir: PathBuf::from("/tmp/shared/resources"),
+            ..Default::default()
+        };
         assert_eq!(
             config.resource_root(),
             PathBuf::from("/tmp/shared/resources")
@@ -181,11 +189,13 @@ mod tests {
 
     #[test]
     fn warn_degenerate_values_does_not_panic_with_zero_values() {
-        let mut config = Config::default();
-        config.compile_timeout_seconds = 0;
-        config.semaphore_acquire_timeout_seconds = 0;
-        config.shutdown_drain_seconds = 0;
-        config.request_body_limit_bytes = 0;
+        let config = Config {
+            compile_timeout_seconds: 0,
+            semaphore_acquire_timeout_seconds: 0,
+            shutdown_drain_seconds: 0,
+            request_body_limit_bytes: 0,
+            ..Default::default()
+        };
         config.warn_degenerate_values();
     }
 
@@ -197,9 +207,11 @@ mod tests {
 
     #[test]
     fn warn_degenerate_values_handles_conflicting_image_limits() {
-        let mut config = Config::default();
-        config.max_image_dimension_pixels = 100;
-        config.max_image_pixels = 99;
+        let config = Config {
+            max_image_dimension_pixels: 100,
+            max_image_pixels: 99,
+            ..Default::default()
+        };
         config.warn_degenerate_values();
     }
 }
