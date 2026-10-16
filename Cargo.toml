@@ -51,6 +51,8 @@ metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 metrics-process = "2.4.3"
 uuid = { version = "1.26.1", features = ["v4"] }
+clap = { version = "4.6.7", features = ["env", "derive"] }
+clap_derive = "4.6.7"
 
 [dev-dependencies]
 axum-test = "21.0.0"
