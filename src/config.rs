@@ -71,8 +71,13 @@ pub struct Config {
 }
 
 impl Default for Config {
+    /// Return the default fallback configuration.
+    ///
+    /// This function does not parse command-line parameters or environment variables;
+    /// use `Config::parse()` for that.
     fn default() -> Self {
-        Self::parse()
+        let args: [&str; 0] = [];
+        Self::parse_from(args)
     }
 }
 

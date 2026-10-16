@@ -1,6 +1,7 @@
 mod tracing_setup;
 
 use anyhow::{Context, Result};
+use clap::Parser;
 use pdfgenrs::metrics;
 use pdfgenrs::runtime_metrics::{self, RuntimeMetricsCollector};
 use pdfgenrs::state::{AppAliveness, AppState};
@@ -12,7 +13,7 @@ use typst::{Feature, Features};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cfg = config::Config::default();
+    let cfg = config::Config::parse();
 
     let tracer_provider = tracing_setup::setup_tracing().context("Failed to initialise tracing")?;
 
