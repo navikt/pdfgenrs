@@ -485,14 +485,16 @@ cargo clippy --locked --release --all-targets -- -D warnings
 cargo test --locked -- --nocapture
 cargo bench --locked --bench performance
 cargo build --locked --release
+cargo bench --bench criterion_bench
 ```
 
 ### Additional development commands
 
 ```bash
-cargo bench --bench criterion_bench
 DEV_MODE=true cargo run
 ```
+When you are in dev mode you can check out this pdf:
+http://localhost:8080/api/v1/genpdf/nav-brev/brev
 
 ## Benchmark reports
 
