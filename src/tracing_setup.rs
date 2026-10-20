@@ -8,9 +8,7 @@ use opentelemetry_sdk::{
     propagation::{BaggagePropagator, TraceContextPropagator},
     trace::Sampler,
 };
-use std::time::Duration;
-use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -42,14 +40,12 @@ where
         let meta = event.metadata();
         let mut log_object = Map::new();
 
-        log_object.insert(
-            "timestamp".to_string(),
-            Value::String(
-                OffsetDateTime::now_utc()
-                    .format(&Rfc3339)
-                    .unwrap_or_default(),
-            ),
-        );
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| std::fmt::Error)?
+            .as_millis();
+        let timestamp = u64::try_from(timestamp).map_err(|_| std::fmt::Error)?;
+        log_object.insert("timestamp".to_string(), Value::Number(timestamp.into()));
         log_object.insert("level".to_string(), Value::String(meta.level().to_string()));
         log_object.insert(
             "target".to_string(),
@@ -130,7 +126,7 @@ where
         let serialized = serde_json::to_string(&log_object)
             .or_else(|err| {
                 serde_json::to_string(&serde_json::json!({
-                    "timestamp": OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default(),
+                    "timestamp": timestamp,
                     "level": "ERROR",
                     "target": "tracing_setup",
                     "message": "failed to serialize log object",
@@ -424,7 +420,7 @@ mod tests {
             None => panic!("expected file field"),
         };
 
-        assert!(log_line["timestamp"].as_str().is_some());
+        assert!(log_line["timestamp"].as_u64().is_some());
         assert_eq!(log_line["level"], Value::String("INFO".to_string()));
         assert_eq!(
             log_line["target"],
@@ -499,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn nais_json_format_timestamp_is_rfc3339() {
+    fn nais_json_format_timestamp_is_unix_epoch_milliseconds() {
         let buffer = SharedBuffer::default();
         let subscriber = Registry::default().with(
             fmt::layer()
@@ -513,14 +509,14 @@ mod tests {
         });
 
         let log_line = parse_single_log_line(&buffer);
-        let ts = match log_line["timestamp"].as_str() {
-            Some(ts) => ts,
-            None => panic!("timestamp should be a string"),
-        };
-        // Validate it parses as a valid RFC3339 / ISO8601 datetime
+        let timestamp = log_line["timestamp"].as_u64();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .ok()
+            .map(|duration| duration.as_millis());
         assert!(
-            OffsetDateTime::parse(ts, &Rfc3339).is_ok(),
-            "timestamp should be valid RFC3339: {ts}"
+            matches!((timestamp, now), (Some(timestamp), Some(now)) if u128::from(timestamp) <= now && now - u128::from(timestamp) < 1_000),
+            "timestamp should be a recent Unix epoch millisecond value"
         );
     }
 
