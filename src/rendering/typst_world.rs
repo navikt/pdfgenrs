@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use metrics::histogram;
-use time::OffsetDateTime;
 use typst::foundations::Bytes;
 use typst::utils::LazyHash;
 use typst::{Features, Library, LibraryExt};
@@ -330,26 +329,18 @@ impl World for PdfgenWorld {
     }
 
     fn today(&self, offset: Option<Duration>) -> Option<typst_library::foundations::Datetime> {
-        let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
-        let naive = match offset {
-            Some(dur) => {
-                let seconds = dur.decompose();
-                let total_seconds: i64 = seconds[0]
-                    .saturating_mul(7 * 24 * 3600)
-                    .saturating_add(seconds[1].saturating_mul(24 * 3600))
-                    .saturating_add(seconds[2].saturating_mul(3600))
-                    .saturating_add(seconds[3].saturating_mul(60))
-                    .saturating_add(seconds[4]);
-                let utc = now.to_offset(time::UtcOffset::UTC);
-                utc + time::Duration::seconds(total_seconds)
-            }
-            None => now,
-        };
-        typst_library::foundations::Datetime::from_ymd(
-            naive.year(),
-            naive.month() as u8,
-            naive.day(),
-        )
+        let now = i128::from(SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs());
+        let offset_seconds = offset.map_or(0, |dur| {
+            let seconds = dur.decompose();
+            i128::from(seconds[0])
+                .saturating_mul(7 * 24 * 3600)
+                .saturating_add(i128::from(seconds[1]).saturating_mul(24 * 3600))
+                .saturating_add(i128::from(seconds[2]).saturating_mul(3600))
+                .saturating_add(i128::from(seconds[3]).saturating_mul(60))
+                .saturating_add(i128::from(seconds[4]))
+        });
+        let (year, month, day, _, _, _) = utc_components(now.saturating_add(offset_seconds))?;
+        typst_library::foundations::Datetime::from_ymd(year, month, day)
     }
 }
 
@@ -475,16 +466,37 @@ fn log_typst_warnings(warnings: &[typst_library::diag::SourceDiagnostic]) {
 }
 
 fn build_timestamp() -> Option<typst_pdf::Timestamp> {
-    let now = OffsetDateTime::now_utc();
-    let datetime = typst_library::foundations::Datetime::from_ymd_hms(
-        now.year(),
-        now.month() as u8,
-        now.day(),
-        now.hour(),
-        now.minute(),
-        now.second(),
-    )?;
+    let now = i128::from(SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs());
+    let (year, month, day, hour, minute, second) = utc_components(now)?;
+    let datetime =
+        typst_library::foundations::Datetime::from_ymd_hms(year, month, day, hour, minute, second)?;
     Some(typst_pdf::Timestamp::new_utc(datetime))
+}
+
+fn utc_components(unix_seconds: i128) -> Option<(i32, u8, u8, u8, u8, u8)> {
+    let days = unix_seconds.div_euclid(86_400);
+    let seconds_of_day = unix_seconds.rem_euclid(86_400);
+    let days = i64::try_from(days).ok()?;
+    let z = days.checked_add(719_468)?;
+    let era = z.div_euclid(146_097);
+    let day_of_era = z - era * 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let mut year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_prime = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_prime + 2) / 5 + 1;
+    let month = month_prime + if month_prime < 10 { 3 } else { -9 };
+    year += i64::from(month <= 2);
+
+    Some((
+        i32::try_from(year).ok()?,
+        u8::try_from(month).ok()?,
+        u8::try_from(day).ok()?,
+        u8::try_from(seconds_of_day / 3_600).ok()?,
+        u8::try_from((seconds_of_day % 3_600) / 60).ok()?,
+        u8::try_from(seconds_of_day % 60).ok()?,
+    ))
 }
 
 #[cfg(test)]
@@ -511,6 +523,14 @@ mod tests {
 
     fn is_pdf(bytes: &[u8]) -> bool {
         bytes.starts_with(b"%PDF")
+    }
+
+    #[test]
+    fn utc_components_converts_unix_epoch_and_leap_day() {
+        assert_eq!(utc_components(0), Some((1970, 1, 1, 0, 0, 0)));
+        assert_eq!(utc_components(951_782_400), Some((2000, 2, 29, 0, 0, 0)));
+        assert_eq!(utc_components(-1), Some((1969, 12, 31, 23, 59, 59)));
+        assert_eq!(utc_components(-62_167_219_200), Some((0, 1, 1, 0, 0, 0)));
     }
 
     fn rss_kb() -> Option<u64> {
