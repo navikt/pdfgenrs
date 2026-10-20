@@ -491,7 +491,7 @@ cargo bench --bench criterion_bench
 ### Additional development commands
 
 ```bash
-DEV_MODE=true cargo run
+cargo run --config 'env.DEV_MODE="true"'
 ```
 When you are in dev mode you can check out this pdf:
 http://localhost:8080/api/v1/genpdf/nav-brev/brev

@@ -25,7 +25,7 @@ path = "benches/criterion_bench.rs"
 harness = false
 
 [dependencies]
-tokio = { version = "1.53.3", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
+tokio = { version = "1.54.0", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
 axum = "0.8.9"
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 time = { version = "0.3.55", features = ["local-offset", "formatting"] }
@@ -50,9 +50,8 @@ ironpress = "1.7.0"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 metrics-process = "2.4.3"
-uuid = { version = "1.26.1", features = ["v4"] }
+uuid = { version = "1.28.0", features = ["v4"] }
 clap = { version = "4.6.7", features = ["env", "derive"] }
-clap_derive = "4.6.7"
 
 [dev-dependencies]
 axum-test = "21.0.0"
