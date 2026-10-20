@@ -509,15 +509,15 @@ mod tests {
         });
 
         let log_line = parse_single_log_line(&buffer);
-        let timestamp = log_line["timestamp"]
-            .as_u64()
-            .expect("timestamp should be an unsigned integer");
+        let timestamp = log_line["timestamp"].as_u64();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("system time should be after the Unix epoch")
-            .as_millis();
-        assert!(u128::from(timestamp) <= now);
-        assert!(now - u128::from(timestamp) < 1_000);
+            .ok()
+            .map(|duration| duration.as_millis());
+        assert!(
+            matches!((timestamp, now), (Some(timestamp), Some(now)) if u128::from(timestamp) <= now && now - u128::from(timestamp) < 1_000),
+            "timestamp should be a recent Unix epoch millisecond value"
+        );
     }
 
     #[test]
