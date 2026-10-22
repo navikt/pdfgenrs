@@ -362,7 +362,9 @@ metrics use a local prefix.
 | `pdfgenrs_compile_permits_total` | Gauge | permits | The configured `MAX_CONCURRENT_COMPILATIONS`. |
 | `pdfgenrs_compile_in_flight` | Gauge | compilations | Compilations running now. Divided by the total, this is saturation as a percentage, which is the number to scale pods on. |
 
-The `pdfgenrs_compile_*` metrics are only emitted when `MAX_CONCURRENT_COMPILATIONS` is set.
+The `pdfgenrs_compile_*` metrics are emitted when `MAX_CONCURRENT_COMPILATIONS` is greater
+than `0` (the default is `4`). Setting it to `0` disables the compilation limit and these
+metrics are not emitted.
 `process_open_fds`, `process_max_fds` and `process_threads` are Linux-only and are absent on
 macOS. None of these metrics carry labels, deliberately, to keep cardinality low.
 
@@ -413,7 +415,8 @@ Font files are loaded from `FONTS_DIR` (default: `fonts`) on startup.
 
 ## Environment variables
 
-All configuration is done through environment variables. If an environment variable is not set, the default value is used.
+Configuration can be supplied through command-line options or the corresponding environment
+variables. If neither is set, the default value is used.
 
 | Variable                      | Description                                                                                                                                              | Default           |
 |-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
