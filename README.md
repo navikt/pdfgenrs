@@ -480,9 +480,15 @@ rustc --version
 cargo --version
 ```
 
-### CI-equivalent pre-commit checks
+### Checks
+
+Install the dependency audit tool once:
+```bash
+cargo install cargo-audit --locked
+```
 
 ```bash
+cargo audit
 cargo fmt -- --check
 cargo clippy --locked --release --all-targets -- -D warnings
 cargo test --locked -- --nocapture
