@@ -27,15 +27,24 @@ Install Docker if needed: https://docs.docker.com/engine/install/
 
 ## CI-equivalent local checks
 
+Install the dependency audit tool once:
+
+```bash
+cargo install cargo-audit --locked
+```
+
 Run the same commands used by pull request CI before opening or updating a PR:
 
 ```bash
+cargo audit
 cargo fmt -- --check
 cargo clippy --locked --release --all-targets -- -D warnings
 cargo test --locked -- --nocapture
 cargo bench --locked --bench performance
 cargo build --locked --release
 ```
+
+`cargo audit` runs the dependency check used by `rustsec/audit-check` in CI.
 
 ## Additional development commands
 
