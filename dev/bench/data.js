@@ -1,104 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793005913444,
+  "lastUpdate": 1793271380093,
   "repoUrl": "https://github.com/navikt/pdfgenrs",
   "entries": {
     "Criterion Benchmark": [
-      {
-        "commit": {
-          "author": {
-            "email": "joakimkartveit@gmail.com",
-            "name": "Joakim Taule Kartveit",
-            "username": "MikAoJk"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "7e88f2b45e762788691f0ea821d5d1128e064583",
-          "message": "Merge pull request #510 from navikt/copilot/expand-performance-coverage\n\nExpand benchmarks for large images and saturated mixed workloads",
-          "timestamp": "2026-10-09T14:08:21+02:00",
-          "tree_id": "667c480ce257b46ea4e68cb499faad41cb401380",
-          "url": "https://github.com/navikt/pdfgenrs/commit/7e88f2b45e762788691f0ea821d5d1128e064583"
-        },
-        "date": 1791547907808,
-        "tool": "cargo",
-        "benches": [
-          {
-            "name": "typst_to_pdf_simple",
-            "value": 228207,
-            "range": "± 13161",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_with_data",
-            "value": 425015,
-            "range": "± 12671",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_large_json",
-            "value": 5242600,
-            "range": "± 57632",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_pdf_concurrent",
-            "value": 91401,
-            "range": "± 6966",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "html_to_pdf",
-            "value": 10339479,
-            "range": "± 40401",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_png",
-            "value": 166627,
-            "range": "± 5578",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_jpeg",
-            "value": 219107,
-            "range": "± 7458",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_svg",
-            "value": 456816,
-            "range": "± 1480",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_large_raster/png/2048",
-            "value": 1292033,
-            "range": "± 7148",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "image_to_pdf_large_raster/png/4096",
-            "value": 4798842,
-            "range": "± 26934",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_simple",
-            "value": 10932,
-            "range": "± 71",
-            "unit": "ns/iter"
-          },
-          {
-            "name": "typst_to_html_with_data",
-            "value": 18962,
-            "range": "± 110",
-            "unit": "ns/iter"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -959,6 +863,102 @@ window.BENCHMARK_DATA = {
             "name": "typst_to_html_with_data",
             "value": 18428,
             "range": "± 904",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "joakim.taule.kartveit@nav.no",
+            "name": "MikAojk",
+            "username": "MikAoJk"
+          },
+          "committer": {
+            "email": "joakim.taule.kartveit@nav.no",
+            "name": "MikAojk",
+            "username": "MikAoJk"
+          },
+          "distinct": true,
+          "id": "fe7ef268bb444e437986b938383b1b513a2a64e9",
+          "message": "chore: bump pulldown-cmark due to vulnerabilities",
+          "timestamp": "2026-10-29T11:51:16+01:00",
+          "tree_id": "819edcd48c11604b946768c2ddadd6fb863f6d6f",
+          "url": "https://github.com/navikt/pdfgenrs/commit/fe7ef268bb444e437986b938383b1b513a2a64e9"
+        },
+        "date": 1793271369574,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "typst_to_pdf_simple",
+            "value": 219313,
+            "range": "± 4232",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_with_data",
+            "value": 419323,
+            "range": "± 20692",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_large_json",
+            "value": 5234064,
+            "range": "± 16835",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_pdf_concurrent",
+            "value": 88607,
+            "range": "± 7843",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_to_pdf",
+            "value": 11821646,
+            "range": "± 110926",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_png",
+            "value": 165648,
+            "range": "± 3736",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_jpeg",
+            "value": 214410,
+            "range": "± 11089",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_svg",
+            "value": 447618,
+            "range": "± 2910",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_large_raster/png/2048",
+            "value": 1311919,
+            "range": "± 13162",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "image_to_pdf_large_raster/png/4096",
+            "value": 5066216,
+            "range": "± 53904",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_simple",
+            "value": 11176,
+            "range": "± 136",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "typst_to_html_with_data",
+            "value": 18594,
+            "range": "± 86",
             "unit": "ns/iter"
           }
         ]
