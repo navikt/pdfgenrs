@@ -51,7 +51,7 @@ pub fn test_metrics_handle() -> PrometheusHandle {
 /// Records:
 /// - `http_requests_total` counter with labels: method, path, status
 /// - `http_request_duration_seconds` histogram with labels: method, path, status
-/// - `http_request_body_size_bytes` histogram with labels: method, path, status
+/// - `http_request_declared_content_length_bytes` histogram with labels: method, path, status
 /// - `http_response_body_size_bytes` histogram with labels: method, path, status
 pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
     let method = request.method().to_string();
@@ -61,7 +61,7 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
         .map(|p| p.as_str().to_owned())
         .unwrap_or_else(|| "unknown".to_owned());
 
-    let request_body_size = request
+    let declared_content_length = request
         .headers()
         .get(axum::http::header::CONTENT_LENGTH)
         .and_then(|v| v.to_str().ok())
@@ -84,8 +84,8 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
     counter!("http_requests_total", &labels).increment(1);
     histogram!("http_request_duration_seconds", &labels).record(duration);
 
-    if let Some(size) = request_body_size {
-        histogram!("http_request_body_size_bytes", &labels).record(size as f64);
+    if let Some(size) = declared_content_length {
+        histogram!("http_request_declared_content_length_bytes", &labels).record(size as f64);
     }
     if let Some(size) = response_body_size {
         histogram!("http_response_body_size_bytes", &labels).record(size as f64);
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn records_request_body_size_histogram() -> anyhow::Result<()> {
+    fn records_declared_content_length_histogram() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
@@ -285,8 +285,15 @@ mod tests {
 
                 let output = handle.render();
                 assert!(
-                    output.contains("http_request_body_size_bytes"),
-                    "expected http_request_body_size_bytes in output: {output}"
+                    output.contains("http_request_declared_content_length_bytes"),
+                    "expected http_request_declared_content_length_bytes in output: {output}"
+                );
+                let declared_length_sum = output.lines().find(|line| {
+                    line.starts_with("http_request_declared_content_length_bytes_sum{")
+                });
+                assert!(
+                    declared_length_sum.is_some_and(|line| line.ends_with(" 5")),
+                    "expected declared Content-Length sum of 5 bytes: {output}"
                 );
                 Ok::<_, anyhow::Error>(())
             })?;
@@ -318,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn no_body_size_metrics_when_content_length_absent() -> anyhow::Result<()> {
+    fn no_declared_content_length_metric_when_header_absent() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
@@ -329,8 +336,8 @@ mod tests {
 
                 let output = handle.render();
                 assert!(
-                    !output.contains("http_request_body_size_bytes"),
-                    "unexpected http_request_body_size_bytes for GET without body: {output}"
+                    !output.contains("http_request_declared_content_length_bytes"),
+                    "unexpected http_request_declared_content_length_bytes without Content-Length: {output}"
                 );
                 Ok::<_, anyhow::Error>(())
             })?;
