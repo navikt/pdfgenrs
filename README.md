@@ -492,17 +492,27 @@ cargo audit
 cargo fmt -- --check
 cargo clippy --locked --release --all-targets -- -D warnings
 cargo test --locked -- --nocapture
-cargo bench --locked --bench performance
 cargo build --locked --release
-cargo bench --bench criterion_bench
 ```
 
 ### Additional development commands
 
+### Run criterion benchmark
+```bash
+cargo bench --bench criterion_bench
+```
+
+### Run Benchmark performance test
+```bash
+cargo bench --bench performance
+```
+
+### Run the application in dev mode
 ```bash
 export DEV_MODE=true
 cargo run 
 ```
+
 When you are in dev mode you can check out this PDF:
 http://localhost:8080/api/v1/genpdf/nav-brev/brev
 

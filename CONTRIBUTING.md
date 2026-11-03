@@ -25,15 +25,8 @@ docker --version
 
 Install Docker if needed: https://docs.docker.com/engine/install/
 
-## CI-equivalent local checks
-
-Install the dependency audit tool once:
-
-```bash
-cargo install cargo-audit --locked
-```
-
-Run the same commands used by pull request CI before opening or updating a PR:
+## Local commands
+Run these commands before opening or updating a PR:
 
 ```bash
 cargo audit
@@ -44,13 +37,31 @@ cargo bench --locked --bench performance
 cargo build --locked --release
 ```
 
-`cargo audit` runs the dependency check used by `rustsec/audit-check` in CI.
+Install the dependency audit tool once:
+```bash
+cargo install cargo-audit --locked
+```
+Then run the dependency auditcheck
+```bash
+cargo audit
+```
 
 ## Additional development commands
 
+### Run criterion benchmark
 ```bash
 cargo bench --bench criterion_bench
-DEV_MODE=true cargo run
+```
+
+### Run Benchmark performance test
+```bash
+cargo bench --bench performance
+```
+
+### Run the application in dev mode
+```bash
+export DEV_MODE=true
+cargo run 
 ```
 
 ## Pull requests
