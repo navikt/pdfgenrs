@@ -177,6 +177,10 @@ The `type` member is a stable, machine-readable identifier. Clients should branc
 Request body-limit rejections, Axum JSON extractor rejections, method-not-allowed
 responses, and unknown-path fallbacks also use Problem Details.
 
+Typst PDF export failures include the full export diagnostic message in `detail`,
+These diagnostics may contain document content. Other
+generation failures return `Internal server error` unless dev mode is enabled.
+
 `400` and `413` are permanent client errors: retrying the same request will not
 succeed. `503` and `408` are transient and may be retried.
 
