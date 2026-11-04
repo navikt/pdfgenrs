@@ -325,7 +325,7 @@ Metrics exposed:
 | `http_requests_total`                           | Counter   | method, path, status    | Total number of HTTP requests                             |
 | `http_request_duration_seconds`                 | Histogram | method, path, status    | Request latency distribution                              |
 | `http_request_declared_content_length_bytes`    | Histogram | method, path, status    | Request size declared by the Content-Length header; not measured bytes consumed |
-| `http_response_body_size_bytes`                 | Histogram | method, path, status    | Response body size distribution                           |
+| `http_response_declared_content_length_bytes`   | Histogram | method, path, status    | Response size declared by the Content-Length header; not measured bytes sent |
 | `typst_compilation_duration_seconds`            | Histogram | output                  | Typst compilation latency distribution                    |
 | `template_compilation_duration_seconds`         | Histogram | app_name, template_name | Template compilation request duration distribution         |
 | `template_compilations_active`                  | Gauge     | app_name, template_name | Compilation tasks currently executing                     |
