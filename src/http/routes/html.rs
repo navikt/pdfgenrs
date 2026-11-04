@@ -27,12 +27,9 @@ pub(crate) async fn get_html(
 
     let params = lookup_template_and_data(&state, &template_key).await?;
 
-    let html_string = compile_blocking(
-        &state,
-        template_key.0.clone(),
-        Some(template_key.1.clone()),
-        move || {
-            gen_html::typst_to_html(crate::pdf::CompileRequest {
+    let (html_string, app_name, template_name) =
+        compile_blocking(&state, template_key.0, Some(template_key.1), move || {
+            let html_string = gen_html::typst_to_html(crate::pdf::CompileRequest {
                 template_source: &params.source,
                 json_data: &params.data,
                 fonts: params.fonts,
@@ -43,12 +40,12 @@ pub(crate) async fn get_html(
                 library: params.html_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
-            .map_err(anyhow::Error::new)
-        },
-    )
-    .await?;
+            .map_err(anyhow::Error::new)?;
+            Ok((html_string, app_name, template_name))
+        })
+        .await?;
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+    info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
     Ok(html_response(html_string))
 }
 
@@ -67,12 +64,9 @@ pub(crate) async fn post_html(
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
 
-    let html_string = compile_blocking(
-        &state,
-        template_key.0.clone(),
-        Some(template_key.1.clone()),
-        move || {
-            gen_html::typst_to_html(crate::pdf::CompileRequest {
+    let (html_string, app_name, template_name) =
+        compile_blocking(&state, template_key.0, Some(template_key.1), move || {
+            let html_string = gen_html::typst_to_html(crate::pdf::CompileRequest {
                 template_source: &params.source,
                 json_data: &params.data,
                 fonts: params.fonts,
@@ -83,12 +77,12 @@ pub(crate) async fn post_html(
                 library: params.html_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
-            .map_err(anyhow::Error::new)
-        },
-    )
-    .await?;
+            .map_err(anyhow::Error::new)?;
+            Ok((html_string, app_name, template_name))
+        })
+        .await?;
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
+    info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating HTML");
     Ok(html_response(html_string))
 }
 

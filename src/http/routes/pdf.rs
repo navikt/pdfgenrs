@@ -28,12 +28,9 @@ pub(crate) async fn get_pdf(
 
     let params = lookup_template_and_data(&state, &template_key).await?;
 
-    let pdf_bytes = compile_blocking(
-        &state,
-        template_key.0.clone(),
-        Some(template_key.1.clone()),
-        move || {
-            gen_pdf::typst_to_pdf(gen_pdf::CompileRequest {
+    let (pdf_bytes, app_name, template_name) =
+        compile_blocking(&state, template_key.0, Some(template_key.1), move || {
+            let pdf_bytes = gen_pdf::typst_to_pdf(gen_pdf::CompileRequest {
                 template_source: &params.source,
                 json_data: &params.data,
                 fonts: params.fonts,
@@ -44,12 +41,12 @@ pub(crate) async fn get_pdf(
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
-            .map_err(anyhow::Error::new)
-        },
-    )
-    .await?;
+            .map_err(anyhow::Error::new)?;
+            Ok((pdf_bytes, app_name, template_name))
+        })
+        .await?;
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+    info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
     Ok(pdf_response(pdf_bytes))
 }
 
@@ -68,12 +65,9 @@ pub(crate) async fn post_pdf(
 
     let params = lookup_template_with_data(&state, &template_key, json_data)?;
 
-    let pdf_bytes = compile_blocking(
-        &state,
-        template_key.0.clone(),
-        Some(template_key.1.clone()),
-        move || {
-            gen_pdf::typst_to_pdf(gen_pdf::CompileRequest {
+    let (pdf_bytes, app_name, template_name) =
+        compile_blocking(&state, template_key.0, Some(template_key.1), move || {
+            let pdf_bytes = gen_pdf::typst_to_pdf(gen_pdf::CompileRequest {
                 template_source: &params.source,
                 json_data: &params.data,
                 fonts: params.fonts,
@@ -84,12 +78,12 @@ pub(crate) async fn post_pdf(
                 library: params.pdf_library,
                 comemo_eviction_threshold: state.config.comemo_eviction_threshold,
             })
-            .map_err(anyhow::Error::new)
-        },
-    )
-    .await?;
+            .map_err(anyhow::Error::new)?;
+            Ok((pdf_bytes, app_name, template_name))
+        })
+        .await?;
 
-    info!(app_name = %template_key.0, template_name = %template_key.1, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
+    info!(app_name = %app_name, template_name = %template_name, duration_ms = start.elapsed().as_millis(), "Done generating PDF");
     Ok(pdf_response(pdf_bytes))
 }
 
