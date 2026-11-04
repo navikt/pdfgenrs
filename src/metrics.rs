@@ -52,7 +52,7 @@ pub fn test_metrics_handle() -> PrometheusHandle {
 /// - `http_requests_total` counter with labels: method, path, status
 /// - `http_request_duration_seconds` histogram with labels: method, path, status
 /// - `http_request_declared_content_length_bytes` histogram with labels: method, path, status
-/// - `http_response_body_size_bytes` histogram with labels: method, path, status
+/// - `http_response_declared_content_length_bytes` histogram with labels: method, path, status
 pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
     let method = request.method().to_string();
     let path = request
@@ -73,7 +73,7 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
 
     let status = response.status().as_u16().to_string();
 
-    let response_body_size = response
+    let response_declared_content_length = response
         .headers()
         .get(axum::http::header::CONTENT_LENGTH)
         .and_then(|v| v.to_str().ok())
@@ -87,8 +87,8 @@ pub async fn track_metrics(request: Request<Body>, next: Next) -> Response {
     if let Some(size) = declared_content_length {
         histogram!("http_request_declared_content_length_bytes", &labels).record(size as f64);
     }
-    if let Some(size) = response_body_size {
-        histogram!("http_response_body_size_bytes", &labels).record(size as f64);
+    if let Some(size) = response_declared_content_length {
+        histogram!("http_response_declared_content_length_bytes", &labels).record(size as f64);
     }
 
     response
@@ -303,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    fn records_response_body_size_histogram() -> anyhow::Result<()> {
+    fn records_response_declared_content_length_histogram() -> anyhow::Result<()> {
         let recorder = PrometheusBuilder::new().build_recorder();
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
@@ -314,8 +314,8 @@ mod tests {
 
                 let output = handle.render();
                 assert!(
-                    output.contains("http_response_body_size_bytes"),
-                    "expected http_response_body_size_bytes in output: {output}"
+                    output.contains("http_response_declared_content_length_bytes"),
+                    "expected http_response_declared_content_length_bytes in output: {output}"
                 );
                 Ok::<_, anyhow::Error>(())
             })?;
