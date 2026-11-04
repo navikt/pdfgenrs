@@ -9,6 +9,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::pdf::ImageRejection;
 use crate::request_id::current_request_id;
+use crate::typst_world::TypstWorldError;
 
 impl From<ImageRejection> for ApiError {
     fn from(rejection: ImageRejection) -> Self {
@@ -204,6 +205,16 @@ impl IntoResponse for ApiError {
                 }
                 let detail = if dev_mode {
                     format!("{source:#}")
+                } else if let Some(export_error) = source.chain().find(|error| {
+                    matches!(
+                        error.downcast_ref::<TypstWorldError>(),
+                        Some(TypstWorldError::CompilationFailed {
+                            context: "PDF export",
+                            ..
+                        })
+                    )
+                }) {
+                    export_error.to_string()
                 } else {
                     "Internal server error".to_string()
                 };
@@ -365,6 +376,59 @@ mod tests {
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(body["type"], "urn:pdfgenrs:error:generation-failed");
         assert_eq!(body["detail"], "typst compilation error: missing field");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn generation_failed_exposes_pdf_export_diagnostics_in_production() -> anyhow::Result<()>
+    {
+        let source = crate::pdf::PdfRenderError::from(TypstWorldError::CompilationFailed {
+            context: "PDF export",
+            messages: vec![
+                "first export diagnostic".to_string(),
+                "second export diagnostic".to_string(),
+            ],
+        });
+        let error = ApiError::GenerationFailed {
+            app_name: "myapp".to_string(),
+            template_name: Some("template1".to_string()),
+            source: anyhow::Error::new(source).context("private internal context"),
+            dev_mode: false,
+        };
+        let (status, body) = status_and_body(error).await?;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["type"], "urn:pdfgenrs:error:generation-failed");
+        assert_eq!(
+            body["detail"],
+            "Typst PDF export failed: first export diagnostic; second export diagnostic"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn generation_failed_hides_other_diagnostics_in_production() -> anyhow::Result<()> {
+        for context in ["compilation", "HTML export"] {
+            let source = TypstWorldError::CompilationFailed {
+                context,
+                messages: vec!["private diagnostic".to_string()],
+            };
+            let error = ApiError::GenerationFailed {
+                app_name: "myapp".to_string(),
+                template_name: None,
+                source: anyhow::Error::new(source),
+                dev_mode: false,
+            };
+            let (_, body) = status_and_body(error).await?;
+            assert_eq!(body["detail"], "Internal server error");
+        }
+        let error = ApiError::GenerationFailed {
+            app_name: "myapp".to_string(),
+            template_name: None,
+            source: anyhow!("Typst PDF export failed: unrelated internal error"),
+            dev_mode: false,
+        };
+        let (_, body) = status_and_body(error).await?;
+        assert_eq!(body["detail"], "Internal server error");
         Ok(())
     }
 
