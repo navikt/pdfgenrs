@@ -13,8 +13,6 @@ use crate::typst_world::{self, Fonts};
 use typst::Library;
 use typst::utils::LazyHash;
 
-type StdResult<T, E> = Result<T, E>;
-
 /// Errors returned by PDF rendering helpers.
 #[derive(Debug)]
 pub enum PdfRenderError {
@@ -258,7 +256,7 @@ impl std::fmt::Debug for CompileRequest<'_> {
 /// # Errors
 /// Returns an error if serialisation of `json_data` fails or if the Typst
 /// compilation / PDF export fails.
-pub fn typst_to_pdf(req: CompileRequest<'_>) -> StdResult<Vec<u8>, PdfRenderError> {
+pub fn typst_to_pdf(req: CompileRequest<'_>) -> Result<Vec<u8>, PdfRenderError> {
     let json_bytes = serde_json::to_vec(req.json_data)
         .map_err(|source| PdfRenderError::JsonSerialization { source })?;
     let data_path = format!("/data/{}/{}.json", req.app_name, req.template_name);
@@ -279,7 +277,7 @@ pub fn typst_to_pdf(req: CompileRequest<'_>) -> StdResult<Vec<u8>, PdfRenderErro
 }
 
 /// Converts an HTML document into PDF bytes using a pre-built converter.
-pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> StdResult<Vec<u8>, PdfRenderError> {
+pub fn html_to_pdf(html: &str, converter: &HtmlConverter) -> Result<Vec<u8>, PdfRenderError> {
     converter
         .convert(html)
         .context("Failed to convert HTML to PDF")
@@ -300,7 +298,7 @@ pub fn image_to_pdf<B>(
     resources_dir: &Path,
     library: Arc<LazyHash<Library>>,
     comemo_eviction_threshold: usize,
-) -> StdResult<Vec<u8>, PdfRenderError>
+) -> Result<Vec<u8>, PdfRenderError>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
@@ -331,7 +329,7 @@ pub(crate) struct ValidatedImageRenderRequest<'a> {
 pub(crate) fn image_to_pdf_with_validated_dimensions<B>(
     image_bytes: B,
     req: ValidatedImageRenderRequest<'_>,
-) -> StdResult<Vec<u8>, PdfRenderError>
+) -> Result<Vec<u8>, PdfRenderError>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
@@ -485,7 +483,7 @@ pub fn validate_image(
     image_path: &str,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
-) -> StdResult<(u32, u32), ImageRejection> {
+) -> Result<(u32, u32), ImageRejection> {
     let declared_ext = image_path.rsplit('.').next().unwrap_or("");
     let detected_ext =
         detect_image_format(data).ok_or_else(|| ImageRejection::UndetectableFormat {
@@ -532,7 +530,7 @@ pub fn image_to_pdf_with_limits<B>(
     comemo_eviction_threshold: usize,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
-) -> StdResult<Vec<u8>, PdfRenderError>
+) -> Result<Vec<u8>, PdfRenderError>
 where
     B: AsRef<[u8]> + Send + Sync + 'static,
 {
@@ -618,7 +616,7 @@ fn validate_image_dimensions(
     image_path: &str,
     max_image_dimension_pixels: u32,
     max_image_pixels: u64,
-) -> StdResult<(), ImageRejection> {
+) -> Result<(), ImageRejection> {
     if width == 0 || height == 0 {
         return Err(ImageRejection::ZeroDimension {
             image_path: image_path.to_string(),
