@@ -762,7 +762,7 @@ Hello, world!
     }
 
     #[test]
-    fn today_supports_offset_argument() -> Result<()> {
+    fn today_applies_offset_to_current_date() -> Result<()> {
         let fonts = Arc::new(load_fonts(&root_dir().join("fonts"))?);
         let world = PdfgenWorld::new(
             fonts,
@@ -774,7 +774,11 @@ Hello, world!
             pdf_library(),
         )?;
 
-        assert!(world.today(None).is_some());
+        let today = world.today(None);
+        let offset_today = world.today(Some(Duration::construct(0, 0, 0, 30, 0)));
+
+        assert!(today.is_some());
+        assert_ne!(offset_today, today);
         Ok(())
     }
 
