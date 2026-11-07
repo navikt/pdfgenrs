@@ -775,7 +775,7 @@ Hello, world!
         )?;
 
         let today = world.today(None);
-        let offset_today = world.today(Some(Duration::from_secs(30 * 24 * 60 * 60)));
+        let offset_today = world.today(Some(Duration::construct(0, 0, 0, 30, 0)));
 
         assert!(today.is_some());
         assert_ne!(offset_today, today);
