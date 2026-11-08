@@ -1,4 +1,4 @@
-name: Build and test main
+name: Build and test and run benchmark performance test main
 on:
   push:
     branches:
