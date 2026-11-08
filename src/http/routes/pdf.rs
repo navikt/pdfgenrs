@@ -1150,7 +1150,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn post_pdf_returns_422_for_non_json_content_type() -> anyhow::Result<()> {
+    async fn post_pdf_returns_415_for_non_json_content_type() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
@@ -1167,16 +1167,12 @@ mod tests {
             .bytes(Bytes::from_static(b"not json"))
             .await;
 
-        assert!(
-            response.status_code().is_client_error(),
-            "Non-JSON content type should return a client error, got {}",
-            response.status_code()
-        );
+        assert_eq!(response.status_code(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
         Ok(())
     }
 
     #[tokio::test]
-    async fn post_pdf_returns_422_for_malformed_json() -> anyhow::Result<()> {
+    async fn post_pdf_returns_400_for_malformed_json() -> anyhow::Result<()> {
         let mut templates = HashMap::new();
         templates.insert(
             ("myapp".to_string(), "mytemplate".to_string()),
@@ -1193,11 +1189,7 @@ mod tests {
             .bytes(Bytes::from_static(b"{invalid json"))
             .await;
 
-        assert!(
-            response.status_code().is_client_error(),
-            "Malformed JSON should return a client error, got {}",
-            response.status_code()
-        );
+        assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
         Ok(())
     }
 
