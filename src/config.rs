@@ -76,8 +76,23 @@ impl Default for Config {
     /// This function does not parse command-line parameters or environment variables;
     /// use `Config::parse()` for that.
     fn default() -> Self {
-        let args: [&str; 0] = [];
-        Self::parse_from(args)
+        Self {
+            port: 8080,
+            root_dir: PathBuf::from("."),
+            templates_dir: PathBuf::from("templates"),
+            resources_dir: PathBuf::from("resources"),
+            data_dir: PathBuf::from("data"),
+            fonts_dir: PathBuf::from("fonts"),
+            dev_mode: false,
+            request_body_limit_bytes: DEFAULT_REQUEST_BODY_LIMIT_BYTES,
+            compile_timeout_seconds: 30,
+            shutdown_drain_seconds: 5,
+            max_concurrent_compilations: 4,
+            semaphore_acquire_timeout_seconds: 10,
+            comemo_eviction_threshold: DEFAULT_COMEMO_EVICTION_THRESHOLD,
+            max_image_dimension_pixels: DEFAULT_MAX_IMAGE_DIMENSION_PIXELS,
+            max_image_pixels: DEFAULT_MAX_IMAGE_PIXELS,
+        }
     }
 }
 
@@ -150,6 +165,67 @@ fn resolve_from_root(root: &Path, path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_values() {
+        let config = Config::default();
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.root_dir, PathBuf::from("."));
+        assert_eq!(config.templates_dir, PathBuf::from("templates"));
+        assert_eq!(config.resources_dir, PathBuf::from("resources"));
+        assert_eq!(config.data_dir, PathBuf::from("data"));
+        assert_eq!(config.fonts_dir, PathBuf::from("fonts"));
+        assert!(!config.dev_mode);
+        assert_eq!(
+            config.request_body_limit_bytes,
+            DEFAULT_REQUEST_BODY_LIMIT_BYTES
+        );
+        assert_eq!(config.compile_timeout_seconds, 30);
+        assert_eq!(config.shutdown_drain_seconds, 5);
+        assert_eq!(config.max_concurrent_compilations, 4);
+        assert_eq!(config.semaphore_acquire_timeout_seconds, 10);
+        assert_eq!(
+            config.comemo_eviction_threshold,
+            DEFAULT_COMEMO_EVICTION_THRESHOLD
+        );
+        assert_eq!(
+            config.max_image_dimension_pixels,
+            DEFAULT_MAX_IMAGE_DIMENSION_PIXELS
+        );
+        assert_eq!(config.max_image_pixels, DEFAULT_MAX_IMAGE_PIXELS);
+    }
+
+    #[test]
+    fn default_ignores_environment() -> Result<(), Box<dyn std::error::Error>> {
+        let executable = std::env::current_exe()?;
+        for value in ["1", "invalid"] {
+            let output = std::process::Command::new(&executable)
+                .args(["--exact", "config::tests::default_values", "--nocapture"])
+                .env("SERVER_PORT", value)
+                .env("ROOT_DIR", "custom-root")
+                .env("TEMPLATES_DIR", "custom-templates")
+                .env("RESOURCES_DIR", "custom-resources")
+                .env("DATA_DIR", "custom-data")
+                .env("FONTS_DIR", "custom-fonts")
+                .env("DEV_MODE", if value == "1" { "true" } else { value })
+                .env(REQUEST_BODY_LIMIT_BYTES_ENV, value)
+                .env(COMPILE_TIMEOUT_SECONDS_ENV, value)
+                .env(SHUTDOWN_DRAIN_SECONDS_ENV, value)
+                .env("MAX_CONCURRENT_COMPILATIONS", value)
+                .env(SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS_ENV, value)
+                .env("COMEMO_EVICTION_THRESHOLD", value)
+                .env("MAX_IMAGE_DIMENSION_PIXELS", value)
+                .env("MAX_IMAGE_PIXELS", value)
+                .output()?;
+            assert!(
+                output.status.success(),
+                "default configuration failed with environment value {value}: stdout={}, stderr={}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Ok(())
+    }
 
     #[test]
     fn font_dir_joins_relative_fonts_dir_to_root_dir() {
