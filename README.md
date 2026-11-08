@@ -581,7 +581,7 @@ This project is currently maintained by [@navikt](https://github.com/navikt).
 
 If you have questions, please create an issue and tag it with the appropriate label.
 
-For contact requests within the [@navikt](https://github.com/navikt) org, use the Slack channel `#pdfgen`
+For contact requests within the [@navikt](https://github.com/navikt) org, use the Slack channel `#pdfgenrs`
 
 ## Contributing
 
