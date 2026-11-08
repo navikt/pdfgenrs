@@ -43,16 +43,43 @@ Find the latest `<release>` in [GitHub Releases](https://github.com/navikt/pdfge
 mkdir -p templates/your_appname
 ```
 
-3. Add a Typst template (for example, `templates/your_appname/your_template.typ`), then run a request:
+3. Add a Typst template at `templates/your_appname/your_template.typ`:
+
+```typst
+#let data = json("/data/your_appname/your_template.json")
+#set document(title: "Quick start")
+#set text(font: "Source Sans 3", lang: "en")
+#data.key
+```
+
+The server supplies this virtual JSON file from the POST body; no local `data/` file is needed.
+
+4. Build and start your image from the directory containing your Dockerfile:
 
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
+docker build --tag my-pdfgenrs .
+docker run --rm --name my-pdfgenrs -p 8080:8080 my-pdfgenrs
+```
+
+The server runs in the foreground; stop it with Ctrl+C. In another terminal, check
+readiness before sending requests:
+
+```bash
+curl --fail --silent --show-error http://localhost:8080/internal/is_ready
+```
+
+Continue once this returns `200 OK`. Readiness requires at least one loaded template.
+
+5. Send a request:
+
+```bash
+curl --fail --silent --show-error -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
   -H "Content-Type: application/json" \
   -d '{"key":"value"}' \
   --output output.pdf
 ```
 
-4. (Optional) Add custom fonts or resources:
+6. (Optional) Add custom fonts or resources:
 
 If your templates use custom fonts or reference resources (e.g., logos), add them to your Dockerfile:
 
@@ -69,6 +96,9 @@ Create the corresponding directories locally:
 ```bash
 mkdir -p fonts resources
 ```
+
+After changing files copied into the image, stop the container, rebuild the image,
+and start it again using step 4.
 
 ### Example implementation
 
