@@ -1,4 +1,4 @@
-name: Test and build PR
+name: Test and build and run Benchmark performance test PR
 on:
   pull_request:
     paths-ignore:
