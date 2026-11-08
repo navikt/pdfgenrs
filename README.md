@@ -5,7 +5,9 @@
 [![Build main](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/navikt/pdfgenrs/actions/workflows/build.yml)
 ![GitHub Release](https://img.shields.io/github/v/release/navikt/pdfgenrs)
 
-`pdfgenrs` is a Rust application for generating PDFs through an API. It supports PDF/A-2a and PDF/UA-1 simultaneously.
+`pdfgenrs` is a Rust application for generating PDFs through an API. Typst and image
+generation use PDF/A-2a and PDF/UA-1 export settings simultaneously. HTML-to-PDF uses
+a separate converter without these settings.
 
 See [ACCESSIBILITY.md](ACCESSIBILITY.md) for accessibility support, limitations,
 template guidance, and document checks.
@@ -46,13 +48,14 @@ Find the latest `<release>` in [GitHub Releases](https://github.com/navikt/pdfge
 mkdir -p templates/your_appname
 ```
 
-3. Add a Typst template (for example, `templates/your_appname/your_template.typ`), then run a request:
+3. Add a Typst template (for example, `templates/your_appname/your_template.typ`):
 
-```bash
-curl -s -X POST http://localhost:8080/api/v1/genpdf/your_appname/your_template \
-  -H "Content-Type: application/json" \
-  -d '{"key":"value"}' \
-  --output output.pdf
+```typst
+#set document(title: "Example")
+#set text(lang: "en")
+#let data = json("/data/your_appname/your_template.json")
+
+#data.key
 ```
 
 4. (Optional) Add custom fonts or resources:
@@ -71,6 +74,28 @@ Create the corresponding directories locally:
 
 ```bash
 mkdir -p fonts resources
+```
+
+5. Build and start the container from the directory containing your Dockerfile:
+
+```bash
+docker build --tag your-app-pdfgenrs .
+docker run --rm --name your-app-pdfgenrs -p 8080:8080 your-app-pdfgenrs
+```
+
+The container runs in the foreground. Stop it with Ctrl+C. Rebuild and restart it
+after changing templates or bundled assets.
+
+6. In another terminal, check readiness. Once it returns `200 OK`, run a request:
+
+```bash
+curl --fail --silent --show-error http://localhost:8080/internal/is_ready
+
+curl --fail --silent --show-error \
+  http://localhost:8080/api/v1/genpdf/your_appname/your_template \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}' \
+  --output output.pdf
 ```
 
 ### Example implementation
@@ -435,11 +460,11 @@ variables. If neither is set, the default value is used.
 | `FONTS_DIR`                   | Directory containing font files used by Typst                                                                                                            | `fonts`           |
 | `DEV_MODE`                    | When `true`, enables GET endpoints and loads test data from `DATA_DIR`                                                                                   | `false`           |
 | `REQUEST_BODY_LIMIT_BYTES`    | Maximum accepted request body size in bytes                                                                                                              | `2097152` (2 MiB) |
-| `COMPILE_TIMEOUT_SECONDS`     | Maximum time in seconds allowed for a single compilation task. Requests exceeding this timeout are aborted with `408 Request Timeout`.                   | `30`              |
+| `COMPILE_TIMEOUT_SECONDS`     | Maximum time in seconds to wait for compilation after acquiring a permit. Exceeding this timeout returns `408 Request Timeout`; already-running compilation continues and retains its permit until completion. | `30`              |
 | `SHUTDOWN_DRAIN_SECONDS`      | Duration in seconds to wait between marking the application as not ready and not alive during shutdown, allowing Kubernetes to stop routing new traffic. | `5`               |
 | `MAX_CONCURRENT_COMPILATIONS` | Maximum number of concurrent compilation tasks allowed. `0` disables the limit.                                                                          | `4`               |
 | `SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS` | Maximum time in seconds to wait for a compilation semaphore permit. Exceeded timeout returns `503 Service Unavailable`.                              | `10`              |
-| `COMEMO_EVICTION_THRESHOLD`         | Maximum number of cache entries to evict from the comemo memoization cache after each compilation. Higher values free more memory at the cost of cache hit rate. Set to `0` to evict the entire cache. | `15`              |
+| `COMEMO_EVICTION_THRESHOLD`         | Cache-age threshold passed to comemo after Typst PDF, image, or HTML compilation. Entry age increases with each eviction run and resets on a cache hit. Higher values retain entries longer, potentially improving cache hit rate at the cost of memory. Set to `0` to clear the entire cache. | `15`              |
 | `MAX_IMAGE_DIMENSION_PIXELS` | Maximum width or height of an uploaded image in pixels. | `8192` |
 | `MAX_IMAGE_PIXELS` | Maximum total pixels of an uploaded image. | `25000000` |
 
@@ -480,6 +505,7 @@ These variables affect spans only. Metrics are not exported over OTLP; they are 
 
 ### Prerequisites
 
+Rust `1.98.1` or newer is required by `Cargo.toml`; CI uses Rust `1.98.1`.
 Confirm Rust and Cargo are installed:
 
 ```bash
