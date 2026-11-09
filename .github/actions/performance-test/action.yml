@@ -12,7 +12,30 @@ runs:
         k6-version: '2.3.0'
     - name: Run k6 performance test
       shell: bash
-      run: bash performance-test/run.sh
+      run: |
+        mkdir -p target
+        ./target/release/pdfgenrs > target/k6-server.log 2>&1 &
+        server_pid=$!
+        trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+        ready=false
+        for attempt in {1..60}; do
+          if ! kill -0 "$server_pid" 2>/dev/null; then
+            cat target/k6-server.log
+            echo 'Server exited before becoming ready.' >&2
+            exit 1
+          fi
+          if curl --fail --silent --show-error --max-time 1 http://localhost:8080/internal/is_ready; then
+            ready=true
+            break
+          fi
+          sleep 1
+        done
+        if [ "$ready" != true ]; then
+          cat target/k6-server.log
+          echo 'Server did not become ready within 60 attempts.' >&2
+          exit 1
+        fi
+        k6 run --summary-export=target/k6-summary.json performance-test/script.js 2>&1 | tee target/k6.log
     - name: Add k6 results to job summary
       if: always()
       shell: bash

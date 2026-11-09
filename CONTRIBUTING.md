@@ -53,12 +53,18 @@ Install [Grafana k6](https://grafana.com/docs/k6/latest/set-up/install-k6/), the
 
 ```bash
 cargo build --locked --release
-bash performance-test/run.sh
+./target/release/pdfgenrs
 ```
 
-The runner starts a local server, waits for readiness,
-runs k6, and stops the server. See [Performance tests](README.md#performance-tests)
-for workloads, thresholds, configuration, and results.
+In another terminal, wait for readiness and run k6:
+
+```bash
+curl --fail --silent --show-error http://localhost:8080/internal/is_ready
+k6 run performance-test/script.js
+```
+
+Stop the server with Ctrl+C afterward. See [Performance tests](README.md#performance-tests)
+for details.
 
 ### Run the application in dev mode
 ```bash
