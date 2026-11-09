@@ -17,6 +17,7 @@ Make sure you have curl installed using this command:
 curl --version
 ```
 or install it: https://curl.se/docs/install.html   
+
 4. k6
 
 Make sure you have k6 installed using this command:
@@ -29,10 +30,17 @@ or install it: https://grafana.com/docs/k6/latest/set-up/install-k6/
 ## Running k6 performance-test
 1. Create docker image of pdfgenrs
 ```bash
-cd ..
-docker build -t pdfgenrs .
-docker run --rm -it -p 8080:8080 pdfgenrs
+docker build --tag pdfgenrs:test .
+docker run --rm --name pdfgenrs-dev \
+  -p 8080:8080 \
+  -v "$(pwd)/templates:/app/templates:ro" \
+  -v "$(pwd)/data:/app/data:ro" \
+  -v "$(pwd)/resources:/app/resources:ro" \
+  -e DEV_MODE=true \
+  pdfgenrs:test
 ```
+
+
 
 2. Then you can run the performance test
 ```bash script

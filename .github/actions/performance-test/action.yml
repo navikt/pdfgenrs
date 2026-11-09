@@ -58,5 +58,3 @@ runs:
         name: k6-results
         path: |
           target/k6-summary.json
-          target/k6.log
-          target/k6-server.log
