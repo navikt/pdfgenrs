@@ -18,9 +18,30 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 /// level, target, source location, active OpenTelemetry span/trace IDs, and
 /// all recorded event fields.
 struct NaisJsonFormat;
+const OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS: u64 = 5_000;
 
 fn logger_name_for_file(file: &str) -> String {
     file.strip_suffix(".rs").unwrap_or(file).replace('/', ".")
+}
+
+fn maybe_downgrade_otel_error_to_warning(
+    log_object: &mut serde_json::Map<String, serde_json::Value>,
+) {
+    let is_otel_target = log_object
+        .get("target")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|target| target.starts_with("opentelemetry"));
+    let is_error_level = log_object
+        .get("level")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|level| level == "ERROR");
+
+    if is_otel_target && is_error_level {
+        log_object.insert(
+            "level".to_string(),
+            serde_json::Value::String("WARN".to_string()),
+        );
+    }
 }
 
 impl<S, N> fmt::format::FormatEvent<S, N> for NaisJsonFormat
@@ -122,6 +143,7 @@ where
             map: &mut log_object,
         };
         event.record(&mut visitor);
+        maybe_downgrade_otel_error_to_warning(&mut log_object);
 
         let serialized = serde_json::to_string(&log_object)
             .or_else(|err| {
@@ -145,15 +167,42 @@ where
 /// standard OTEL environment variables injected by the NAIS platform. Returns
 /// `None` when the variable is absent so that tracing remains a no-op in local
 /// development without any additional configuration.
+///
+/// Export timeout precedence:
+/// 1. `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT` (milliseconds)
+/// 2. `OTEL_EXPORTER_OTLP_TIMEOUT` (milliseconds)
+/// 3. `5000ms` fallback
 fn nais_otlp_exporter(endpoint: Option<&str>) -> Result<Option<SpanExporter>> {
     if endpoint.is_none() {
         return Ok(None);
     }
+    let traces_timeout_millis = std::env::var("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT").ok();
+    let otlp_timeout_millis = std::env::var("OTEL_EXPORTER_OTLP_TIMEOUT").ok();
+    let timeout = resolve_otlp_export_timeout(
+        traces_timeout_millis.as_deref(),
+        otlp_timeout_millis.as_deref(),
+    );
     let exporter = SpanExporter::builder()
         .with_tonic()
-        .with_timeout(Duration::from_secs(5))
+        .with_timeout(timeout)
         .build()?;
     Ok(Some(exporter))
+}
+
+fn resolve_otlp_export_timeout(
+    traces_timeout_millis: Option<&str>,
+    otlp_timeout_millis: Option<&str>,
+) -> Duration {
+    fn parse_timeout_millis(value: Option<&str>) -> Option<Duration> {
+        value
+            .filter(|raw| !raw.is_empty())
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .map(Duration::from_millis)
+    }
+
+    parse_timeout_millis(traces_timeout_millis)
+        .or_else(|| parse_timeout_millis(otlp_timeout_millis))
+        .unwrap_or_else(|| Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS))
 }
 
 fn resolve_service_name(name: Option<&str>) -> String {
@@ -339,6 +388,108 @@ mod tests {
     fn resolve_service_name_falls_back_when_missing_or_empty() {
         assert_eq!(resolve_service_name(None), "pdfgenrs");
         assert_eq!(resolve_service_name(Some("")), "pdfgenrs");
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_trace_timeout_when_present() {
+        let timeout = resolve_otlp_export_timeout(Some("7000"), Some("12000"));
+        assert_eq!(timeout, Duration::from_millis(7000));
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_global_timeout_when_trace_timeout_missing() {
+        let timeout = resolve_otlp_export_timeout(None, Some("12000"));
+        assert_eq!(timeout, Duration::from_millis(12000));
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_default_when_both_values_missing() {
+        let timeout = resolve_otlp_export_timeout(None, None);
+        assert_eq!(
+            timeout,
+            Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS)
+        );
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_falls_back_to_global_when_trace_timeout_invalid() {
+        let timeout = resolve_otlp_export_timeout(Some("not-a-number"), Some("12000"));
+        assert_eq!(timeout, Duration::from_millis(12000));
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_default_when_both_values_invalid() {
+        let timeout = resolve_otlp_export_timeout(Some("not-a-number"), Some("still-not-a-number"));
+        assert_eq!(
+            timeout,
+            Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS)
+        );
+    }
+
+    #[test]
+    fn otel_batch_export_timeout_is_downgraded_to_warning_level() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::error!(
+                target: "opentelemetry_sdk",
+                name = "BatchSpanProcessor.ExportError",
+                error = "Operation failed: TonicTracesClient export failed with gRPC code: Cancelled: transport error: Timeout expired"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["level"], Value::String("WARN".to_string()));
+    }
+
+    #[test]
+    fn non_timeout_otel_export_error_is_downgraded_to_warning_level() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::error!(
+                target: "opentelemetry_sdk",
+                name = "BatchSpanProcessor.ExportError",
+                error = "Operation failed: invalid endpoint"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["level"], Value::String("WARN".to_string()));
+    }
+
+    #[test]
+    fn non_otel_error_keeps_error_level() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::error!(
+                target: "pdfgenrs",
+                name = "pdfgenrs.some_error",
+                error = "Operation failed"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["level"], Value::String("ERROR".to_string()));
     }
 
     #[test]
