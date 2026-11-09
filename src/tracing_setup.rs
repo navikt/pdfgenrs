@@ -24,6 +24,26 @@ fn logger_name_for_file(file: &str) -> String {
     file.strip_suffix(".rs").unwrap_or(file).replace('/', ".")
 }
 
+fn maybe_downgrade_otel_error_to_warning(
+    log_object: &mut serde_json::Map<String, serde_json::Value>,
+) {
+    let is_otel_target = log_object
+        .get("target")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|target| target.starts_with("opentelemetry"));
+    let is_error_level = log_object
+        .get("level")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|level| level == "ERROR");
+
+    if is_otel_target && is_error_level {
+        log_object.insert(
+            "level".to_string(),
+            serde_json::Value::String("WARN".to_string()),
+        );
+    }
+}
+
 impl<S, N> fmt::format::FormatEvent<S, N> for NaisJsonFormat
 where
     S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
@@ -123,6 +143,7 @@ where
             map: &mut log_object,
         };
         event.record(&mut visitor);
+        maybe_downgrade_otel_error_to_warning(&mut log_object);
 
         let serialized = serde_json::to_string(&log_object)
             .or_else(|err| {
@@ -403,6 +424,72 @@ mod tests {
             timeout,
             Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS)
         );
+    }
+
+    #[test]
+    fn otel_batch_export_timeout_is_downgraded_to_warning_level() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::error!(
+                target: "opentelemetry_sdk",
+                name = "BatchSpanProcessor.ExportError",
+                error = "Operation failed: TonicTracesClient export failed with gRPC code: Cancelled: transport error: Timeout expired"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["level"], Value::String("WARN".to_string()));
+    }
+
+    #[test]
+    fn non_timeout_otel_export_error_is_downgraded_to_warning_level() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::error!(
+                target: "opentelemetry_sdk",
+                name = "BatchSpanProcessor.ExportError",
+                error = "Operation failed: invalid endpoint"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["level"], Value::String("WARN".to_string()));
+    }
+
+    #[test]
+    fn non_otel_error_keeps_error_level() {
+        let buffer = SharedBuffer::default();
+        let subscriber = Registry::default().with(
+            fmt::layer()
+                .event_format(NaisJsonFormat)
+                .with_ansi(false)
+                .with_writer(buffer.clone()),
+        );
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::error!(
+                target: "pdfgenrs",
+                name = "pdfgenrs.some_error",
+                error = "Operation failed"
+            );
+        });
+
+        let log_line = parse_single_log_line(&buffer);
+        assert_eq!(log_line["level"], Value::String("ERROR".to_string()));
     }
 
     #[test]
