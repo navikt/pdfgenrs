@@ -23,7 +23,7 @@ template guidance, and document checks.
 - [Applications that use pdfgenrs](#applications-that-use-pdfgenrs)
 - [Environment variables](#environment-variables)
 - [Developing pdfgenrs](#developing-pdfgenrs)
-- [Benchmark reports](#benchmark-reports)
+- [Performance tests](#performance-tests)
 - [Release](#release)
 - [Contact](#contact)
 - [Contributing](#contributing)
@@ -504,14 +504,16 @@ These variables affect spans only. Metrics are not exported over OTLP; they are 
 ## Developing pdfgenrs
 
 ### Prerequisites
-
-Rust `1.98.1` or newer is required by `Cargo.toml`; CI uses Rust `1.98.1`.
-Confirm Rust and Cargo are installed:
-
-```bash
+#### Rust
+Make sure you have the rust and cargo installed using this command:
+```bash script
 rustc --version
 cargo --version
 ```
+or install it: https://rust-lang.org/tools/install/
+
+> **Note:** Rust `1.98.1` or newer is required by `Cargo.toml`;
+
 
 ### Checks
 
@@ -530,15 +532,6 @@ cargo build --locked --release
 
 ### Additional development commands
 
-### Run criterion benchmark
-```bash
-cargo bench --bench criterion_bench
-```
-
-### Run Benchmark performance test
-```bash
-cargo bench --bench performance
-```
 
 ### Run the application in dev mode
 ```bash
@@ -549,49 +542,8 @@ cargo run
 When you are in dev mode you can check out this PDF:
 http://localhost:8080/api/v1/genpdf/nav-brev/brev
 
-## Benchmark reports
-
-- https://navikt.github.io/pdfgenrs/dev/criterion-report/report/
-- https://navikt.github.io/pdfgenrs/dev/bench/
-
-### Resource-pressure benchmarks
-
-The performance benchmark retains the endpoint timing checks and adds sustained
-large-image and mixed-workload runs. Concurrency is varied independently of the
-compilation permit limit to compare unsaturated and queued requests. The mixed
-workload exercises Typst-to-PDF, image-to-PDF, HTML-to-PDF, and Typst-to-HTML.
-Criterion also covers large raster images alongside the bundled logos.
-
-Run `cargo bench --locked --bench performance` for the endpoint checks and pressure
-sweeps, or `cargo bench --locked --bench criterion_bench` for conversion benchmarks.
-Pressure sweeps use deterministic 2048×2048 PNGs; Criterion additionally covers
-4096×4096 PNGs. Fixture generation happens outside the measured work. Request
-payloads vary to avoid measuring only identical cached conversions.
-
-| Benchmark variable | Default | Accepted values |
-|--------------------|---------|-----------------|
-| `PDFGEN_BENCH_DURATION_SECONDS` | `1` | `1`–`60` seconds of request submission per workload/concurrency case |
-| `PDFGEN_BENCH_CONCURRENCY` | `1,4,8` | Comma-separated distinct concurrency levels, each `1`–`32`, at most eight levels |
-| `PDFGEN_BENCH_COMPILE_PERMITS` | `4` | `1`–`32` compilation permits |
-
-Each closed-loop worker submits another request when its previous request finishes.
-Cases stop submitting at the configured deadline, then drain pending requests and
-compilations. Throughput includes this drain time. The benchmark server uses a
-one-second permit-acquisition timeout, five-second compilation timeout, eight-second
-client timeout, and an 8 MiB request-body limit. These settings apply only to the
-pressure benchmark, not to production configuration or the original endpoint checks.
-
-Pressure results report throughput, request latency percentiles, overload and
-timeout counts, compilation saturation, and sampled resident memory in logs and
-the GitHub step summary. Latency p50/p95/p99 includes body receipt and all outcomes;
-successful and total completion throughput are reported separately. Saturation is
-the percentage of 10 ms samples with no free compilation permits. Memory
-measurements cover the entire benchmark process, including the HTTP client,
-server, fixtures, and caches; they are not isolated server or container memory.
-Sampled peaks can miss short-lived allocations, and later cases can retain
-allocations from earlier cases. Unsupported memory measurements are reported as
-unavailable. Resource-pressure results are observational, not new machine-specific
-pass/fail timing or memory limits.
+## Performance tests
+see [performance-test/README.md](performance-test/README.md)
 
 ## Release
 

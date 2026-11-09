@@ -1,0 +1,39 @@
+name: k6 performance test
+description: Run k6 against the release binary with the bundled fixtures
+runs:
+  using: composite
+  steps:
+    - name: Clear cached k6 results
+      shell: bash
+      run: rm -f target/k6-summary.json target/k6.log target/k6-server.log
+    - name: Set up k6
+      uses: grafana/setup-k6-action@v1.2.2
+      with:
+        k6-version: '2.3.0'
+    - name: Run k6 performance test
+      shell: bash
+      run: bash performance-test/run.sh
+    - name: Add k6 results to job summary
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo '## k6 performance test'
+          echo ''
+          echo '```text'
+          if [ -f target/k6.log ]; then
+            cat target/k6.log
+          else
+            echo 'k6 did not run. See the failed setup or server startup step.'
+          fi
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload k6 results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: k6-results
+        path: |
+          target/k6-summary.json
+          target/k6.log
+          target/k6-server.log

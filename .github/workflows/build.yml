@@ -1,4 +1,4 @@
-name: Build and test and run benchmark performance test main
+name: Build, test and run k6 performance test main
 on:
   push:
     branches:
@@ -72,8 +72,8 @@ jobs:
         run: cargo clippy --locked --release --all-targets -- -D warnings
       - name: Run tests
         run: cargo test --locked -- --nocapture
-      - name: Run Benchmark performance test
-        run: cargo bench --locked --bench performance
       - name: Build
         run: cargo build --locked --release
+      - name: Run k6 performance test
+        uses: ./.github/actions/performance-test
   

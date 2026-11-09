@@ -14,16 +14,6 @@ categories = ["web-programming"]
 name = "pdfgenrs"
 path = "src/main.rs"
 
-[[bench]]
-name = "performance"
-path = "benches/performance.rs"
-harness = false
-
-[[bench]]
-name = "criterion_bench"
-path = "benches/criterion_bench.rs"
-harness = false
-
 [dependencies]
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "sync", "net", "signal"] }
 axum = "0.8.9"
@@ -56,7 +46,6 @@ clap = { version = "4.6.7", features = ["env", "derive"] }
 axum-test = "21.1.0"
 http-body-util = "0.1.5"
 reqwest = { version = "0.13.5", features = ["json"] }
-criterion = { version = "0.8.2", features = ["html_reports"] }
 tempfile = "3.27.0"
 
 [lints.rust]
