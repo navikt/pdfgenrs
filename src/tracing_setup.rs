@@ -18,6 +18,7 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 /// level, target, source location, active OpenTelemetry span/trace IDs, and
 /// all recorded event fields.
 struct NaisJsonFormat;
+const OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS: u64 = 5_000;
 
 fn logger_name_for_file(file: &str) -> String {
     file.strip_suffix(".rs").unwrap_or(file).replace('/', ".")
@@ -145,15 +146,42 @@ where
 /// standard OTEL environment variables injected by the NAIS platform. Returns
 /// `None` when the variable is absent so that tracing remains a no-op in local
 /// development without any additional configuration.
+///
+/// Export timeout precedence:
+/// 1. `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT` (milliseconds)
+/// 2. `OTEL_EXPORTER_OTLP_TIMEOUT` (milliseconds)
+/// 3. `5000ms` fallback
 fn nais_otlp_exporter(endpoint: Option<&str>) -> Result<Option<SpanExporter>> {
     if endpoint.is_none() {
         return Ok(None);
     }
+    let traces_timeout_millis = std::env::var("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT").ok();
+    let otlp_timeout_millis = std::env::var("OTEL_EXPORTER_OTLP_TIMEOUT").ok();
+    let timeout = resolve_otlp_export_timeout(
+        traces_timeout_millis.as_deref(),
+        otlp_timeout_millis.as_deref(),
+    );
     let exporter = SpanExporter::builder()
         .with_tonic()
-        .with_timeout(Duration::from_secs(5))
+        .with_timeout(timeout)
         .build()?;
     Ok(Some(exporter))
+}
+
+fn resolve_otlp_export_timeout(
+    traces_timeout_millis: Option<&str>,
+    otlp_timeout_millis: Option<&str>,
+) -> Duration {
+    fn parse_timeout_millis(value: Option<&str>) -> Option<Duration> {
+        value
+            .filter(|raw| !raw.is_empty())
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .map(Duration::from_millis)
+    }
+
+    parse_timeout_millis(traces_timeout_millis)
+        .or_else(|| parse_timeout_millis(otlp_timeout_millis))
+        .unwrap_or_else(|| Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS))
 }
 
 fn resolve_service_name(name: Option<&str>) -> String {
@@ -339,6 +367,42 @@ mod tests {
     fn resolve_service_name_falls_back_when_missing_or_empty() {
         assert_eq!(resolve_service_name(None), "pdfgenrs");
         assert_eq!(resolve_service_name(Some("")), "pdfgenrs");
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_trace_timeout_when_present() {
+        let timeout = resolve_otlp_export_timeout(Some("7000"), Some("12000"));
+        assert_eq!(timeout, Duration::from_millis(7000));
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_global_timeout_when_trace_timeout_missing() {
+        let timeout = resolve_otlp_export_timeout(None, Some("12000"));
+        assert_eq!(timeout, Duration::from_millis(12000));
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_default_when_both_values_missing() {
+        let timeout = resolve_otlp_export_timeout(None, None);
+        assert_eq!(
+            timeout,
+            Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS)
+        );
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_falls_back_to_global_when_trace_timeout_invalid() {
+        let timeout = resolve_otlp_export_timeout(Some("not-a-number"), Some("12000"));
+        assert_eq!(timeout, Duration::from_millis(12000));
+    }
+
+    #[test]
+    fn resolve_otlp_export_timeout_uses_default_when_both_values_invalid() {
+        let timeout = resolve_otlp_export_timeout(Some("not-a-number"), Some("still-not-a-number"));
+        assert_eq!(
+            timeout,
+            Duration::from_millis(OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT_MS)
+        );
     }
 
     #[test]
