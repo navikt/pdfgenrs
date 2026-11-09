@@ -6,7 +6,7 @@ This project accepts feature requests and contributions from the open source com
 
 ### Rust and Cargo
 
-`pdfgenrs` is pinned to Rust `1.98.1` (`Cargo.toml` and CI workflows). Verify your setup:
+`pdfgenrs` is pinned to Rust `1.98.1` (`Cargo.toml`). Verify your setup:
 
 ```bash
 rustc --version
