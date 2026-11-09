@@ -494,12 +494,17 @@ When deployed on [NAIS](https://doc.nais.io/), OpenTelemetry tracing is configur
 | Variable                          | Description                                                                 | Default      |
 |-----------------------------------|-----------------------------------------------------------------------------|--------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT`    | gRPC endpoint for the OTLP span exporter. When unset, no spans are exported. | *(unset)*    |
+| `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT` | Timeout for trace export calls in milliseconds.                              | `5000`       |
+| `OTEL_EXPORTER_OTLP_TIMEOUT`     | Global OTLP timeout in milliseconds, used when `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT` is not set. | `5000`       |
 | `OTEL_SERVICE_NAME`              | Logical service name attached to exported spans                              | `pdfgenrs`   |
 | `OTEL_RESOURCE_ATTRIBUTES`       | Additional resource attributes (key=value pairs)                             | *(unset)*    |
 | `OTEL_EXPORTER_OTLP_INSECURE`   | Use insecure (plaintext) gRPC connection                                     | *(unset)*    |
 
 These variables affect spans only. Metrics are not exported over OTLP; they are scraped from
 `/internal/metrics`. See [Runtime and process metrics](#runtime-and-process-metrics).
+
+`pdfgenrs` resolves OTLP export timeout in this order: `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT`,
+then `OTEL_EXPORTER_OTLP_TIMEOUT`, then a `5000ms` fallback when neither variable is set.
 
 ## Developing pdfgenrs
 
