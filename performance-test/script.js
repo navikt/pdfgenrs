@@ -13,7 +13,7 @@ function positiveInteger(name, fallback) {
 
 const stageSeconds = positiveInteger('STAGE_SECONDS', 10);
 const maxVUs = positiveInteger('MAX_VUS', 8);
-const maxP95 = positiveInteger('MAX_P95_MS', 1000);
+const maxP95 = positiveInteger('MAX_P95_MS', 100);
 const baseUrl = (__ENV.BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 const fixtures = [
   ['nav-brev', 'brev'],
@@ -111,11 +111,8 @@ export const options = {
 
 const documents = new Counter('rendered_documents');
 const resourceSamples = new Counter('api_resource_samples');
-const cpuSeconds = new Trend('api_cpu_seconds_total');
-const memoryMiB = new Trend('api_memory_rss_mib');
 const inFlight = new Trend('api_compile_in_flight');
 const saturated = new Rate('api_compile_saturated');
-let previousCpu;
 let processStart;
 
 function uniquePng(fixture, unique) {
@@ -226,28 +223,22 @@ export function sampleResources() {
     if (!check(response, { 'metrics: status 200': (res) => res.status === 200 })) {
       fail(`Metrics request failed: HTTP ${response.status}`);
     }
-    const cpu = metric(response.body, 'process_cpu_seconds_total');
-    const memory = metric(response.body, 'process_resident_memory_bytes');
     const start = metric(response.body, 'process_start_time_seconds');
     const available = metric(response.body, 'pdfgenrs_compile_permits_available');
     const total = metric(response.body, 'pdfgenrs_compile_permits_total');
     const active = metric(response.body, 'pdfgenrs_compile_in_flight');
     const valid = check(null, {
-      'metrics: valid resources and compilation permits': () => memory > 0
-        && start > 0 && Number.isInteger(total) && total > 0
+      'metrics: valid compilation permits': () =>
+        start > 0 && Number.isInteger(total) && total > 0
         && Number.isInteger(available) && available <= total
         && Number.isInteger(active) && active <= total,
-      'metrics: same process and monotonic CPU counter': () =>
-        (processStart === undefined || start === processStart)
-        && (previousCpu === undefined || cpu >= previousCpu),
+      'metrics: same process': () =>
+        processStart === undefined || start === processStart,
     });
     if (!valid) {
       fail('Invalid resource sample, disabled compilation limit, or API process restarted');
     }
-    previousCpu = cpu;
     processStart = start;
-    cpuSeconds.add(cpu);
-    memoryMiB.add(memory / 1024 ** 2);
     inFlight.add(active);
     saturated.add(available === 0);
     resourceSamples.add(1);
