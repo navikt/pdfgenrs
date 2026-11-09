@@ -33,7 +33,6 @@ cargo audit
 cargo fmt -- --check
 cargo clippy --locked --release --all-targets -- -D warnings
 cargo test --locked -- --nocapture
-cargo bench --locked --bench performance
 cargo build --locked --release
 ```
 
@@ -48,15 +47,24 @@ cargo audit
 
 ## Additional development commands
 
-### Run criterion benchmark
+### Run k6 performance tests
+
+Install [Grafana k6](https://grafana.com/docs/k6/latest/set-up/install-k6/), then run:
+
 ```bash
-cargo bench --bench criterion_bench
+cargo build --locked --release
+./target/release/pdfgenrs
 ```
 
-### Run Benchmark performance test
+In another terminal, wait for readiness and run k6:
+
 ```bash
-cargo bench --bench performance
+curl --fail --silent --show-error http://localhost:8080/internal/is_ready
+k6 run performance-test/script.js
 ```
+
+Stop the server with Ctrl+C afterward. See [Performance tests](README.md#performance-tests)
+for details.
 
 ### Run the application in dev mode
 ```bash

@@ -9,5 +9,5 @@ Describe what this pull request changes and why.
 - [ ] I have run `cargo clippy --locked --release --all-targets -- -D warningss`
 - [ ] I have run `cargo test --locked -- --nocapture`
 - [ ] I have run `cargo build --locked --release`
-- [ ] If performance may be affected, I have run `cargo bench --bench performance`
+- [ ] If performance may be affected, I have run `k6 run performance-test/script.js` against the running release binary
 - [ ] I have updated tests where relevant

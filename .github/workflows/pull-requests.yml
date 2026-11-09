@@ -1,4 +1,4 @@
-name: Test and build and run Benchmark performance test PR
+name: Test, build and run k6 performance test PR
 on:
   pull_request:
     paths-ignore:
@@ -70,7 +70,7 @@ jobs:
         run: cargo clippy --locked --release --all-targets -- -D warnings
       - name: Run tests
         run: cargo test --locked -- --nocapture
-      - name: Run Benchmark performance test
-        run: cargo bench --locked --bench performance
       - name: Build
         run: cargo build --locked --release
+      - name: Run k6 performance test
+        uses: ./.github/actions/performance-test
