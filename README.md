@@ -526,10 +526,6 @@ Install the following tools and verify that they are available:
 >```bash
 >cargo install cargo-audit --locked
 >```
->Then run the dependency auditcheck
->```bash
->cargo audit
->```
 
 ```bash
 cargo audit
