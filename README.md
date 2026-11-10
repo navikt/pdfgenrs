@@ -18,6 +18,7 @@ template guidance, and document checks.
 ## Table of contents
 
 - [Quick start](#quick-start)
+- [Migrating from navikt/pdfgen](#migrating-from-naviktpdfgen)
 - [Technologies and tools](#technologies-and-tools)
 - [Folder structure](#folder-structure)
 - [API](#api)
@@ -102,6 +103,108 @@ curl --fail --silent --show-error \
 ### Example implementation
 
 See the example project: https://github.com/navikt/pdfgenrs-test
+
+## Migrating from navikt/pdfgen
+
+`pdfgenrs` is not a drop-in renderer replacement for `navikt/pdfgen`. It uses
+Typst instead of Handlebars + HTML/CSS for template-based generation. Changing
+only the Docker base image will not migrate existing `.hbs` templates.
+
+### Rewrite templates and keep the JSON contract
+
+Keep application and template names to preserve client URLs. Replace
+`templates/your_appname/your_template.hbs` with
+`templates/your_appname/your_template.typ`. Existing JSON payloads and
+`data/your_appname/your_template.json` fixtures can be reused if the new template
+reads the same fields.
+
+For example, replace this Handlebars content:
+
+```handlebars
+<h1>{{title}}</h1>
+<p>{{message}}</p>
+```
+
+with a Typst template:
+
+```typst
+#set document(title: "Example letter")
+#set text(lang: "en")
+#let data = json("/data/your_appname/your_template.json")
+
+= #data.title
+
+#data.message
+```
+
+For POST requests, this JSON path is a virtual file containing the request body;
+you do not need to bundle a data file in production. For dev-mode GET requests,
+the data comes from the matching bundled JSON fixture.
+
+Rewrite HTML/CSS layouts, Handlebars partials, and custom helpers in Typst;
+renaming files is not sufficient. Explicitly port conditions, loops, date and
+number formatting, and handling of missing or null fields. Reference bundled
+assets using paths such as `/resources/logo.png`, and copy any required custom
+fonts into `/app/fonts`. Review pagination, font fallback, and image sizing
+because rendering will differ. See [templates](templates) for working examples.
+
+### Replace the image and review configuration
+
+Use the [Quick start](#quick-start) Dockerfile with
+`FROM ghcr.io/navikt/pdfgenrs:<release>`, copying the rewritten templates and any
+fonts or resources. Remove Java entrypoints, JVM options, and Ktor settings such
+as `WORKER_GROUP_SIZE`, `CONNECTION_GROUP_SIZE`, and `CALL_GROUP_SIZE`; they do
+not configure the Rust server. The runtime image is non-root and has no shell,
+so replace shell-based startup scripts or health checks.
+
+| Existing setting or behavior | Migration action |
+|------------------------------|------------------|
+| `ENABLE_HTML_ENDPOINT=true` | Remove it. The Typst-to-HTML POST endpoint is always enabled. |
+| `DISABLE_PDF_GET` | Remove it. Template GET endpoints are enabled only by `DEV_MODE=true`; leave dev mode disabled in production. |
+| `DEV_MODE=true` reloads assets on requests | Dev mode enables template GET endpoints and preloads test data, but does not reload templates or fixtures. Restart after edits; rebuild first if assets are copied into an image. |
+| `/internal/prometheus` | Change the Prometheus scrape path to `/internal/metrics` and update dashboards and alerts for the new metric names. |
+| JVM autoinstrumentation | For NAIS autoinstrumentation, use `runtime: sdk` as shown under [Runtime and process metrics](#runtime-and-process-metrics). |
+
+The default server port remains `8080`; use `SERVER_PORT` to change it. Health
+paths remain `/internal/is_alive` and `/internal/is_ready`, but readiness requires
+at least one loaded Typst template, even if you only call HTML or image conversion.
+
+Review the [Environment variables](#environment-variables), especially the
+2 MiB request-body limit, 30-second compilation timeout, and default limit of
+four concurrent compilations. Re-measure CPU and memory needs with your workload
+rather than carrying over JVM resource sizing.
+
+### Review client compatibility
+
+| Endpoint | What to check |
+|----------|---------------|
+| `POST /api/v1/genpdf/{application}/{template}` | Path, JSON request, and PDF response are retained, but the template must be rewritten in Typst. Send `Content-Type: application/json`. |
+| `POST /api/v1/genhtml/{application}/{template}` | Path and JSON request are retained; output is Typst-generated HTML, not the old Handlebars HTML. Review downstream HTML consumers. |
+| `POST /api/v1/genpdf/html/{application}` | Still accepts raw HTML, but uses a different converter. Check supported layout, fonts, and output; this path does not apply the Typst PDF/A-2a or PDF/UA-1 settings. |
+| `POST /api/v1/genpdf/image/{application}` | JPEG and PNG remain supported; WebP and SVG are also supported. Send the matching image Content-Type and account for image dimension and pixel limits. |
+
+Update error handling for `application/problem+json` responses and the status
+codes described under [Error responses](#error-responses). In particular,
+invalid images return `400` rather than the legacy `422`, size-limit violations
+return `413`, compilation timeouts return `408`, and compilation-capacity
+exhaustion returns `503` with `Retry-After`. Do not parse legacy error text.
+
+### Verify before switching traffic
+
+Generate documents from representative existing JSON fixtures using both
+services. Compare text content, formatting, page breaks, tables, links, images,
+and fonts, including long content, optional fields, and supported languages.
+Do not expect byte-identical PDFs or HTML.
+
+Typst PDF generation uses PDF/A-2a and PDF/UA-1 export settings, but successful
+generation does not guarantee accessibility. Re-run PDF validation and manually
+review reading order, document language, headings, and alternative text; see
+[ACCESSIBILITY.md](ACCESSIBILITY.md). Validate raw HTML-to-PDF output separately
+instead of assuming the legacy converter's conformance carries over.
+
+Exercise client error handling and realistic concurrent traffic before rollout.
+Keep the previous image and templates available for rollback, and switch traffic
+only after checking the new service's readiness, output, and monitoring.
 
 ## Technologies and tools
 
