@@ -4,66 +4,26 @@ This project accepts feature requests and contributions from the open source com
 
 ## Development environment
 
-### Rust and Cargo
+Install the following tools and verify that they are available:
 
-`pdfgenrs` is pinned to Rust `1.98.1` (`Cargo.toml`). Verify your setup:
+| Tool | Check installation | Installation guide |
+| --- | --- | --- |
+| Rust | `rustc --version` | [Rust setup](https://rust-lang.org/tools/install/) |
+| Cargo | `cargo --version` | [Rust setup](https://rust-lang.org/tools/install/)  |
+| Docker | `docker --version` | [Install Docker](https://docs.docker.com/engine/install/) |
+| curl | `curl --version` | [Install curl](https://curl.se/docs/install.html) |
 
-```bash
-rustc --version
-cargo --version
-```
+> [!NOTE]
+> Rust `1.98.1` or newer is required by `Cargo.toml`
 
-Install Rust/Cargo with [rustup](https://rust-lang.org/tools/install/) if needed.
 
-### Docker
-
-Docker is optional for normal development, but useful when validating Docker image behavior:
-
-```bash
-docker --version
-```
-
-Install Docker if needed: https://docs.docker.com/engine/install/
-
-## Local commands
+## Development-commands
 Run these commands before opening or updating a PR:
+[development-commands](README.md#development-commands)
 
-```bash
-cargo audit
-cargo fmt -- --check
-cargo clippy --locked --release --all-targets -- -D warnings
-cargo test --locked -- --nocapture
-cargo build --locked --release
-```
-
-Install the dependency audit tool once:
-```bash
-cargo install cargo-audit --locked
-```
-Then run the dependency auditcheck
-```bash
-cargo audit
-```
-
-## Additional development commands
 
 ### Run k6 performance tests
-
-Install [Grafana k6](https://grafana.com/docs/k6/latest/set-up/install-k6/), then run:
-
-```bash
-cargo build --locked --release
-./target/release/pdfgenrs
-```
-
-In another terminal, wait for readiness and run k6:
-
-```bash
-curl --fail --silent --show-error http://localhost:8080/internal/is_ready
-k6 run performance-test/script.js
-```
-
-Stop the server with Ctrl+C afterward. See [Performance tests](README.md#performance-tests)
+See [Performance tests](performance-test/README.md)
 for details.
 
 ### Run the application in dev mode
@@ -72,11 +32,11 @@ export DEV_MODE=true
 cargo run 
 ```
 
-### Validate the Docker image locally
+### Validate the Docker image
 
 Run these commands from the repository root. The [Dockerfile](Dockerfile) includes
 the binary and default fonts, but not templates, test data, or resources. Mount the
-repository fixtures as in the [Docker test workflow](.github/workflows/test-dockerfile.yml):
+repository fixtures:
 
 ```bash
 docker build --tag pdfgenrs:test .
@@ -103,9 +63,6 @@ curl --fail --silent --show-error \
   --output output.pdf \
   http://localhost:8080/api/v1/genpdf/nav-brev/brev
 ```
-
-Stop the container with Ctrl+C. Templates and test data are loaded at startup,
-so restart the container after editing them. Rebuild the image after code changes.
 
 ## Pull requests
 

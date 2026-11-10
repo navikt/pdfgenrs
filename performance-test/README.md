@@ -6,7 +6,8 @@ Install the following tools and verify that they are available:
 
 | Tool | Check installation | Installation guide |
 | --- | --- | --- |
-| Rust | `rustc --version` | [Rust setup](../README.md#Rust) |
+| Rust | `rustc --version` | [Rust setup](https://rust-lang.org/tools/install/) |
+| Cargo | `cargo --version` | [Rust setup](https://rust-lang.org/tools/install/) |
 | Docker | `docker --version` | [Install Docker](https://docs.docker.com/engine/install/) |
 | curl | `curl --version` | [Install curl](https://curl.se/docs/install.html) |
 | k6 | `k6 --version` | [Install k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) |

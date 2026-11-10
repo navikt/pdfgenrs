@@ -12,7 +12,8 @@ a separate converter without these settings.
 See [ACCESSIBILITY.md](ACCESSIBILITY.md) for accessibility support, limitations,
 template guidance, and document checks.
 
-> **Note:** This project is tailored to Nav's [NAIS platform](https://doc.nais.io/), but it can be adapted to other environments with small changes (for example, health-check paths or OpenTelemetry/NAIS-specific configuration).
+> [!NOTE]
+> This project is tailored to Nav's [NAIS platform](https://doc.nais.io/), but it can be adapted to other environments with small changes (for example, health-check paths or OpenTelemetry/NAIS-specific configuration).
 
 ## Table of contents
 
@@ -509,23 +510,26 @@ then `OTEL_EXPORTER_OTLP_TIMEOUT`, then a `5000ms` fallback when neither variabl
 ## Developing pdfgenrs
 
 ### Prerequisites
-#### Rust
-Make sure you have the rust and cargo installed using this command:
-```bash script
-rustc --version
-cargo --version
-```
-or install it: https://rust-lang.org/tools/install/
+Install the following tools and verify that they are available:
 
-> **Note:** Rust `1.98.1` or newer is required by `Cargo.toml`;
+| Tool | Check installation | Installation guide |
+| --- | --- | --- |
+| Rust | `bash rustc --version` | [Rust setup](https://rust-lang.org/tools/install/) |
+| Cargo | `cargo --version` | [Rust setup](https://rust-lang.org/tools/install/)  |
+> [!NOTE]
+> Rust `1.98.1` or newer is required by `Cargo.toml`
 
+### Development commands
 
-### Checks
-
-Install the dependency audit tool once:
-```bash
-cargo install cargo-audit --locked
-```
+> [!NOTE]
+> Install the dependency audit tool once:
+>```bash
+>cargo install cargo-audit --locked
+>```
+>Then run the dependency auditcheck
+>```bash
+>cargo audit
+>```
 
 ```bash
 cargo audit
@@ -535,10 +539,7 @@ cargo test --locked -- --nocapture
 cargo build --locked --release
 ```
 
-### Additional development commands
-
-
-### Run the application in dev mode
+Run the application in dev mode
 ```bash
 export DEV_MODE=true
 cargo run 
