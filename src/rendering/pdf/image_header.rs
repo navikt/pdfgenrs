@@ -163,18 +163,12 @@ fn extract_svg_attr<'a>(tag: &'a str, attr_name: &str) -> Option<&'a str> {
         let abs = start + rel;
         // Verify word boundary: the character before the match must be whitespace or '<'
         let prev = tag[..abs].chars().next_back();
-        if prev.is_none_or(|c| c.is_ascii_whitespace() || c == '<') {
-            // Verify the character immediately after attr_name is '='
-            if tag.as_bytes().get(abs + attr_name.len()) == Some(&b'=') {
-                break abs;
-            }
-            // Boundary passes but '=' fails: skip past the full attr_name to avoid
-            // redundant re-scanning of the same occurrence.
-            start = abs + attr_name.len() + 1;
-        } else {
-            // Boundary fails: advance by 1 to search for the next candidate.
-            start = abs + 1;
+        if prev.is_none_or(|c| c.is_ascii_whitespace() || c == '<')
+            && tag.as_bytes().get(abs + attr_name.len()) == Some(&b'=')
+        {
+            break abs;
         }
+        start = abs + tag[abs..].chars().next()?.len_utf8();
     };
     let after_eq = &tag[pos + search_len..];
     let quote = after_eq.as_bytes().first()?;
@@ -587,6 +581,20 @@ mod tests {
         let svg =
             br#"<svg stroke-width="5" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg"></svg>"#;
         assert_eq!(image_dimensions(svg), Some((200, 100)));
+    }
+
+    #[test]
+    fn svg_dimensions_skip_unicode_attribute_names() {
+        for svg in [
+            r#"<svg widthé="unused" width="10" height="10"></svg>"#,
+            r#"<svg height😀="unused" width="10" height="10"></svg>"#,
+            r#"<svg éwidth="unused" width="10" height="10"></svg>"#,
+            r#"<svg viewBox界="unused" viewBox="0 0 10 10"></svg>"#,
+        ] {
+            assert_eq!(image_dimensions(svg.as_bytes()), Some((10, 10)));
+        }
+        let svg = r#"<svg widthé="unused" height="10"></svg>"#;
+        assert_eq!(image_dimensions(svg.as_bytes()), None);
     }
 
     #[test]
