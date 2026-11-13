@@ -620,7 +620,7 @@ Install the following tools and verify that they are available:
 | Rust | `bash rustc --version` | [Rust setup](https://rust-lang.org/tools/install/) |
 | Cargo | `cargo --version` | [Rust setup](https://rust-lang.org/tools/install/)  |
 > [!NOTE]
-> Rust `1.98.1` or newer is required by `Cargo.toml`
+> Rust minimum version that is required se [Cargo.toml](Cargo.toml#L5)
 
 ### Development commands
 
