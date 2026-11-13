@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use metrics::{Gauge, counter, gauge, histogram};
@@ -40,48 +40,78 @@ impl Drop for GaugeGuard {
     }
 }
 
-struct InFlightAfterTimeoutGuard {
-    gauge: Gauge,
-    continuing_after_timeout: Arc<std::sync::atomic::AtomicBool>,
+#[derive(Clone, Copy)]
+enum CompilationStatus {
+    Queued,
+    Running,
+    CancelledBeforeStart,
+    Continuing,
+    Completed,
 }
 
-impl Drop for InFlightAfterTimeoutGuard {
-    fn drop(&mut self) {
-        if self
-            .continuing_after_timeout
-            .load(std::sync::atomic::Ordering::Relaxed)
-        {
+struct CompilationAccounting {
+    status: Mutex<CompilationStatus>,
+    gauge: Gauge,
+}
+
+impl CompilationAccounting {
+    fn status(&self) -> MutexGuard<'_, CompilationStatus> {
+        self.status.lock().unwrap_or_else(|error| {
+            warn!("Compilation accounting lock was poisoned: {error}");
+            error.into_inner()
+        })
+    }
+
+    fn start(&self) {
+        let mut status = self.status();
+        if matches!(*status, CompilationStatus::CancelledBeforeStart) {
+            self.gauge.increment(1.0);
+            *status = CompilationStatus::Continuing;
+        } else {
+            *status = CompilationStatus::Running;
+        }
+    }
+
+    fn cancel(&self) {
+        let mut status = self.status();
+        match *status {
+            CompilationStatus::Queued => *status = CompilationStatus::CancelledBeforeStart,
+            CompilationStatus::Running => {
+                self.gauge.increment(1.0);
+                *status = CompilationStatus::Continuing;
+            }
+            CompilationStatus::CancelledBeforeStart
+            | CompilationStatus::Continuing
+            | CompilationStatus::Completed => {}
+        }
+    }
+
+    fn complete(&self) {
+        let mut status = self.status();
+        if matches!(*status, CompilationStatus::Continuing) {
             self.gauge.decrement(1.0);
         }
+        *status = CompilationStatus::Completed;
     }
 }
 
-struct TaskCompletionGuard(Arc<std::sync::atomic::AtomicBool>);
+struct TaskCompletionGuard(Arc<CompilationAccounting>);
 
 impl Drop for TaskCompletionGuard {
     fn drop(&mut self) {
-        self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.0.complete();
     }
 }
 
 struct TaskContinuationGuard {
     abort_handle: tokio::task::AbortHandle,
-    started: Arc<std::sync::atomic::AtomicBool>,
-    completed: Arc<std::sync::atomic::AtomicBool>,
-    continuing_after_timeout: Arc<std::sync::atomic::AtomicBool>,
-    gauge: Gauge,
+    accounting: Arc<CompilationAccounting>,
 }
 
 impl Drop for TaskContinuationGuard {
     fn drop(&mut self) {
-        if !self.completed.load(std::sync::atomic::Ordering::Relaxed) {
-            self.abort_handle.abort();
-            if self.started.load(std::sync::atomic::Ordering::Relaxed) {
-                self.continuing_after_timeout
-                    .store(true, std::sync::atomic::Ordering::Relaxed);
-                self.gauge.increment(1.0);
-            }
-        }
+        self.abort_handle.abort();
+        self.accounting.cancel();
     }
 }
 
@@ -219,30 +249,22 @@ where
     let request_id = current_request_id().unwrap_or_default();
     let span = info_span!("typst_compilation", request_id = %request_id);
     let labels = compilation_labels(&app_name, template_name.as_deref());
-    let started = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let completed = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let continuing_after_timeout = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let task_started = Arc::clone(&started);
-    let task_completed = Arc::clone(&completed);
-    let task_continuing_after_timeout = Arc::clone(&continuing_after_timeout);
+    let accounting = Arc::new(CompilationAccounting {
+        status: Mutex::new(CompilationStatus::Queued),
+        gauge: gauge!(IN_FLIGHT_AFTER_TIMEOUT_METRIC, &labels),
+    });
+    let task_accounting = Arc::clone(&accounting);
     let task_labels = labels.clone();
     let mut handle = tokio::task::spawn_blocking(move || {
-        task_started.store(true, std::sync::atomic::Ordering::Relaxed);
         let _permit = permit;
+        task_accounting.start();
+        let _completion = TaskCompletionGuard(task_accounting);
         let _active = GaugeGuard::new(ACTIVE_COMPILATIONS_METRIC, &task_labels);
-        let _in_flight_after_timeout = InFlightAfterTimeoutGuard {
-            gauge: gauge!(IN_FLIGHT_AFTER_TIMEOUT_METRIC, &task_labels),
-            continuing_after_timeout: task_continuing_after_timeout,
-        };
-        let _completion = TaskCompletionGuard(task_completed);
         span.in_scope(task)
     });
     let _continuation = TaskContinuationGuard {
         abort_handle: handle.abort_handle(),
-        started,
-        completed,
-        continuing_after_timeout,
-        gauge: gauge!(IN_FLIGHT_AFTER_TIMEOUT_METRIC, &labels),
+        accounting,
     };
     let result = tokio::time::timeout(timeout_duration, &mut handle).await;
 
@@ -289,7 +311,7 @@ where
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::sync::Arc;
+    use std::sync::{Arc, Barrier, Mutex};
     use std::time::Duration;
 
     use anyhow::Context;
@@ -298,10 +320,143 @@ mod tests {
     use metrics_exporter_prometheus::PrometheusBuilder;
 
     use super::{
+        CompilationAccounting, CompilationStatus, IN_FLIGHT_AFTER_TIMEOUT_METRIC,
         SEMAPHORE_REJECTIONS_METRIC, SEMAPHORE_WAITING_METRIC, acquire_compile_permit,
         compile_blocking,
     };
     use crate::testutil::make_state;
+
+    #[test]
+    fn compilation_accounting_handles_completion_and_cancellation_order() {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let accounting = CompilationAccounting {
+                status: Mutex::new(CompilationStatus::Queued),
+                gauge: metrics::gauge!("test_compilation_accounting"),
+            };
+            let value = |expected| {
+                let output = handle.render();
+                assert!(
+                    output.contains(&format!("test_compilation_accounting {expected}\n")),
+                    "unexpected gauge value: {output}"
+                );
+            };
+
+            accounting.cancel();
+            value(0);
+            accounting.start();
+            value(1);
+            accounting.complete();
+            value(0);
+
+            let accounting = CompilationAccounting {
+                status: Mutex::new(CompilationStatus::Queued),
+                gauge: metrics::gauge!("test_compilation_accounting"),
+            };
+            accounting.start();
+            accounting.cancel();
+            value(1);
+            accounting.complete();
+            value(0);
+            accounting.cancel();
+            value(0);
+
+            let accounting = CompilationAccounting {
+                status: Mutex::new(CompilationStatus::Queued),
+                gauge: metrics::gauge!("test_compilation_accounting"),
+            };
+            accounting.start();
+            accounting.complete();
+            accounting.cancel();
+            value(0);
+        });
+    }
+
+    #[test]
+    fn compilation_accounting_balances_concurrent_completion_and_cancellation() {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            for _ in 0..200 {
+                let accounting = Arc::new(CompilationAccounting {
+                    status: Mutex::new(CompilationStatus::Queued),
+                    gauge: metrics::gauge!("test_concurrent_compilation_accounting"),
+                });
+                accounting.start();
+                let barrier = Arc::new(Barrier::new(2));
+                std::thread::scope(|scope| {
+                    let worker_accounting = Arc::clone(&accounting);
+                    let worker_barrier = Arc::clone(&barrier);
+                    scope.spawn(move || {
+                        worker_barrier.wait();
+                        worker_accounting.complete();
+                    });
+                    barrier.wait();
+                    accounting.cancel();
+                });
+            }
+            let output = handle.render();
+            assert!(
+                output.contains("test_concurrent_compilation_accounting 0\n"),
+                "concurrent completion left an incorrect gauge: {output}"
+            );
+        });
+    }
+
+    #[test]
+    fn timed_out_compilation_is_counted_until_worker_finishes() -> anyhow::Result<()> {
+        let recorder = PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            rt.block_on(async {
+                let mut state = make_state(HashMap::new(), HashMap::new(), false)?;
+                state.config.compile_timeout_seconds = 1;
+                state.compile_semaphore = Some(Arc::new(Semaphore::new(1)));
+                let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+                let (release_tx, release_rx) = tokio::sync::oneshot::channel::<()>();
+
+                let compilation = compile_blocking(&state, "accounting-test".into(), None, || {
+                    let _ = started_tx.send(());
+                    let _ = release_rx.blocking_recv();
+                    Ok(())
+                });
+                tokio::pin!(compilation);
+                tokio::select! {
+                    result = &mut compilation => anyhow::bail!("worker did not start: {result:?}"),
+                    result = started_rx => result?,
+                }
+                assert!(compilation.await.is_err());
+                let output = handle.render();
+                assert!(
+                    output.contains(&format!(
+                        "{IN_FLIGHT_AFTER_TIMEOUT_METRIC}{{app_name=\"accounting-test\",template_name=\"unknown\"}} 1\n"
+                    )),
+                    "timed-out worker was not counted: {output}"
+                );
+
+                release_tx.send(()).map_err(|_| anyhow::anyhow!("worker stopped early"))?;
+                let semaphore = state.compile_semaphore.as_ref().context("missing semaphore")?;
+                let permit = tokio::time::timeout(
+                    Duration::from_secs(5),
+                    Arc::clone(semaphore).acquire_owned(),
+                )
+                .await??;
+                drop(permit);
+                let output = handle.render();
+                assert!(
+                    output.contains(&format!(
+                        "{IN_FLIGHT_AFTER_TIMEOUT_METRIC}{{app_name=\"accounting-test\",template_name=\"unknown\"}} 0\n"
+                    )),
+                    "finished worker remained counted: {output}"
+                );
+                Ok::<(), anyhow::Error>(())
+            })
+        })
+    }
 
     #[tokio::test]
     async fn compile_blocking_returns_timeout_when_task_exceeds_deadline() -> anyhow::Result<()> {
