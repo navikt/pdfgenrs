@@ -14,7 +14,7 @@ Install the following tools and verify that they are available:
 | curl | `curl --version` | [Install curl](https://curl.se/docs/install.html) |
 
 > [!NOTE]
-> Rust `1.98.1` or newer is required by `Cargo.toml`
+> Rust minimum version that is required se [Cargo.toml](Cargo.toml#L5)
 
 
 ## Development-commands
