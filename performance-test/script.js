@@ -13,7 +13,7 @@ function positiveInteger(name, fallback) {
 
 const stageSeconds = positiveInteger('STAGE_SECONDS', 10);
 const maxVUs = positiveInteger('MAX_VUS', 8);
-const maxP95 = positiveInteger('MAX_P95_MS', 100);
+const maxP95 = positiveInteger('MAX_P95_MS', 50);
 const baseUrl = (__ENV.BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 const fixtures = [
   ['nav-brev', 'brev'],
