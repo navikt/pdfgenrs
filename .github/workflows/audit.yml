@@ -35,21 +35,57 @@ jobs:
         uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Add audit vulnerabilities to job summary
+      - name: Add audit results to job summary
         if: ${{ always() }}
         env:
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
         run: |
+          echo '## Dependency audit' >> "$GITHUB_STEP_SUMMARY"
+          audit_exit=0
+          cargo audit --json > audit.json 2> audit.stderr || audit_exit=$?
+          if ! jq -e '
+            (.vulnerabilities.list | type == "array") and
+            (.warnings | type == "object")
+          ' audit.json > /dev/null; then
+            {
+              echo 'Audit results could not be generated. See the audit step logs.'
+              echo ''
+              echo '```text'
+              cat audit.stderr
+              cat audit.json
+              echo ''
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           {
-            echo '## Dependency audit'
-            if [ "$AUDIT_OUTCOME" = 'success' ]; then
-              echo 'No vulnerabilities or warnings found.'
-            else
-              cargo audit --json > audit.json || true
-              jq -r '
-                .vulnerabilities.list[] |
-                "### [\(.advisory.id)](https://rustsec.org/advisories/\(.advisory.id).html)\n\n\(.advisory.title)\n\n- Package: `\(.package.name)` `\(.package.version)`\n- Patched versions: `\(.versions.patched | join(", "))`\n\n\(.advisory.description)\n"
-              ' audit.json
+            echo ''
+            if [ "$AUDIT_OUTCOME" != 'success' ]; then
+              echo "Audit action outcome: $AUDIT_OUTCOME. See the audit step logs for execution or check-run reporting errors."
+              echo ''
+            fi
+            jq -r '
+              (.vulnerabilities.list | length) as $vulnerabilities |
+              ([.warnings[][]] | length) as $warnings |
+              if $vulnerabilities == 0 and $warnings == 0 then
+                "No vulnerabilities or warnings found.\n"
+              else
+                "Found \($vulnerabilities) vulnerabilities and \($warnings) warnings.\n"
+              end,
+              (
+                (.vulnerabilities.list[] | {kind: "vulnerability", finding: .}),
+                (.warnings | to_entries[] | .key as $kind | .value[] |
+                  {kind: $kind, finding: .})
+                | .kind as $kind | .finding |
+                "### \($kind): \(if .advisory.id then "[\(.advisory.id)](https://rustsec.org/advisories/\(.advisory.id).html)" else .package.name end)\n\n\(.advisory.title // "Package warning")\n\n- Package: `\(.package.name)` `\(.package.version)`\n- Patched versions: \((.versions.patched // []) | if length == 0 then "Not available" else join(", ") end)\n\n\(.advisory.description // "")\n"
+              )
+            ' audit.json
+            if [ "$audit_exit" -ne 0 ]; then
+              echo "cargo audit exited with status $audit_exit."
+              echo ''
+              echo '```text'
+              cat audit.stderr
+              echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
-          [ "$AUDIT_OUTCOME" = 'success' ]
+          [ "$AUDIT_OUTCOME" = 'success' ] && [ "$audit_exit" -eq 0 ]
