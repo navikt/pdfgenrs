@@ -17,6 +17,8 @@ on:
       - '**.Md'
       - '**.mD'
       - '.gitignore'
+  schedule:
+    - cron: "25 13 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
