@@ -527,6 +527,8 @@ Install the following tools and verify that they are available:
 >cargo install cargo-audit --locked
 >```
 
+`cargo audit` uses `.cargo/audit.toml` to allow unmaintained crates while retaining vulnerability checks and other warnings. The same policy applies in CI.
+
 ```bash
 cargo audit
 cargo fmt -- --check
